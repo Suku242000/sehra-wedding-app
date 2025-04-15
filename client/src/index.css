@@ -1,0 +1,80 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&family=Dancing+Script:wght@400;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 96%;
+    --foreground: 240 10% 17%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 17%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 17%;
+    
+    --primary: 0 100% 25%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 51 100% 50%;
+    --secondary-foreground: 0 100% 25%;
+    
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
+    
+    --accent: 350 100% 88%;
+    --accent-foreground: 240 10% 17%;
+    
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 51 100% 50%;
+    
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-[#F5F5F5] text-[#2C2C2C] font-sans;
+    font-family: 'Poppins', sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', serif;
+  }
+}
+
+@layer components {
+  .font-script {
+    font-family: 'Dancing Script', cursive;
+  }
+  
+  .divider {
+    @apply h-[2px] bg-gradient-to-r from-transparent via-[#FFD700] to-transparent;
+  }
+  
+  .progress-bar {
+    @apply bg-gradient-to-r from-[#800000] via-[#A52A2A] to-[#FFD700];
+  }
+  
+  .gold-hover {
+    @apply transition-all duration-300;
+  }
+  
+  .gold-hover:hover {
+    @apply shadow-md transform -translate-y-1;
+  }
+  
+  .maroon-gradient {
+    @apply bg-gradient-to-r from-[#800000] to-[#a52a2a] hover:from-[#5c0000] hover:to-[#800000] text-white;
+  }
+}

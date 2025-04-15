@@ -16,6 +16,7 @@ interface PackageCardProps {
   badge: React.ReactNode;
   description: string;
   price: string;
+  moneyIcon?: string;
   features: string[];
   accentColor: string;
   selected: boolean;
@@ -28,6 +29,7 @@ const PackageCard: React.FC<PackageCardProps> = ({
   badge,
   description,
   price,
+  moneyIcon = '💰',
   features,
   accentColor,
   selected,
@@ -63,8 +65,11 @@ const PackageCard: React.FC<PackageCardProps> = ({
         </CardHeader>
         <CardContent>
           <div className="mb-4">
-            <p className="text-sm text-gray-500">Package Price</p>
-            <p className="text-2xl font-bold">{price}</p>
+            <p className="text-sm text-gray-500">Budget Range</p>
+            <p className="text-2xl font-bold flex items-center">
+              <span className="mr-2">{moneyIcon}</span> 
+              {price}
+            </p>
           </div>
           <ul className="space-y-2">
             {features.map((feature, i) => (
@@ -151,7 +156,8 @@ const SelectPackagePage: React.FC = () => {
       badge: <Badge className="bg-indigo-100 text-indigo-800 border-indigo-300">Basic</Badge>,
       icon: <StarIcon className="h-6 w-6 text-indigo-600" />,
       description: 'Perfect for local or nearby city weddings',
-      price: '₹25,000',
+      price: '₹10L - ₹30L',
+      moneyIcon: '💰',
       accentColor: 'indigo-600',
       features: [
         'Guest Management',
@@ -167,7 +173,8 @@ const SelectPackagePage: React.FC = () => {
       badge: <Badge className="bg-amber-100 text-amber-800 border-amber-300">Premium</Badge>,
       icon: <SparklesIcon className="h-6 w-6 text-amber-600" />,
       description: 'Ideal for inter-city upscale weddings',
-      price: '₹65,000',
+      price: '₹31L - ₹60L',
+      moneyIcon: '💰💰',
       accentColor: 'amber-600',
       features: [
         'All Silver Features',
@@ -183,7 +190,8 @@ const SelectPackagePage: React.FC = () => {
       badge: <Badge className="bg-rose-100 text-rose-800 border-rose-300">Luxury</Badge>,
       icon: <CrownIcon className="h-6 w-6 text-rose-600" />,
       description: 'For destination & luxury weddings',
-      price: '₹1,25,000',
+      price: '₹61L - ₹1Cr+',
+      moneyIcon: '💰💰💰',
       accentColor: 'rose-600',
       features: [
         'All Gold Features',

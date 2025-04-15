@@ -42,28 +42,28 @@ const PackageCard: React.FC<PackageCardProps> = ({
     >
       <Card
         className={`relative h-full overflow-hidden transition-all duration-300 ${
-          selected ? `border-2 border-${accentColor} shadow-lg` : 'border border-gray-200'
-        }`}
+          selected ? `border-2 shadow-lg` : 'border border-gray-200'
+        } ${selected ? `border-${accentColor}` : ''}`}
       >
         {selected && (
-          <div className={`absolute top-0 right-0 p-2 bg-${accentColor} text-white rounded-bl-lg`}>
+          <div className={`absolute top-0 right-0 p-2 text-white rounded-bl-lg ${accentColor === 'indigo-600' ? 'bg-indigo-600' : accentColor === 'amber-600' ? 'bg-amber-600' : 'bg-rose-600'}`}>
             <CheckIcon className="h-4 w-4" />
           </div>
         )}
         <div
-          className={`absolute top-0 left-0 w-full h-2 bg-${accentColor}`}
+          className={`absolute top-0 left-0 w-full h-2 ${accentColor === 'indigo-600' ? 'bg-indigo-600' : accentColor === 'amber-600' ? 'bg-amber-600' : 'bg-rose-600'}`}
         />
-        <CardHeader className={`text-${accentColor}`}>
+        <CardHeader>
           <div className="flex justify-between items-center mb-2">
             {badge}
             {icon}
           </div>
-          <CardTitle className="text-xl font-serif">{title}</CardTitle>
+          <CardTitle className={`text-xl font-serif ${accentColor === 'indigo-600' ? 'text-indigo-600' : accentColor === 'amber-600' ? 'text-amber-600' : 'text-rose-600'}`}>{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
-            <p className="text-sm text-gray-500">Budget Range</p>
+            <p className="text-sm text-gray-500">Package Price</p>
             <p className="text-2xl font-bold">{price}</p>
           </div>
           <ul className="space-y-2">
@@ -75,7 +75,7 @@ const PackageCard: React.FC<PackageCardProps> = ({
                 transition={{ delay: i * 0.1 }}
                 className="flex items-start"
               >
-                <CheckIcon className={`h-5 w-5 mr-2 text-${accentColor} mt-0.5 flex-shrink-0`} />
+                <CheckIcon className={`h-5 w-5 mr-2 mt-0.5 flex-shrink-0 ${accentColor === 'indigo-600' ? 'text-indigo-600' : accentColor === 'amber-600' ? 'text-amber-600' : 'text-rose-600'}`} />
                 <span className="text-sm">{feature}</span>
               </motion.li>
             ))}
@@ -86,7 +86,7 @@ const PackageCard: React.FC<PackageCardProps> = ({
             onClick={onSelect}
             className={`w-full ${
               selected
-                ? `bg-${accentColor} hover:bg-${accentColor}/90`
+                ? `${accentColor === 'indigo-600' ? 'bg-indigo-600 hover:bg-indigo-700' : accentColor === 'amber-600' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-rose-600 hover:bg-rose-700'}`
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
             variant={selected ? 'default' : 'outline'}
@@ -148,52 +148,49 @@ const SelectPackagePage: React.FC = () => {
     {
       id: PackageType.SILVER,
       title: 'Silver',
-      badge: <Badge variant="outline" className="bg-pink-50">Essential</Badge>,
-      icon: <StarIcon className="h-6 w-6 text-pink-400" />,
+      badge: <Badge className="bg-indigo-100 text-indigo-800 border-indigo-300">Basic</Badge>,
+      icon: <StarIcon className="h-6 w-6 text-indigo-600" />,
       description: 'Perfect for local or nearby city weddings',
-      price: '₹10L - ₹30L',
-      accentColor: 'pink-400',
+      price: '₹25,000',
+      accentColor: 'indigo-600',
       features: [
-        'Venue coordination',
-        '2 vendors (basic)',
-        'Guest list manager',
-        'Task checklist',
-        'Basic support'
+        'Guest Management',
+        'Task Tracking',
+        'Budget Basics',
+        'Basic Support',
+        'Simple Timeline'
       ],
     },
     {
       id: PackageType.GOLD,
       title: 'Gold',
-      badge: <Badge variant="outline" className="bg-amber-50">Premium</Badge>,
-      icon: <SparklesIcon className="h-6 w-6 text-amber-400" />,
+      badge: <Badge className="bg-amber-100 text-amber-800 border-amber-300">Premium</Badge>,
+      icon: <SparklesIcon className="h-6 w-6 text-amber-600" />,
       description: 'Ideal for inter-city upscale weddings',
-      price: '₹31L - ₹60L',
-      accentColor: 'amber-400',
+      price: '₹65,000',
+      accentColor: 'amber-600',
       features: [
-        'All Silver features',
-        'Makeup & stylist coordination',
-        '4 vendor connections',
-        'Budget calculator',
-        'Supervisor allocation',
-        'Priority support'
+        'All Silver Features',
+        'Premium Vendor Access',
+        'Dedicated Supervisor',
+        'Priority Support',
+        'Enhanced Planning Tools'
       ],
     },
     {
       id: PackageType.PLATINUM,
       title: 'Platinum',
-      badge: <Badge variant="outline" className="bg-red-50">Luxury</Badge>,
-      icon: <CrownIcon className="h-6 w-6 text-red-600" />,
+      badge: <Badge className="bg-rose-100 text-rose-800 border-rose-300">Luxury</Badge>,
+      icon: <CrownIcon className="h-6 w-6 text-rose-600" />,
       description: 'For destination & luxury weddings',
-      price: '₹61L - ₹1Cr+',
-      accentColor: 'red-600',
+      price: '₹1,25,000',
+      accentColor: 'rose-600',
       features: [
-        'All Gold features',
-        'Pre-wedding shoot',
-        '6+ premium vendors',
-        'Hotel booking assistance',
-        'Travel coordination',
-        'Live concierge',
-        'VIP support 24/7'
+        'All Gold Features',
+        'Elite Venue Options',
+        'Full Event Coordination',
+        'VIP Concierge Service',
+        'Premium Vendor Network'
       ],
     },
   ];
@@ -209,18 +206,26 @@ const SelectPackagePage: React.FC = () => {
           <motion.h1
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-3xl font-serif font-bold mb-4"
+            className="text-4xl font-serif font-bold mb-4 text-rose-700"
           >
-            Choose Your Wedding Package
+            Your Dream Wedding Awaits
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="text-gray-600 max-w-2xl mx-auto"
+            className="text-gray-700 max-w-2xl mx-auto text-lg"
           >
-            Select the perfect package that suits your wedding dreams and budget.
-            You can always upgrade later if your needs change.
+            Choose the perfect package that complements your celebration.
+            Each option is tailored to create unforgettable moments on your special day.
+          </motion.p>
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-rose-600 mt-2 text-sm font-medium"
+          >
+            You can always upgrade your package later as your wedding plans evolve.
           </motion.p>
         </div>
 
@@ -245,7 +250,7 @@ const SelectPackagePage: React.FC = () => {
           <Button
             onClick={handleSelectPackage}
             disabled={isLoading || !selectedPackage}
-            className="px-8 py-6 text-lg"
+            className="px-10 py-6 text-lg bg-rose-600 hover:bg-rose-700 text-white shadow-lg"
           >
             {isLoading ? 'Processing...' : 'Confirm Package Selection'}
           </Button>
@@ -255,11 +260,14 @@ const SelectPackagePage: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="mt-12 text-center text-gray-500 text-sm"
+          className="mt-16 text-center border-t border-gray-200 pt-8"
         >
-          <p>
-            Need help deciding? Contact our wedding consultants at{' '}
-            <span className="text-pink-500">support@sehra.com</span>
+          <p className="text-gray-600 font-medium mb-2">
+            Need help deciding which package is right for you?
+          </p>
+          <p className="text-gray-500 text-sm">
+            Our wedding consultants are here to assist you at{' '}
+            <span className="text-rose-600 font-semibold">support@sehra.com</span>
           </p>
         </motion.div>
       </motion.div>

@@ -1,0 +1,85 @@
+Objective:
+Implement a dynamic budget selection and management module for users after signup/login. Users must pick from three wedding planning packages — Silver, Gold, or Platinum — with different services, pricing, and UI treatments. Plans must be upgradeable later.
+
+🪙 Plan Details:
+Silver Plan
+
+💰 Budget Range: ₹10L – ₹30L
+
+🎯 Target: Local or nearby city weddings
+
+🧰 Services: Venue coordination, 2 vendors (basic), guest list manager, task checklist
+
+🎨 UI Theme: Light background with Soft Pink + Ivory accents
+
+✨ Animations: Minimal, elegant
+
+🆓 Default Plan (if user skips selection)
+
+Gold Plan
+
+💰 Budget Range: ₹31L – ₹60L
+
+🎯 Target: Inter-city upscale weddings
+
+🧰 Services: Silver features + Makeup, 4 vendors, budget calculator, supervisor allocation
+
+🎨 UI Theme: Classic Gold + Ivory
+
+✨ Animations: Enhanced dashboard interactions
+
+Platinum Plan
+
+💰 Budget Range: ₹61L – ₹1Cr+
+
+🎯 Target: Destination & luxury weddings (other states or countries)
+
+🧰 Services: All Gold features + Pre-wedding shoot, 6+ premium vendors, hotel booking, premium support, live concierge
+
+🎨 UI Theme: Royal Maroon + Gold
+
+✨ Animations: Full dashboard transitions + glow effects
+
+🎛️ Features to Implement:
+Plan Selection Page (After login, before dashboard):
+
+Radio buttons or elegant cards with animation
+
+Show key features and visuals
+
+Confirm selection → Save to database (User model)
+
+User Dashboard:
+
+Show selected plan name with icon
+
+Display included features dynamically
+
+“Upgrade Plan” button → Redirect to selection page (only allow upward upgrade)
+
+Admin Panel:
+
+View plan per user
+
+Upgrade plan manually if required
+
+🧮 Backend API:
+POST /api/user/plan → Save selected plan to DB
+
+GET /api/user/plan → Fetch current plan
+
+Add plan: 'Silver' | 'Gold' | 'Platinum' to user schema
+
+🖼️ UI/UX Notes:
+Animate card hover with Framer Motion
+
+Use badges: Silver 🌸, Gold 🏆, Platinum 👑
+
+Toast notification: “You’ve selected the Platinum Plan — Let’s create magic!”
+
+✅ Bonus Enhancements:
+Real-time price calculator per plan
+
+Add-on selector per plan (Venue + Photographer + Catering options)
+
+Auto email confirmation using SendGrid: “Your [Plan Name] has been activated!

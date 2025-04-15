@@ -1,0 +1,218 @@
+ Goal:
+Build a full-stack, production-ready Indian wedding management app called Sehra using:
+
+Frontend: React.js + Tailwind CSS + Framer Motion (for animations)
+
+Backend: Node.js + Express.js + MongoDB (via MongoDB Atlas or Replit’s DB)
+
+Deployment: Replit’s built-in hosting (for both frontend and backend)
+
+Email Service: SendGrid API
+
+Authentication: JWT (role-based login)
+
+Image Uploads: Multer or Base64 (Replit-compatible)
+
+🧭 USER FLOW & STRUCTURE
+User Roles: Bride, Groom, Family, Vendor, Admin, Supervisor
+
+Registration/Login Page
+
+Dropdown for selecting role
+
+Secure JWT auth
+
+Route protection per role
+
+After Login:
+
+User selects package: Silver, Gold, or Platinum
+
+Auto-redirect to dashboard based on selected package and role
+
+🖥️ USER DASHBOARD FEATURES (Bride/Groom/Family)
+🎉 Welcome message with user name
+
+🎯 Show selected plan and option to upgrade
+
+✅ Wedding Progress Bar (animated via Framer Motion)
+
+Updates as tasks are completed
+
+✅ Task Manager:
+
+Add/View/Delete tasks
+
+Assigned by user or admin
+
+Auto-update progress
+
+💰 Budget Calculator:
+
+Matrix with base budget + real-time addon calculations
+
+💒 Wedding Date:
+
+Choose wedding date
+
+Based on date, auto-fetch available venues and vendors
+
+🧑‍🤝‍🧑 Guest Management:
+
+Add guest contact
+
+One contact → multiple family members
+
+🧑‍💼 Supervisor Assignment:
+
+Auto-assigned supervisor visible in profile
+
+Contact details shown
+
+Details auto-sent to supervisor via email
+
+🧑‍🔧 VENDOR DASHBOARD
+Vendor roles: Hotel, Photographer, Videographer, Catering, Makeup Artist, Hairdresser, Decoration, Mehandi, DJ, Lighting
+
+Features:
+
+Login to personalized vendor panel
+
+See how many weddings assigned
+
+Upload portfolio images
+
+Accept/decline booking requests
+
+Status of upcoming events
+
+View reviews and ratings
+
+Editable availability calendar
+
+⚙️ ADMIN PANEL
+Admin-only login route
+
+Dashboard to:
+
+View/Add/Edit/Delete all users and vendors
+
+Upload homepage carousel images
+
+Add/update company information and customer experiences
+
+Manage supervisors and assign them to customers
+
+Configure Customer ID (used to track bookings and tasks)
+
+Add/edit vendor categories
+
+See reports submitted by users
+
+📩 EMAIL INTEGRATIONS (via SendGrid)
+Welcome email after registration
+
+Task deadline reminders
+
+Booking confirmations
+
+Supervisor allocation and details
+
+Custom feedback emails to admin
+
+🎨 DESIGN & UI ENHANCEMENTS (based on Swaaha site style)
+Color Palette:
+
+Primary: Royal Maroon #800000
+
+Accent: Classic Gold #FFD700
+
+Highlight: Soft Pink #FFC0CB
+
+Background: Ivory #F5F5F5
+
+Text: Rich Dark Gray #2C2C2C
+
+Consistent font (Swaaha-style elegant serif/sans)
+
+Responsive design for all screen sizes
+
+Framer Motion page transitions and component animations
+
+Toast notifications for all actions (Add/Delete/Success/Error)
+
+📦 EXTRA FEATURES
+PDF export for tasks and guest list
+
+In-app support popup chat (basic support modal)
+
+About Us page with animated company journey
+
+Reports section where users can report bugs/issues to admin
+
+Fallback route handling via _redirects for SPA routing (no 404s)
+
+Loading animations for all data fetches
+
+🔬 TESTING & DEBUGGING
+Use Postman (optional) or in-app forms for backend API tests
+
+Console log user/session data to confirm role-based flow
+
+Test role-based dashboards:
+
+Try each role (Bride/Groom/Vendor/Admin) and verify redirection
+
+Use Replit’s built-in debugger and logs for server errors
+
+🛠️ REPLIT SETUP STEPS
+Backend:
+
+Create a folder named backend
+
+Inside backend, add:
+
+index.js
+
+.env file
+
+controllers/, routes/, models/
+
+Run npm init -y
+
+Install packages:
+
+bash
+Copy
+Edit
+npm i express mongoose cors dotenv jsonwebtoken bcryptjs nodemailer
+Frontend:
+
+Create a folder named frontend
+
+Inside it, run:
+
+bash
+Copy
+Edit
+npx create-react-app .
+npm install react-router-dom axios tailwindcss framer-motion react-toastify
+Initialize Tailwind:
+
+bash
+Copy
+Edit
+npx tailwindcss init
+Configure routing, private routes, and UI components
+
+Link frontend to backend via .env:
+
+ini
+Copy
+Edit
+REACT_APP_API_URL=http://localhost:5000
+To Run Locally in Replit:
+
+Start backend: node backend/index.js or use nodemon
+
+Start frontend: npm start in frontend

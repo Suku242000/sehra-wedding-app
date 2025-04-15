@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
 import { Badge } from '@/components/ui/badge';
 import { CheckIcon, CrownIcon, StarIcon, SparklesIcon } from 'lucide-react';
-import { PackageType, PackageTypeValue } from '@shared/schema';
+import { PackageType, type PackageTypeValue } from '@shared/schema';
 
 interface PackageCardProps {
   title: string;

@@ -262,20 +262,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'SELECT_PACKAGE_REQUEST' });
     
     try {
-      const response = await apiRequest<User>('POST', '/api/auth/select-package', {
+      const response = await apiRequest<{ user: User }>('POST', '/api/auth/select-package', {
         package: packageType
       });
       
-      if (!response) {
+      if (!response || !response.user) {
         throw new Error('Failed to select package. Please try again.');
       }
       
+      const updatedUser = response.user;
+      
       // Update user in localStorage
-      localStorage.setItem('user', JSON.stringify(response));
+      localStorage.setItem('user', JSON.stringify(updatedUser));
       
       dispatch({
         type: 'SELECT_PACKAGE_SUCCESS',
-        payload: response
+        payload: updatedUser
       });
       
       toast({

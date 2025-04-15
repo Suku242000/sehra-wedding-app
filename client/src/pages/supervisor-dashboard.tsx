@@ -220,11 +220,11 @@ const SupervisorDashboard: React.FC = () => {
                           <div className="space-y-1">
                             <div className="text-sm text-gray-500">Member Since</div>
                             <div className="font-medium">
-                              {new Date(selectedClient.createdAt).toLocaleDateString('en-US', {
+                              {selectedClient.createdAt ? new Date(selectedClient.createdAt).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
                                 year: 'numeric'
-                              })}
+                              }) : 'N/A'}
                             </div>
                           </div>
                         </div>

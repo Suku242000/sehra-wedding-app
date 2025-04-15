@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { UserRole } from '@shared/schema';
+import { UserRole, User } from '@shared/schema';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';

@@ -246,6 +246,7 @@ const SelectPackagePage: React.FC = () => {
               icon={pkg.icon}
               description={pkg.description}
               price={pkg.price}
+              moneyIcon={pkg.moneyIcon}
               features={pkg.features}
               accentColor={pkg.accentColor}
               selected={selectedPackage === pkg.id}

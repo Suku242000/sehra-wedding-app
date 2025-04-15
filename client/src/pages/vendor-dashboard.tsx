@@ -105,12 +105,12 @@ const VendorDashboard: React.FC = () => {
   const { data: vendorProfile } = useQuery<VendorProfile>({
     queryKey: ['/api/vendors/my-profile'],
     enabled: !!user,
-    onSuccess: (data) => {
+    onSuccess: (data: VendorProfile | undefined) => {
       if (data && data.portfolio) {
         setPortfolioImages(data.portfolio);
       }
     }
-  });
+  } as any);
 
   // Fetch vendor bookings with client info
   const { data: bookings = [] } = useQuery<VendorBooking[]>({
@@ -152,8 +152,12 @@ const VendorDashboard: React.FC = () => {
 
   // Mutation for updating portfolio
   const updatePortfolioMutation = useMutation({
-    mutationFn: (portfolio: string[]) => 
-      apiRequest('PATCH', `/api/vendors/${vendorProfile?.id}`, { portfolio }),
+    mutationFn: (portfolio: string[]) => {
+      if (!vendorProfile || typeof vendorProfile === 'undefined') {
+        throw new Error('Vendor profile not found');
+      }
+      return apiRequest('PATCH', `/api/vendors/${(vendorProfile as any).id}`, { portfolio });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/vendors/my-profile'] });
       toast({
@@ -263,25 +267,25 @@ const VendorDashboard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <h3 className="font-bold text-lg mb-4">
-                  {vendorProfile?.businessName || user?.name}
+                  {(vendorProfile as any)?.businessName || user?.name}
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  {vendorProfile?.description || "No description available"}
+                  {(vendorProfile as any)?.description || "No description available"}
                 </p>
                 <div className="space-y-2">
                   <div className="flex items-center">
                     <span className="font-semibold mr-2">Vendor Type:</span>
                     <Badge variant="outline" className="capitalize">
-                      {vendorProfile?.vendorType || "Not specified"}
+                      {(vendorProfile as any)?.vendorType || "Not specified"}
                     </Badge>
                   </div>
                   <div className="flex items-center">
                     <span className="font-semibold mr-2">Location:</span>
-                    <span>{vendorProfile?.location || "Not specified"}</span>
+                    <span>{(vendorProfile as any)?.location || "Not specified"}</span>
                   </div>
                   <div className="flex items-center">
                     <span className="font-semibold mr-2">Price Range:</span>
-                    <span>{vendorProfile?.priceRange || "Not specified"}</span>
+                    <span>{(vendorProfile as any)?.priceRange || "Not specified"}</span>
                   </div>
                 </div>
               </div>
@@ -329,6 +333,138 @@ const VendorDashboard: React.FC = () => {
             <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
             <TabsTrigger value="reviews">Reviews</TabsTrigger>
           </TabsList>
+          
+          <TabsContent value="portfolio">
+            <Card>
+              <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
+                <div>
+                  <CardTitle>Your Portfolio</CardTitle>
+                  <CardDescription>
+                    Showcase your best work to attract more clients
+                  </CardDescription>
+                </div>
+                <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="w-full sm:w-auto">
+                      <UploadIcon className="mr-2 h-4 w-4" />
+                      Add Images
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Upload Images</DialogTitle>
+                      <DialogDescription>
+                        Add images to your portfolio to showcase your work
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="flex items-center justify-center w-full">
+                        <label
+                          htmlFor="dropzone-file"
+                          className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100"
+                        >
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <ImageIcon className="w-10 h-10 mb-3 text-gray-400" />
+                            <p className="mb-2 text-sm text-gray-500">
+                              <span className="font-semibold">Click to upload</span> or drag and drop
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              PNG, JPG, WEBP or SVG (MAX. 2MB)
+                            </p>
+                          </div>
+                          <input
+                            id="dropzone-file"
+                            ref={fileInputRef}
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleFileChange}
+                          />
+                        </label>
+                      </div>
+                      {uploadFile && (
+                        <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-md">
+                          Selected file: {uploadFile.name}
+                        </div>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setUploadFile(null);
+                          setIsUploadOpen(false);
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = '';
+                          }
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleUploadImage}
+                        disabled={!uploadFile || updatePortfolioMutation.isPending}
+                      >
+                        {updatePortfolioMutation.isPending ? 'Uploading...' : 'Upload'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {portfolioImages.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {portfolioImages.map((image, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        <PortfolioItem 
+                          imageUrl={image} 
+                          onDelete={() => handleDeleteImage(index)} 
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-16 space-y-4">
+                    <div className="flex justify-center">
+                      <div className="bg-gray-100 rounded-full p-6">
+                        <ImageIcon className="h-12 w-12 text-gray-400" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-600">No portfolio items yet</h3>
+                    <p className="text-gray-500 max-w-md mx-auto">
+                      Add photos of your past work to showcase your skills and attract more clients.
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsUploadOpen(true)}
+                      className="mt-4"
+                    >
+                      <PlusIcon className="mr-2 h-4 w-4" />
+                      Add Your First Photo
+                    </Button>
+                  </div>
+                )}
+                
+                {/* Portfolio Tips */}
+                {portfolioImages.length > 0 && (
+                  <div className="mt-8 bg-gray-50 p-4 rounded-lg">
+                    <h4 className="font-medium mb-2">Tips for a great portfolio:</h4>
+                    <ul className="space-y-1 text-sm text-gray-500 list-disc pl-5">
+                      <li>Upload high-quality images that showcase your best work</li>
+                      <li>Include diverse examples to display your range of skills</li>
+                      <li>Add images that match with different wedding themes and seasons</li>
+                      <li>Consider including before/after photos if applicable</li>
+                    </ul>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
           
           <TabsContent value="calendar">
             <Card>

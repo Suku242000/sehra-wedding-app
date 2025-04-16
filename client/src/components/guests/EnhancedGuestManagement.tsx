@@ -381,7 +381,7 @@ const EnhancedGuestManagement: React.FC = () => {
   
   return (
     <motion.div
-      variants={staggerContainer()}
+      variants={staggerContainer}
       initial="hidden"
       animate="show"
       className="space-y-6"

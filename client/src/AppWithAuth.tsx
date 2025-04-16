@@ -7,6 +7,7 @@ import Dashboard from "@/pages/dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
 import VendorDashboard from "@/pages/vendor-dashboard";
 import SupervisorDashboard from "@/pages/supervisor-dashboard";
+import GamificationDashboard from "@/pages/gamification-dashboard";
 import NotFound from "@/pages/not-found";
 import { PublicRoute, ProtectedRoute } from "@/lib/auth";
 import { UserRole } from "@shared/schema";

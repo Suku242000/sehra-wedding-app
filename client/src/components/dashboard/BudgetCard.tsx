@@ -8,6 +8,8 @@ import { BudgetItem } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { BUDGET_CATEGORIES } from '@/types';
+import { CheckCircle2, AlertTriangle, Frown, Smile, MehIcon, ArrowTrendingUp, ArrowTrendingDown } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { 
   Dialog,
   DialogContent,

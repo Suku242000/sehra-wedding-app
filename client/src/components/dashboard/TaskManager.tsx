@@ -69,9 +69,12 @@ const TaskManager: React.FC = () => {
   const { toast } = useToast();
   const [openDialog, setOpenDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [showCelebration, setShowCelebration] = useState(false);
   
   // Fetch tasks
-  const { data: tasks = [], isLoading } = useQuery({
+  const { data: tasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ['/api/tasks'],
   });
   
@@ -86,6 +89,54 @@ const TaskManager: React.FC = () => {
       priority: 'medium',
     },
   });
+  
+  // Calculate task completion status and progress
+  useEffect(() => {
+    if (tasks && tasks.length > 0) {
+      const completedTasks = tasks.filter((task: Task) => task.status === 'completed').length;
+      const newProgressPercent = Math.round((completedTasks / tasks.length) * 100);
+      
+      // If we just reached 100% completion, trigger celebration
+      if (newProgressPercent === 100 && progressPercent !== 100) {
+        triggerCelebration();
+      }
+      
+      setProgressPercent(newProgressPercent);
+    } else {
+      setProgressPercent(0);
+    }
+  }, [tasks]);
+  
+  // Filter tasks based on selected filter
+  const filteredTasks = tasks.filter((task: Task) => {
+    if (filterStatus === "all") return true;
+    if (filterStatus === "completed") return task.status === "completed";
+    if (filterStatus === "pending") return task.status === "pending";
+    return true;
+  });
+  
+  // Trigger confetti celebration
+  const triggerCelebration = () => {
+    setShowCelebration(true);
+    
+    // Trigger confetti animation
+    confetti({
+      particleCount: 150,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
+    
+    toast({
+      title: "Congratulations! 🎉",
+      description: "You've completed all your tasks!",
+      variant: "default",
+    });
+    
+    // Reset celebration state after animation
+    setTimeout(() => {
+      setShowCelebration(false);
+    }, 4000);
+  };
   
   // Create task mutation
   const createTaskMutation = useMutation({
@@ -146,10 +197,23 @@ const TaskManager: React.FC = () => {
   
   // Handle status toggle
   const handleStatusToggle = (task: Task) => {
+    const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+    
     updateTaskMutation.mutate({
       id: task.id,
-      data: { status: task.status === 'completed' ? 'pending' : 'completed' }
+      data: { status: newStatus }
     });
+    
+    // Check if this completion will complete all tasks, and trigger celebration
+    if (newStatus === 'completed') {
+      const pendingTasksCount = tasks.filter(t => t.status === 'pending' && t.id !== task.id).length;
+      if (pendingTasksCount === 0) {
+        // Slight delay to let the update complete first
+        setTimeout(() => {
+          triggerCelebration();
+        }, 300);
+      }
+    }
   };
   
   // Handle delete
@@ -219,6 +283,60 @@ const TaskManager: React.FC = () => {
         <h2 className="text-white font-medium">Task Manager</h2>
       </div>
       <div className="p-4">
+        {/* Progress Bar */}
+        <div className="mb-4">
+          <div className="flex justify-between mb-1 items-center">
+            <div className="text-sm font-medium">Task Progress</div>
+            <div className="text-sm text-gray-600">{progressPercent}% Complete</div>
+          </div>
+          <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
+            <motion.div 
+              className={`h-full rounded-full ${
+                progressPercent === 100 
+                  ? 'bg-green-600' 
+                  : progressPercent > 66 
+                  ? 'bg-[#800000]' 
+                  : progressPercent > 33 
+                  ? 'bg-amber-500' 
+                  : 'bg-red-500'
+              }`}
+              initial={{ width: '0%' }}
+              animate={{ width: `${progressPercent}%` }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+            />
+          </div>
+        </div>
+        
+        {/* Filter Controls */}
+        <div className="flex mb-4 gap-2">
+          <div className="flex items-center bg-white border rounded-md">
+            <Button 
+              size="sm" 
+              variant={filterStatus === "all" ? "default" : "ghost"}
+              onClick={() => setFilterStatus("all")}
+              className={`px-3 py-1 rounded-none ${filterStatus === "all" ? 'bg-[#800000] text-white' : 'text-gray-600'}`}
+            >
+              <Filter className="w-3.5 h-3.5 mr-1.5" /> All
+            </Button>
+            <Button 
+              size="sm" 
+              variant={filterStatus === "pending" ? "default" : "ghost"}
+              onClick={() => setFilterStatus("pending")}
+              className={`px-3 py-1 rounded-none ${filterStatus === "pending" ? 'bg-[#800000] text-white' : 'text-gray-600'}`}
+            >
+              <Clock8 className="w-3.5 h-3.5 mr-1.5" /> Pending
+            </Button>
+            <Button 
+              size="sm" 
+              variant={filterStatus === "completed" ? "default" : "ghost"}
+              onClick={() => setFilterStatus("completed")}
+              className={`px-3 py-1 rounded-none ${filterStatus === "completed" ? 'bg-[#800000] text-white' : 'text-gray-600'}`}
+            >
+              <CheckCheck className="w-3.5 h-3.5 mr-1.5" /> Completed
+            </Button>
+          </div>
+        </div>
+
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
           <div className="flex mb-4 gap-2">
             <DialogTrigger asChild>
@@ -344,6 +462,10 @@ const TaskManager: React.FC = () => {
             <div className="text-center py-6 text-gray-500">
               <p>No tasks yet. Add your first task to get started!</p>
             </div>
+          ) : filteredTasks.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              <p>No {filterStatus} tasks found.</p>
+            </div>
           ) : (
             <motion.div 
               variants={fadeIn('up', 'tween', 0.2, 0.5)}
@@ -351,7 +473,7 @@ const TaskManager: React.FC = () => {
               animate="show"
               className="space-y-2"
             >
-              {tasks.map((task: Task) => (
+              {filteredTasks.map((task: Task) => (
                 <motion.div 
                   key={task.id}
                   variants={itemVariants}

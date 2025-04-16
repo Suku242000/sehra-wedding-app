@@ -1476,9 +1476,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('New connection established:', socket.id);
     
     // Authentication
-    socket.on('authenticate', async (token) => {
+    socket.on('authenticate', async (data) => {
       try {
-        // Verify token
+        // Handle different formats of authentication data
+        let token;
+        if (typeof data === 'string') {
+          token = data;
+        } else if (data && typeof data === 'object' && 'email' in data) {
+          // Client sent {email: string} format instead of token
+          const user = await storage.getUserByEmail(data.email);
+          if (!user) {
+            socket.emit('authentication_error', 'User not found');
+            return;
+          }
+          
+          // Store authenticated socket for email-based auth
+          authenticatedSockets.set(socket.id, {
+            userId: user.id,
+            role: user.role,
+            name: user.name
+          });
+          
+          console.log(`User authenticated by email: ${user.name} (${user.id})`);
+          socket.emit('authenticated', { success: true, userId: user.id, role: user.role });
+          
+          // Get unread messages count for this user
+          const unreadCount = await storage.getUnreadMessagesCount(user.id);
+          socket.emit('unread_count', { count: unreadCount });
+          return;
+        } else {
+          socket.emit('authentication_error', 'Invalid authentication data');
+          return;
+        }
+        
+        // Token-based authentication
         const decoded = await verifyToken(token);
         if (!decoded || !decoded.id) {
           socket.emit('authentication_error', 'Invalid token');
@@ -1498,12 +1529,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: user.name
         });
         
-        console.log(`User authenticated: ${user.name} (${user.id})`);
-        socket.emit('authenticated', { userId: user.id, role: user.role });
+        console.log(`User authenticated by token: ${user.name} (${user.id})`);
+        socket.emit('authenticated', { success: true, userId: user.id, role: user.role });
         
         // Get unread messages count for this user
         const unreadCount = await storage.getUnreadMessagesCount(user.id);
-        socket.emit('unread_count', unreadCount);
+        socket.emit('unread_count', { count: unreadCount });
       } catch (error) {
         console.error("Socket authentication error:", error);
         socket.emit('authentication_error', 'Authentication failed');
@@ -1545,11 +1576,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (recipientSocket) {
             // Add sender name to the message
             const messageWithSender = { ...message, senderName: socketData.name };
-            recipientSocket.emit('new_message', messageWithSender);
+            recipientSocket.emit('receive_message', messageWithSender);
             
             // Update unread count for recipient
             const unreadCount = await storage.getUnreadMessagesCount(toUserId);
-            recipientSocket.emit('unread_count', unreadCount);
+            recipientSocket.emit('unread_count', { count: unreadCount });
           }
         }
         
@@ -1576,7 +1607,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Update unread count
         const unreadCount = await storage.getUnreadMessagesCount(socketData.userId);
-        socket.emit('unread_count', unreadCount);
+        socket.emit('unread_count', { count: unreadCount });
         
         // If sender is online, notify them their messages have been read
         const senderSocketId = Array.from(authenticatedSockets.entries())

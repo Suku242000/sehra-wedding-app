@@ -59,11 +59,18 @@ class SocketService {
     if (!this.socket || !user.email) return;
 
     this.user = user;
+    
+    // Send email for authentication (our server handles both token and email auth)
     this.socket.emit('authenticate', { email: user.email });
 
-    this.socket.on('authenticated', (data) => {
+    this.socket.on('authenticated', (data: { success: boolean, userId?: number, role?: string }) => {
       this.authenticated = data.success;
       console.log('Socket authenticated:', data.success);
+    });
+    
+    this.socket.on('unread_count', (data: { count: number }) => {
+      console.log('Unread messages count:', data.count);
+      // We can emit an event or update a state here if needed
     });
   }
 

@@ -65,8 +65,26 @@ export const hashPassword = async (password: string): Promise<string> => {
 // Verify token - returns decoded token or undefined
 export const verifyToken = async (token: string): Promise<{ id: number; email: string; role: string; name: string } | undefined> => {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: number; email: string; role: string; name: string };
-    return decoded;
+    // First, check if token is properly formatted to avoid unnecessary errors in logs
+    if (!token || typeof token !== 'string') {
+      return undefined;
+    }
+    
+    // Try to verify the token
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Ensure the decoded token has the required fields
+    if (typeof decoded === 'object' && decoded !== null &&
+        'id' in decoded && 'email' in decoded && 'role' in decoded && 'name' in decoded) {
+      return {
+        id: decoded.id as number,
+        email: decoded.email as string,
+        role: decoded.role as string,
+        name: decoded.name as string
+      };
+    }
+    
+    return undefined;
   } catch (error) {
     console.error('Token verification error:', error);
     return undefined;
@@ -84,8 +102,18 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    next();
+    if (typeof decoded === 'object' && decoded !== null &&
+        'id' in decoded && 'email' in decoded && 'role' in decoded && 'name' in decoded) {
+      req.user = {
+        id: decoded.id as number,
+        email: decoded.email as string,
+        role: decoded.role as string,
+        name: decoded.name as string
+      };
+      next();
+    } else {
+      return res.status(401).json({ message: 'Invalid token format.' });
+    }
   } catch (error) {
     return res.status(401).json({ message: 'Invalid token.' });
   }

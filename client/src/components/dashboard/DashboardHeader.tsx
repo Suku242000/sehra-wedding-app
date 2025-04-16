@@ -12,6 +12,20 @@ import {
 import { ChevronDown, LogOut, User, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+// Custom link component for direct navigation to landing page
+const HomeLinkButton: React.FC<{className?: string, children: React.ReactNode}> = ({ className, children }) => {
+  const goToLandingPage = (e: React.MouseEvent) => {
+    e.preventDefault();
+    window.location.href = '/';
+  };
+  
+  return (
+    <button onClick={goToLandingPage} className={className}>
+      {children}
+    </button>
+  );
+};
+
 const DashboardHeader: React.FC = () => {
   const { user, logout } = useAuth();
   const [location] = useLocation();
@@ -55,25 +69,16 @@ const DashboardHeader: React.FC = () => {
         <div className="flex justify-between h-16">
           {/* Logo and Title */}
           <div className="flex items-center">
-            {/* Adding an explicit onClick to ensure it navigates to landing page */}
-            <Link href="/">
-              <div 
-                className="flex-shrink-0 flex items-center cursor-pointer"
-                onClick={(e) => {
-                  // Ensure this goes to home page, not dashboard
-                  window.location.href = '/';
-                  e.preventDefault(); // Prevent default link behavior
-                }}
+            {/* Using HomeLinkButton to ensure direct navigation to landing page */}
+            <HomeLinkButton className="flex-shrink-0 flex items-center cursor-pointer">
+              <motion.div 
+                className="w-10 h-10 bg-[#800000] rounded-full flex items-center justify-center"
+                whileHover={{ scale: 1.05 }}
               >
-                <motion.div 
-                  className="w-10 h-10 bg-[#800000] rounded-full flex items-center justify-center"
-                  whileHover={{ scale: 1.05 }}
-                >
-                  <span className="text-[#FFD700] font-script text-xl">S</span>
-                </motion.div>
-                <span className="ml-2 font-serif text-xl text-[#800000]">Sehra</span>
-              </div>
-            </Link>
+                <span className="text-[#FFD700] font-script text-xl">S</span>
+              </motion.div>
+              <span className="ml-2 font-serif text-xl text-[#800000]">Sehra</span>
+            </HomeLinkButton>
             
             <div className="hidden md:ml-6 md:flex md:space-x-8">
               {navItems.map((item) => {
@@ -96,6 +101,16 @@ const DashboardHeader: React.FC = () => {
                       >
                         {item.name}
                       </button>
+                    ) : item.path === '/' ? (
+                      <HomeLinkButton
+                        className={`${
+                          isActive
+                            ? 'border-[#800000] text-[#800000]' 
+                            : 'border-transparent text-gray-500 hover:border-[#FFD700] hover:text-[#FFD700]'
+                          } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200 cursor-pointer`}
+                      >
+                        {item.name}
+                      </HomeLinkButton>
                     ) : (
                       <Link href={item.path}>
                         <span
@@ -104,13 +119,6 @@ const DashboardHeader: React.FC = () => {
                               ? 'border-[#800000] text-[#800000]' 
                               : 'border-transparent text-gray-500 hover:border-[#FFD700] hover:text-[#FFD700]'
                             } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200 cursor-pointer`}
-                          onClick={(e) => {
-                            // For home link, use direct navigation to ensure it goes to landing page
-                            if (item.path === '/') {
-                              window.location.href = '/';
-                              e.preventDefault();
-                            }
-                          }}
                         >
                           {item.name}
                         </span>

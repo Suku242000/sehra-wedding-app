@@ -1,0 +1,91 @@
+Seamless Supervisor Allocation + Auto-Sync Customer Details to Supervisor
+Implement a real-time customer-supervisor connection system in the Sehra App (React.js + Tailwind + Node.js + MongoDB Atlas). When a supervisor is assigned to a customer, the connection should be instant and seamless — with mandatory customer contact update and auto-push of details to supervisor dashboard.
+
+✅ Functional Requirements
+👥 Supervisor Allocation Logic
+On the backend (Node.js + MongoDB Atlas), when a supervisor is assigned to a customer:
+
+Update customer document with supervisorId
+
+Update supervisor’s assignedClients[] array with that customer’s _id
+
+📇 Mandatory Customer Contact Form
+On first login or entry to /dashboard/client, check if phoneNumber, address, or location fields are empty.
+
+If any are missing:
+
+Redirect to /dashboard/client/contact-setup
+
+Display form: Name, Phone Number, City, Pincode, State
+
+Form cannot be skipped.
+
+On successful submit:
+
+Update customer record in MongoDB
+
+Trigger real-time push to assigned supervisor (see below)
+
+🔄 Real-time Sync to Supervisor
+Use Socket.IO or direct API call to:
+
+Send updated customer details (name, contact, location, wedding date, budget plan) to the assigned supervisor’s dashboard
+
+Supervisor dashboard (/dashboard/supervisor) will show:
+
+🔔 "New Client Assigned" toast alert
+
+Click to view client profile with all updated details
+
+"Mark as Contacted" button (updates a field in customer.supervisorStatus = 'contacted')
+
+💬 Quick Supervisor ↔ Customer Communication
+Enable a Chat Now button after supervisor assignment.
+
+Use Socket.IO for real-time messaging
+
+Store chat history under messages collection: {from, to, message, timestamp}
+
+🛡️ Security & UX Notes
+Supervisor login is restricted to /auth/supervisor only (as already set)
+
+Clients cannot access supervisor dashboard, and vice versa
+
+Admin can override and reassign supervisors from /dashboard/admin/users
+
+🔧 Backend Flow
+POST /api/assign-supervisor
+
+Body: { customerId, supervisorId }
+
+Actions:
+
+Add supervisorId to customer
+
+Add customerId to supervisor.assignedClients[]
+
+Emit supervisorAssigned socket event if supervisor is online
+
+PATCH /api/customer/:id/contact
+
+Body: { phoneNumber, address, city, pincode, state }
+
+Update user data
+
+If supervisorId exists, auto-push to supervisor dashboard
+
+GET /api/supervisor/:id/clients
+
+Fetch all assigned clients with full info for supervisor
+
+🧪 Testing Flow
+ Log in as customer → redirected to contact info form if empty
+
+ Fill contact info → customer dashboard unlocks
+
+ Backend assigns supervisor (via Admin or auto-match)
+
+ Supervisor gets real-time alert + full client info instantly
+
+ Chat button appears for both client and supervisor
+

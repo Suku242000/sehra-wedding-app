@@ -89,6 +89,10 @@ const AnimatedSection = ({ children, className }: { children: React.ReactNode, c
 
 const HomePage: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
+  
+  const goToDashboard = () => {
+    window.location.href = '/dashboard';
+  };
   const features = [
     {
       icon: <Calendar className="h-10 w-10 text-[#800000]" />,
@@ -618,13 +622,31 @@ const HomePage: React.FC = () => {
               variants={fadeIn('up', 'tween', 0.2, 0.7)}
               className="max-w-3xl mx-auto"
             >
-              <h2 className="text-3xl md:text-4xl font-serif font-bold mb-6">Ready to Begin Your Wedding Journey?</h2>
+              <h2 className="text-3xl md:text-4xl font-serif font-bold mb-6">
+                {isAuthenticated 
+                  ? `Continue Planning Your Dream Wedding, ${user?.name?.split(' ')[0] || 'User'}` 
+                  : 'Ready to Begin Your Wedding Journey?'
+                }
+              </h2>
               <p className="text-xl mb-8 text-white/90">
-                Join Sehra today and take the first step towards your dream wedding
+                {isAuthenticated 
+                  ? 'Your wedding planning dashboard is just a click away' 
+                  : 'Join Sehra today and take the first step towards your dream wedding'
+                }
               </p>
-              <Button asChild size="lg" className="bg-[#FFD700] text-[#800000] hover:bg-[#FFD700]/90 px-8">
-                <Link href="/auth">Create Your Account</Link>
-              </Button>
+              {isAuthenticated ? (
+                <Button 
+                  onClick={() => goToDashboard()} 
+                  size="lg" 
+                  className="bg-[#FFD700] text-[#800000] hover:bg-[#FFD700]/90 px-8"
+                >
+                  Go to Dashboard
+                </Button>
+              ) : (
+                <Button asChild size="lg" className="bg-[#FFD700] text-[#800000] hover:bg-[#FFD700]/90 px-8">
+                  <Link href="/auth">Create Your Account</Link>
+                </Button>
+              )}
             </motion.div>
           </AnimatedSection>
         </div>
@@ -665,24 +687,16 @@ const HomePage: React.FC = () => {
               <h3 className="text-[#FFD700] font-medium mb-3">Quick Links</h3>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <Link href="/">
-                    <a className="text-white/80 hover:text-[#FFD700] transition-colors">Home</a>
-                  </Link>
+                  <a href="/" className="text-white/80 hover:text-[#FFD700] transition-colors">Home</a>
                 </li>
                 <li>
-                  <Link href="#packages">
-                    <a className="text-white/80 hover:text-[#FFD700] transition-colors">Packages</a>
-                  </Link>
+                  <a href="#packages" className="text-white/80 hover:text-[#FFD700] transition-colors">Packages</a>
                 </li>
                 <li>
-                  <Link href="#testimonials">
-                    <a className="text-white/80 hover:text-[#FFD700] transition-colors">Testimonials</a>
-                  </Link>
+                  <a href="#testimonials" className="text-white/80 hover:text-[#FFD700] transition-colors">Testimonials</a>
                 </li>
                 <li>
-                  <Link href="#contact">
-                    <a className="text-white/80 hover:text-[#FFD700] transition-colors">Contact</a>
-                  </Link>
+                  <a href="#contact" className="text-white/80 hover:text-[#FFD700] transition-colors">Contact</a>
                 </li>
               </ul>
             </div>

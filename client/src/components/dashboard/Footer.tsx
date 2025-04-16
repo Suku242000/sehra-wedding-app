@@ -35,22 +35,22 @@ const Footer: React.FC = () => {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/dashboard">
-                  <a className="text-white/80 hover:text-[#FFD700] transition-colors">Dashboard</a>
+                  <span className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">Dashboard</span>
                 </Link>
               </li>
               <li>
                 <Link href="/dashboard?tab=wedding">
-                  <a className="text-white/80 hover:text-[#FFD700] transition-colors">My Wedding</a>
+                  <span className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">My Wedding</span>
                 </Link>
               </li>
               <li>
                 <Link href="/dashboard?tab=vendors">
-                  <a className="text-white/80 hover:text-[#FFD700] transition-colors">Vendors</a>
+                  <span className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">Vendors</span>
                 </Link>
               </li>
               <li>
                 <Link href="/dashboard?tab=guests">
-                  <a className="text-white/80 hover:text-[#FFD700] transition-colors">Guests</a>
+                  <span className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">Guests</span>
                 </Link>
               </li>
             </ul>
@@ -61,22 +61,22 @@ const Footer: React.FC = () => {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/help">
-                  <a className="text-white/80 hover:text-[#FFD700] transition-colors">Help Center</a>
+                  <span className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">Help Center</span>
                 </Link>
               </li>
               <li>
                 <Link href="/contact">
-                  <a className="text-white/80 hover:text-[#FFD700] transition-colors">Contact Us</a>
+                  <span className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">Contact Us</span>
                 </Link>
               </li>
               <li>
                 <Link href="/faq">
-                  <a className="text-white/80 hover:text-[#FFD700] transition-colors">FAQ</a>
+                  <span className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">FAQ</span>
                 </Link>
               </li>
               <li>
                 <Link href="/privacy">
-                  <a className="text-white/80 hover:text-[#FFD700] transition-colors">Privacy Policy</a>
+                  <span className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">Privacy Policy</span>
                 </Link>
               </li>
             </ul>

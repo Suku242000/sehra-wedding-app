@@ -66,18 +66,32 @@ const DashboardHeader: React.FC = () => {
                   location.includes(item.path);
                 
                 return (
-                  <Link key={item.path} href={item.path}>
-                    <a
-                      className={`${
-                        isActive
-                          ? 'border-[#800000] text-[#800000]' 
-                          : 'border-transparent text-gray-500 hover:border-[#FFD700] hover:text-[#FFD700]'
-                        } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
-                      onClick={(e) => handleTabNavigation(e, item.path)}
-                    >
-                      {item.name}
-                    </a>
-                  </Link>
+                  <div key={item.path} className="inline-block">
+                    {item.path.startsWith('/dashboard?tab=') ? (
+                      <button
+                        className={`${
+                          isActive
+                            ? 'border-[#800000] text-[#800000]' 
+                            : 'border-transparent text-gray-500 hover:border-[#FFD700] hover:text-[#FFD700]'
+                          } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
+                        onClick={(e) => handleTabNavigation(e, item.path)}
+                      >
+                        {item.name}
+                      </button>
+                    ) : (
+                      <Link href={item.path}>
+                        <span
+                          className={`${
+                            isActive
+                              ? 'border-[#800000] text-[#800000]' 
+                              : 'border-transparent text-gray-500 hover:border-[#FFD700] hover:text-[#FFD700]'
+                            } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200 cursor-pointer`}
+                        >
+                          {item.name}
+                        </span>
+                      </Link>
+                    )}
+                  </div>
                 );
               })}
             </div>

@@ -54,6 +54,7 @@ export const users = pgTable("users", {
   available: boolean("available").default(true), // For supervisors to mark availability
   location: text("location"), // User's location for assignment purposes
   phone: text("phone"), // User's contact number
+  assignedVendors: json("assigned_vendors").$type<number[]>(), // Array of vendor user IDs assigned to this client
   createdAt: timestamp("created_at").defaultNow(),
 });
 

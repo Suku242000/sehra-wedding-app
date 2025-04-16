@@ -716,6 +716,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to retrieve clients" });
     }
   });
+  
+  // Route for supervisor to assign vendors to clients
+  app.post("/api/supervisor/assign-vendors", authenticateToken, authorizeRoles([UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
+    try {
+      const { clientId, vendorIds } = req.body;
+      
+      if (!clientId || !vendorIds || !Array.isArray(vendorIds)) {
+        return res.status(400).json({ message: "Invalid request data" });
+      }
+      
+      // Get the client
+      const client = await storage.getUser(clientId);
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      // Check if the client is assigned to this supervisor
+      if (client.supervisorId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to assign vendors to this client" });
+      }
+      
+      // Update client with assigned vendors
+      const updatedClient = await storage.updateUser(clientId, {
+        assignedVendors: vendorIds
+      });
+      
+      if (!updatedClient) {
+        return res.status(500).json({ message: "Failed to assign vendors" });
+      }
+      
+      // Return updated client data (excluding password)
+      const { password, ...clientData } = updatedClient;
+      res.json(clientData);
+    } catch (error) {
+      console.error("Assign vendors error:", error);
+      res.status(500).json({ message: "Failed to assign vendors" });
+    }
+  });
+  
+  // Route for supervisor to get assigned vendors for a client
+  app.get("/api/supervisor/assigned-vendors/:clientId", authenticateToken, authorizeRoles([UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
+    try {
+      const clientId = parseInt(req.params.clientId);
+      
+      // Get the client
+      const client = await storage.getUser(clientId);
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      // Check if the client is assigned to this supervisor
+      if (client.supervisorId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to view assigned vendors for this client" });
+      }
+      
+      // Get vendor details
+      let vendorDetails = [];
+      if (client.assignedVendors && Array.isArray(client.assignedVendors)) {
+        // Get each vendor profile
+        const vendorPromises = client.assignedVendors.map(async (vendorId) => {
+          const vendor = await storage.getUser(vendorId);
+          if (!vendor) return null;
+          
+          const vendorProfile = await storage.getVendorProfileByUserId(vendorId);
+          return {
+            id: vendor.id,
+            name: vendor.name,
+            email: vendor.email,
+            uniqueId: vendor.uniqueId,
+            profile: vendorProfile || null
+          };
+        });
+        
+        vendorDetails = (await Promise.all(vendorPromises)).filter(v => v !== null);
+      }
+      
+      res.json(vendorDetails);
+    } catch (error) {
+      console.error("Get assigned vendors error:", error);
+      res.status(500).json({ message: "Failed to retrieve assigned vendors" });
+    }
+  });
+  
+  // Route for clients to get their assigned vendors
+  app.get("/api/client/assigned-vendors", authenticateToken, authorizeRoles([UserRole.BRIDE, UserRole.GROOM, UserRole.FAMILY]), async (req: Request, res: Response) => {
+    try {
+      const clientId = req.user.id;
+      
+      // Get the client
+      const client = await storage.getUser(clientId);
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      // Get vendor details
+      let vendorDetails = [];
+      if (client.assignedVendors && Array.isArray(client.assignedVendors)) {
+        // Get each vendor profile
+        const vendorPromises = client.assignedVendors.map(async (vendorId) => {
+          const vendor = await storage.getUser(vendorId);
+          if (!vendor) return null;
+          
+          const vendorProfile = await storage.getVendorProfileByUserId(vendorId);
+          return {
+            id: vendor.id,
+            name: vendor.name,
+            email: vendor.email,
+            uniqueId: vendor.uniqueId,
+            profile: vendorProfile || null
+          };
+        });
+        
+        vendorDetails = (await Promise.all(vendorPromises)).filter(v => v !== null);
+      }
+      
+      res.json(vendorDetails);
+    } catch (error) {
+      console.error("Get assigned vendors error:", error);
+      res.status(500).json({ message: "Failed to retrieve assigned vendors" });
+    }
+  });
 
   // Wedding date routes
   app.patch("/api/wedding-date", authenticateToken, async (req: Request, res: Response) => {

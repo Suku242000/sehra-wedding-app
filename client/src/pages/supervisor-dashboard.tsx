@@ -13,6 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { AlarmClockIcon, CalendarIcon, CheckIcon, ListTodoIcon, UserIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import VendorAssignment from '@/components/supervisor/VendorAssignment';
 
 const SupervisorDashboard: React.FC = () => {
   const { user } = useAuth();

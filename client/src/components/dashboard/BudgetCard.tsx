@@ -52,6 +52,7 @@ const BudgetCard: React.FC = () => {
   const { toast } = useToast();
   const [openDialog, setOpenDialog] = useState(false);
   const [totalBudget, setTotalBudget] = useState(1500000); // ₹15,00,000
+  const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [spentAmount, setSpentAmount] = useState(0);
   const [budgetPercentage, setBudgetPercentage] = useState(0);
   const [categoryTotals, setCategoryTotals] = useState<Record<string, number>>({});
@@ -146,7 +147,43 @@ const BudgetCard: React.FC = () => {
         <div className="flex justify-between items-center mb-4">
           <div>
             <div className="text-sm text-gray-500">Total Budget</div>
-            <div className="text-2xl font-medium">{formatCurrency(totalBudget)}</div>
+            {isEditingBudget ? (
+              <div className="flex items-center">
+                <Input
+                  type="number"
+                  className="w-40 mr-2"
+                  value={totalBudget}
+                  onChange={(e) => setTotalBudget(Number(e.target.value))}
+                  min="0"
+                  step="10000"
+                />
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => setIsEditingBudget(false)}
+                  className="h-8"
+                >
+                  Save
+                </Button>
+              </div>
+            ) : (
+              <div 
+                className="text-2xl font-medium flex items-center cursor-pointer" 
+                onClick={() => setIsEditingBudget(true)}
+              >
+                {formatCurrency(totalBudget)}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0 ml-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
+                </Button>
+              </div>
+            )}
           </div>
           <div className="text-right">
             <div className="text-sm text-gray-500">Spent So Far</div>

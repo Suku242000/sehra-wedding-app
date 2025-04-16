@@ -17,6 +17,7 @@ const DashboardHeader: React.FC = () => {
   const [location] = useLocation();
 
   const navItems = [
+    { name: 'Home', path: '/' },
     { name: 'Dashboard', path: '/dashboard' },
     { name: 'My Wedding', path: '/dashboard?tab=wedding' },
     { name: 'Vendors', path: '/dashboard?tab=vendors' },

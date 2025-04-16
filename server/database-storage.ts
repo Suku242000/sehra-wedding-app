@@ -374,11 +374,107 @@ export class DatabaseStorage implements IStorage {
     for (let i = 0; i < eventIds.length; i++) {
       await db
         .update(timelineEvents)
-        .set({ order: i + 1 })
+        .set({ orderIndex: i + 1 })
         .where(eq(timelineEvents.id, eventIds[i]));
     }
     
     // Return the reordered events
     return await this.getTimelineEventsByUserId(userId);
+  }
+
+  // Message methods
+  async getMessage(id: number): Promise<Message | undefined> {
+    const [message] = await db.select().from(messages).where(eq(messages.id, id));
+    return message;
+  }
+
+  async getMessagesBetweenUsers(userId1: number, userId2: number): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(
+        or(
+          and(
+            eq(messages.fromUserId, userId1),
+            eq(messages.toUserId, userId2)
+          ),
+          and(
+            eq(messages.fromUserId, userId2),
+            eq(messages.toUserId, userId1)
+          )
+        )
+      )
+      .orderBy(messages.createdAt);
+  }
+
+  async getUnreadMessagesForUser(userId: number): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(
+        and(
+          eq(messages.toUserId, userId),
+          eq(messages.read, false)
+        )
+      );
+  }
+
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const [newMessage] = await db.insert(messages).values(message).returning();
+    return newMessage;
+  }
+
+  async markMessageAsRead(id: number): Promise<Message | undefined> {
+    const [updatedMessage] = await db
+      .update(messages)
+      .set({ read: true })
+      .where(eq(messages.id, id))
+      .returning();
+    return updatedMessage;
+  }
+
+  async markAllMessagesAsRead(fromUserId: number, toUserId: number): Promise<void> {
+    await db
+      .update(messages)
+      .set({ read: true })
+      .where(
+        and(
+          eq(messages.fromUserId, fromUserId),
+          eq(messages.toUserId, toUserId),
+          eq(messages.read, false)
+        )
+      );
+  }
+
+  // Contact status methods
+  async getContactStatus(id: number): Promise<ContactStatus | undefined> {
+    const [status] = await db.select().from(contactStatus).where(eq(contactStatus.id, id));
+    return status;
+  }
+
+  async getContactStatusByUserId(userId: number): Promise<ContactStatus | undefined> {
+    const [status] = await db.select().from(contactStatus).where(eq(contactStatus.userId, userId));
+    return status;
+  }
+
+  async getContactStatusesBySupervisorId(supervisorId: number): Promise<ContactStatus[]> {
+    return await db
+      .select()
+      .from(contactStatus)
+      .where(eq(contactStatus.supervisorId, supervisorId));
+  }
+
+  async createContactStatus(status: InsertContactStatus): Promise<ContactStatus> {
+    const [newStatus] = await db.insert(contactStatus).values(status).returning();
+    return newStatus;
+  }
+
+  async updateContactStatus(id: number, statusData: Partial<ContactStatus>): Promise<ContactStatus | undefined> {
+    const [updatedStatus] = await db
+      .update(contactStatus)
+      .set({ ...statusData, lastUpdated: new Date() })
+      .where(eq(contactStatus.id, id))
+      .returning();
+    return updatedStatus;
   }
 }

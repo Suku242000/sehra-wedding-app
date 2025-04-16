@@ -1,5 +1,7 @@
 import { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import { Server as SocketIOServer } from "socket.io";
+import { WebSocket } from "ws";
 import { storage } from "./storage";
 import { 
   loginSchema, 
@@ -14,6 +16,8 @@ import {
   insertUserAchievementSchema,
   insertUserProgressSchema,
   insertTimelineEventSchema,
+  insertMessageSchema,
+  insertContactStatusSchema,
   UserRole
 } from "@shared/schema";
 import { 
@@ -37,6 +41,15 @@ initializeEmailTransport();
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
+  
+  // Initialize Socket.IO with CORS settings
+  const io = new SocketIOServer(httpServer, {
+    path: '/ws',
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"]
+    }
+  });
 
   // Auth routes
   app.post("/api/auth/register", async (req: Request, res: Response) => {
@@ -1179,6 +1192,213 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to reorder timeline events" });
     }
   });
+
+  // Socket.io event handlers
+  io.on("connection", async (socket) => {
+    console.log("Client connected to Socket.IO:", socket.id);
+    
+    // Authenticate socket connection
+    socket.on("authenticate", async (token) => {
+      try {
+        const userData = await storage.getUserByEmail(token.email);
+        if (!userData) {
+          socket.emit("authentication_error", "Invalid user");
+          return;
+        }
+        
+        // Store user info in socket
+        socket.data.user = userData;
+        socket.join(`user-${userData.id}`); // Join user-specific room
+        
+        // If supervisor, join supervisor room
+        if (userData.role === UserRole.SUPERVISOR) {
+          socket.join("supervisors");
+          console.log(`Supervisor ${userData.name} (${userData.id}) joined supervisors room`);
+        }
+        
+        // If client, join client room and supervisor-specific room if assigned
+        if ([UserRole.BRIDE, UserRole.GROOM, UserRole.FAMILY].includes(userData.role as any)) {
+          socket.join("clients");
+          
+          // If client has assigned supervisor, join that room too
+          if (userData.supervisorId) {
+            socket.join(`supervisor-${userData.supervisorId}`);
+            console.log(`Client ${userData.name} (${userData.id}) joined supervisor-${userData.supervisorId} room`);
+          }
+        }
+        
+        socket.emit("authenticated", { success: true });
+        console.log(`User authenticated: ${userData.name} (${userData.role})`);
+      } catch (error) {
+        console.error("Socket authentication error:", error);
+        socket.emit("authentication_error", "Authentication failed");
+      }
+    });
+    
+    // Handle private messages between supervisor and client
+    socket.on("send_message", async (data) => {
+      try {
+        const { toUserId, message, type = "text" } = data;
+        const fromUser = socket.data.user;
+        
+        if (!fromUser) {
+          socket.emit("error", "Not authenticated");
+          return;
+        }
+        
+        // Create and save the message
+        const newMessage = await storage.createMessage({
+          fromUserId: fromUser.id,
+          toUserId,
+          content: message,
+          messageType: type,
+          read: false,
+          createdAt: new Date()
+        });
+        
+        // Emit to recipient
+        io.to(`user-${toUserId}`).emit("receive_message", {
+          ...newMessage,
+          senderName: fromUser.name,
+        });
+        
+        // Confirm to sender
+        socket.emit("message_sent", { success: true, messageId: newMessage.id });
+        
+        // Update contact status
+        await updateContactStatusAfterMessage(fromUser.id, toUserId);
+      } catch (error) {
+        console.error("Message sending error:", error);
+        socket.emit("error", "Failed to send message");
+      }
+    });
+    
+    // Mark messages as read
+    socket.on("mark_messages_read", async (data) => {
+      try {
+        const { fromUserId } = data;
+        const currentUser = socket.data.user;
+        
+        if (!currentUser) {
+          socket.emit("error", "Not authenticated");
+          return;
+        }
+        
+        await storage.markAllMessagesAsRead(fromUserId, currentUser.id);
+        socket.emit("messages_marked_read", { success: true });
+        
+        // Notify the other user that their messages were read
+        io.to(`user-${fromUserId}`).emit("message_status_update", {
+          toUserId: currentUser.id,
+          read: true
+        });
+      } catch (error) {
+        console.error("Mark messages read error:", error);
+        socket.emit("error", "Failed to mark messages as read");
+      }
+    });
+    
+    // Supervisor allocation notification
+    socket.on("supervisor_allocated", async (data) => {
+      try {
+        const { clientId, supervisorId } = data;
+        const currentUser = socket.data.user;
+        
+        if (!currentUser || currentUser.role !== UserRole.ADMIN) {
+          socket.emit("error", "Not authorized");
+          return;
+        }
+        
+        const client = await storage.getUser(clientId);
+        const supervisor = await storage.getUser(supervisorId);
+        
+        if (!client || !supervisor) {
+          socket.emit("error", "Invalid client or supervisor ID");
+          return;
+        }
+        
+        // Notify the client about their supervisor assignment
+        io.to(`user-${clientId}`).emit("supervisor_assigned", {
+          supervisorId,
+          supervisorName: supervisor.name,
+          supervisorEmail: supervisor.email
+        });
+        
+        // Notify the supervisor about their new client
+        io.to(`user-${supervisorId}`).emit("client_assigned", {
+          clientId,
+          clientName: client.name,
+          clientEmail: client.email,
+          package: client.package
+        });
+        
+        // Create/update contact status record
+        await storage.createContactStatus({
+          userId: clientId,
+          supervisorId,
+          status: "assigned",
+          lastUpdated: new Date(),
+          lastContactDate: new Date()
+        });
+        
+        socket.emit("allocation_success", { success: true });
+      } catch (error) {
+        console.error("Supervisor allocation error:", error);
+        socket.emit("error", "Failed to process supervisor allocation");
+      }
+    });
+    
+    // Handle disconnection
+    socket.on("disconnect", () => {
+      const user = socket.data.user;
+      if (user) {
+        console.log(`User disconnected: ${user.name} (${user.role})`);
+      } else {
+        console.log("Client disconnected:", socket.id);
+      }
+    });
+  });
+  
+  // Helper function to update contact status after messaging
+  async function updateContactStatusAfterMessage(fromUserId: number, toUserId: number) {
+    try {
+      // Determine if this is supervisor-client communication
+      const fromUser = await storage.getUser(fromUserId);
+      const toUser = await storage.getUser(toUserId);
+      
+      if (!fromUser || !toUser) return;
+      
+      // If communication between supervisor and client
+      if (
+        (fromUser.role === UserRole.SUPERVISOR && [UserRole.BRIDE, UserRole.GROOM, UserRole.FAMILY].includes(toUser.role as any)) ||
+        (toUser.role === UserRole.SUPERVISOR && [UserRole.BRIDE, UserRole.GROOM, UserRole.FAMILY].includes(fromUser.role as any))
+      ) {
+        const clientId = fromUser.role === UserRole.SUPERVISOR ? toUserId : fromUserId;
+        const supervisorId = fromUser.role === UserRole.SUPERVISOR ? fromUserId : toUserId;
+        
+        // Get existing contact status or create new one
+        let contactStatus = await storage.getContactStatusByUserId(clientId);
+        
+        if (contactStatus) {
+          await storage.updateContactStatus(contactStatus.id, {
+            status: "active",
+            lastUpdated: new Date(),
+            lastContactDate: new Date()
+          });
+        } else {
+          await storage.createContactStatus({
+            userId: clientId,
+            supervisorId,
+            status: "active",
+            lastUpdated: new Date(),
+            lastContactDate: new Date()
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to update contact status:", error);
+    }
+  }
 
   return httpServer;
 }

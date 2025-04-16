@@ -8,21 +8,14 @@ import {
   DialogDescription,
   DialogFooter
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { User, VendorProfile } from '@shared/schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { CheckIcon, LinkIcon, UserPlusIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Card, CardContent } from '@/components/ui/card';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 
@@ -59,9 +52,9 @@ const VendorAssignment: React.FC<VendorAssignmentProps> = ({ client }) => {
 
   // Initialize selected vendors when dialog opens
   useEffect(() => {
-    if (client?.assignedVendors) {
+    if (isOpen && client?.assignedVendors) {
       setSelectedVendorIds(Array.isArray(client.assignedVendors) ? client.assignedVendors : []);
-    } else {
+    } else if (isOpen) {
       setSelectedVendorIds([]);
     }
   }, [client, isOpen]);

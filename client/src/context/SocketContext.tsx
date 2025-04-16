@@ -2,17 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import socketService from '@/lib/socketService';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-
-interface Message {
-  id: number;
-  fromUserId: number;
-  toUserId: number;
-  content: string;
-  messageType: string;
-  read: boolean;
-  createdAt: Date;
-  senderName?: string;
-}
+import { Message } from '@shared/schema';
 
 interface SocketContextType {
   isConnected: boolean;
@@ -21,7 +11,6 @@ interface SocketContextType {
   unreadCount: number;
   sendMessage: (toUserId: number, message: string, type?: string) => void;
   markAsRead: (fromUserId: number) => void;
-  notifySupervisorAllocation: (clientId: number, supervisorId: number) => void;
 }
 
 const SocketContext = createContext<SocketContextType | null>(null);
@@ -36,10 +25,15 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   // Connect to socket when user logs in
   useEffect(() => {
-    if (user) {
-      socketService.authenticate(user);
+    if (user && user.id) {
+      const token = localStorage.getItem('token');
+      if (token) {
+        socketService.connect(token);
+        setIsAuthenticated(true);
+      }
     } else {
       socketService.disconnect();
+      setIsAuthenticated(false);
     }
 
     return () => {
@@ -49,82 +43,77 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   // Socket event listeners
   useEffect(() => {
-    socketService.on.onConnect(() => {
+    // Handle connection events
+    const handleConnect = () => {
       setIsConnected(true);
       console.log('Socket connected');
-    });
+    };
 
-    socketService.on.onDisconnect(() => {
+    const handleDisconnect = () => {
       setIsConnected(false);
-      setIsAuthenticated(false);
       console.log('Socket disconnected');
-    });
+    };
 
-    socketService.on.onAuthenticated((data) => {
-      setIsAuthenticated(data.success);
-      console.log('Socket authenticated:', data.success);
-    });
-
-    socketService.on.onAuthError((error) => {
-      console.error('Socket authentication error:', error);
-      toast({
-        title: 'Connection Error',
-        description: 'Failed to authenticate socket connection',
-        variant: 'destructive',
-      });
-    });
-
-    socketService.on.onReceiveMessage((message) => {
-      setMessages((prev) => [...prev, message]);
-      setUnreadCount((prev) => prev + 1);
-      
-      // Show toast notification for new message
-      toast({
-        title: `New message from ${message.senderName}`,
-        description: message.content.substring(0, 60) + (message.content.length > 60 ? '...' : ''),
-      });
-    });
-
-    socketService.on.onMessageSent((data) => {
-      if (!data.success) {
-        toast({
-          title: 'Message Error',
-          description: 'Failed to send message',
-          variant: 'destructive',
-        });
-      }
-    });
-
-    socketService.on.onSupervisorAssigned((data) => {
-      toast({
-        title: 'Supervisor Assigned',
-        description: `${data.supervisorName} has been assigned as your wedding supervisor`,
-      });
-    });
-
-    socketService.on.onClientAssigned((data) => {
-      toast({
-        title: 'New Client',
-        description: `${data.clientName} has been assigned to you`,
-      });
-    });
-
-    socketService.on.onError((error) => {
+    const handleError = (error: any) => {
       console.error('Socket error:', error);
       toast({
         title: 'Connection Error',
-        description: error,
+        description: 'Failed to connect to real-time service',
         variant: 'destructive',
       });
-    });
-  }, [toast]);
+    };
+
+    const handleNewMessage = (message: Message) => {
+      if (message && user) {
+        setMessages((prev) => [...prev, message]);
+        
+        // Only increment unread count if the message is to the current user and not from them
+        if (message.toUserId === user.id && message.fromUserId !== user.id) {
+          setUnreadCount((prev) => prev + 1);
+          
+          // Show toast notification for new message
+          toast({
+            title: 'New Message',
+            description: message.content.substring(0, 60) + (message.content.length > 60 ? '...' : ''),
+          });
+        }
+      }
+    };
+
+    socketService.on('connect', handleConnect);
+    socketService.on('disconnect', handleDisconnect);
+    socketService.on('error', handleError);
+    socketService.on('receive_message', handleNewMessage);
+
+    return () => {
+      socketService.off('connect', handleConnect);
+      socketService.off('disconnect', handleDisconnect);
+      socketService.off('error', handleError);
+      socketService.off('receive_message', handleNewMessage);
+    };
+  }, [toast, user]);
 
   const sendMessage = (toUserId: number, message: string, type = 'text') => {
-    socketService.sendMessage(toUserId, message, type);
+    if (!isConnected || !user) {
+      toast({
+        title: 'Connection Error',
+        description: 'Not connected to the messaging service',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    socketService.emit('send_message', {
+      toUserId,
+      content: message,
+      messageType: type
+    });
   };
 
   const markAsRead = (fromUserId: number) => {
-    socketService.markMessagesAsRead(fromUserId);
+    if (!isConnected || !user) return;
+    
+    socketService.emit('mark_read', fromUserId);
     
     // Update local state
     setMessages((prev) => 
@@ -143,10 +132,6 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setUnreadCount(newUnreadCount);
   };
 
-  const notifySupervisorAllocation = (clientId: number, supervisorId: number) => {
-    socketService.notifySupervisorAllocation(clientId, supervisorId);
-  };
-
   const value = {
     isConnected,
     isAuthenticated,
@@ -154,7 +139,6 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     unreadCount,
     sendMessage,
     markAsRead,
-    notifySupervisorAllocation,
   };
 
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;

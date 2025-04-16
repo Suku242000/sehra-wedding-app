@@ -1,191 +1,85 @@
 import { io, Socket } from 'socket.io-client';
-import { User } from '@shared/schema';
-
-interface SocketServiceEvents {
-  onConnect: (callback: () => void) => void;
-  onDisconnect: (callback: () => void) => void;
-  onAuthenticated: (callback: (data: { success: boolean }) => void) => void;
-  onAuthError: (callback: (error: string) => void) => void;
-  onReceiveMessage: (callback: (message: any) => void) => void;
-  onMessageSent: (callback: (data: { success: boolean, messageId: number }) => void) => void;
-  onMessageStatusUpdate: (callback: (data: { toUserId: number, read: boolean }) => void) => void;
-  onMessagesMarkedRead: (callback: (data: { success: boolean }) => void) => void;
-  onSupervisorAssigned: (callback: (data: { 
-    supervisorId: number, 
-    supervisorName: string, 
-    supervisorEmail: string 
-  }) => void) => void;
-  onClientAssigned: (callback: (data: { 
-    clientId: number, 
-    clientName: string, 
-    clientEmail: string, 
-    package?: string 
-  }) => void) => void;
-  onAllocationSuccess: (callback: (data: { success: boolean }) => void) => void;
-  onError: (callback: (error: string) => void) => void;
-}
 
 class SocketService {
   private socket: Socket | null = null;
-  private authenticated = false;
-  private user: User | null = null;
-
-  constructor() {
-    this.initSocket();
-  }
-
-  private initSocket(): void {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}`;
-
-    this.socket = io(wsUrl, {
-      path: '/ws',
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
+  private isConnected = false;
+  
+  // Connect to the socket server 
+  public connect(token: string): void {
+    if (this.isConnected) return;
+    
+    // Create socket connection with authentication token
+    this.socket = io({
+      auth: {
+        token
+      }
     });
-
+    
+    // Setup event handlers
     this.socket.on('connect', () => {
-      console.log('Connected to Socket.IO server');
+      console.log('Connected to Socket.IO');
+      this.isConnected = true;
     });
-
+    
     this.socket.on('disconnect', () => {
-      console.log('Disconnected from Socket.IO server');
-      this.authenticated = false;
-    });
-  }
-
-  authenticate(user: User): void {
-    if (!this.socket || !user.email) return;
-
-    this.user = user;
-    
-    // Send email for authentication (our server handles both token and email auth)
-    this.socket.emit('authenticate', { email: user.email });
-
-    this.socket.on('authenticated', (data: { success: boolean, userId?: number, role?: string }) => {
-      this.authenticated = data.success;
-      console.log('Socket authenticated:', data.success);
+      console.log('Connection closed');
+      this.isConnected = false;
     });
     
-    this.socket.on('unread_count', (data: { count: number }) => {
-      console.log('Unread messages count:', data.count);
-      // We can emit an event or update a state here if needed
+    this.socket.on('error', (error) => {
+      console.error('Socket error:', error);
     });
   }
-
-  disconnect(): void {
+  
+  // Disconnect from the socket server
+  public disconnect(): void {
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
-      this.authenticated = false;
-      this.user = null;
+      this.isConnected = false;
     }
   }
-
-  sendMessage(toUserId: number, message: string, type = 'text'): void {
-    if (!this.socket || !this.authenticated) return;
-
-    this.socket.emit('send_message', { toUserId, message, type });
+  
+  // Listen for events
+  public on(event: string, handler: (...args: any[]) => void): void {
+    if (!this.socket) {
+      console.warn('Socket not connected');
+      return;
+    }
+    
+    this.socket.on(event, handler);
   }
-
-  markMessagesAsRead(fromUserId: number): void {
-    if (!this.socket || !this.authenticated) return;
-
-    this.socket.emit('mark_messages_read', { fromUserId });
+  
+  // Stop listening for events
+  public off(event: string, handler?: (...args: any[]) => void): void {
+    if (!this.socket) {
+      console.warn('Socket not connected');
+      return;
+    }
+    
+    if (handler) {
+      this.socket.off(event, handler);
+    } else {
+      this.socket.off(event);
+    }
   }
-
-  notifySupervisorAllocation(clientId: number, supervisorId: number): void {
-    if (!this.socket || !this.authenticated || !this.user || this.user.role !== 'admin') return;
-
-    this.socket.emit('supervisor_allocated', { clientId, supervisorId });
+  
+  // Emit an event
+  public emit(event: string, ...args: any[]): void {
+    if (!this.socket) {
+      console.warn('Socket not connected');
+      return;
+    }
+    
+    this.socket.emit(event, ...args);
   }
-
-  // Event listeners
-  on: SocketServiceEvents = {
-    onConnect: (callback) => {
-      if (this.socket) {
-        this.socket.on('connect', callback);
-      }
-    },
-
-    onDisconnect: (callback) => {
-      if (this.socket) {
-        this.socket.on('disconnect', callback);
-      }
-    },
-
-    onAuthenticated: (callback) => {
-      if (this.socket) {
-        this.socket.on('authenticated', callback);
-      }
-    },
-
-    onAuthError: (callback) => {
-      if (this.socket) {
-        this.socket.on('authentication_error', callback);
-      }
-    },
-
-    onReceiveMessage: (callback) => {
-      if (this.socket) {
-        this.socket.on('receive_message', callback);
-      }
-    },
-
-    onMessageSent: (callback) => {
-      if (this.socket) {
-        this.socket.on('message_sent', callback);
-      }
-    },
-
-    onMessageStatusUpdate: (callback) => {
-      if (this.socket) {
-        this.socket.on('message_status_update', callback);
-      }
-    },
-
-    onMessagesMarkedRead: (callback) => {
-      if (this.socket) {
-        this.socket.on('messages_marked_read', callback);
-      }
-    },
-
-    onSupervisorAssigned: (callback) => {
-      if (this.socket) {
-        this.socket.on('supervisor_assigned', callback);
-      }
-    },
-
-    onClientAssigned: (callback) => {
-      if (this.socket) {
-        this.socket.on('client_assigned', callback);
-      }
-    },
-
-    onAllocationSuccess: (callback) => {
-      if (this.socket) {
-        this.socket.on('allocation_success', callback);
-      }
-    },
-
-    onError: (callback) => {
-      if (this.socket) {
-        this.socket.on('error', callback);
-      }
-    },
-  };
-
-  // Helper methods
-  isConnected(): boolean {
-    return !!this.socket && this.socket.connected;
-  }
-
-  isAuthenticated(): boolean {
-    return this.authenticated;
+  
+  // Check if connected
+  public isSocketConnected(): boolean {
+    return this.isConnected;
   }
 }
 
-// Create a singleton instance
+// Create and export a singleton instance
 const socketService = new SocketService();
 export default socketService;

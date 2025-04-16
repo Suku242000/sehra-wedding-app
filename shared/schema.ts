@@ -209,6 +209,19 @@ export const contactStatus = pgTable("contact_status", {
   state: text("state"),
 });
 
+// Notifications table
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  type: text("type").notNull(), // system, task, chat, vendor, achievement
+  isRead: boolean("is_read").default(false),
+  relatedId: integer("related_id"), // ID of related item (task, message, etc.)
+  link: text("link"), // Optional link to navigate to
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users)
   .omit({ id: true, createdAt: true });
@@ -246,6 +259,9 @@ export const insertMessageSchema = createInsertSchema(messages)
 
 export const insertContactStatusSchema = createInsertSchema(contactStatus)
   .omit({ id: true, lastUpdated: true });
+  
+export const insertNotificationSchema = createInsertSchema(notifications)
+  .omit({ id: true, createdAt: true });
 
 // Custom auth schemas
 export const loginSchema = z.object({
@@ -301,6 +317,7 @@ export type UserProgress = typeof userProgress.$inferSelect;
 export type TimelineEvent = typeof timelineEvents.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type ContactStatus = typeof contactStatus.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;

@@ -1469,6 +1469,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get all available users to chat with (based on role)
+  app.get("/api/chat/users", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const currentUserId = req.user.id;
+      const currentUserRole = req.user.role;
+      
+      // Get all users
+      let users = await storage.getAllUsers();
+      
+      // Filter out the current user
+      users = users.filter(user => user.id !== currentUserId);
+      
+      // If current user is a client, only show supervisors, vendors, and admins
+      if ([UserRole.BRIDE, UserRole.GROOM, UserRole.FAMILY].includes(currentUserRole)) {
+        users = users.filter(user => 
+          [UserRole.SUPERVISOR, UserRole.VENDOR, UserRole.ADMIN].includes(user.role as any)
+        );
+      }
+      
+      // If current user is a supervisor, only show clients assigned to them, vendors, and admins
+      if (currentUserRole === UserRole.SUPERVISOR) {
+        const clientsAssigned = await storage.getUsersBySupervisorId(currentUserId);
+        const clientIds = clientsAssigned.map(client => client.id);
+        
+        users = users.filter(user => 
+          clientIds.includes(user.id) || 
+          user.role === UserRole.VENDOR || 
+          user.role === UserRole.ADMIN
+        );
+      }
+      
+      // If current user is a vendor, only show clients, supervisors, and admins
+      if (currentUserRole === UserRole.VENDOR) {
+        users = users.filter(user => 
+          [UserRole.BRIDE, UserRole.GROOM, UserRole.FAMILY, UserRole.SUPERVISOR, UserRole.ADMIN].includes(user.role as any)
+        );
+      }
+      
+      // Remove password field from users
+      const safeUsers = users.map(({ password, ...user }) => user);
+      
+      res.json(safeUsers);
+    } catch (error) {
+      console.error("Error fetching chat users:", error);
+      res.status(500).json({ message: "Failed to fetch chat users" });
+    }
+  });
+  
+  // Get unread message counts for each user
+  app.get("/api/messages/unread/count", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const currentUserId = req.user.id;
+      const unreadMessages = await storage.getUnreadMessagesForUser(currentUserId);
+      
+      // Group by sender (fromUserId)
+      const countByUser: Record<string, number> = {};
+      
+      unreadMessages.forEach(message => {
+        const fromId = message.fromUserId.toString();
+        countByUser[fromId] = (countByUser[fromId] || 0) + 1;
+      });
+      
+      res.json(countByUser);
+    } catch (error) {
+      console.error("Error fetching unread message counts:", error);
+      res.status(500).json({ message: "Failed to fetch unread message counts" });
+    }
+  });
+  
+  // Get the last message between the current user and each other user
+  app.get("/api/messages/last", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const currentUserId = req.user.id;
+      
+      // Get all users
+      const users = await storage.getAllUsers();
+      const otherUsers = users.filter(user => user.id !== currentUserId);
+      
+      const lastMessagesByUser: Record<string, any> = {};
+      
+      // For each user, get the most recent message
+      for (const otherUser of otherUsers) {
+        const messages = await storage.getMessagesBetweenUsers(currentUserId, otherUser.id);
+        
+        if (messages.length > 0) {
+          // Sort by createdAt descending to get the most recent message
+          messages.sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+          
+          lastMessagesByUser[otherUser.id.toString()] = messages[0];
+        }
+      }
+      
+      res.json(lastMessagesByUser);
+    } catch (error) {
+      console.error("Error fetching last messages:", error);
+      res.status(500).json({ message: "Failed to fetch last messages" });
+    }
+  });
+  
   // Helper function to update contact status after messaging
   async function updateContactStatusAfterMessage(fromUserId: number, toUserId: number) {
     try {

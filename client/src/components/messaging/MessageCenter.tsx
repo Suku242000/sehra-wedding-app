@@ -1,279 +1,324 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useSocket } from '@/context/SocketContext';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { fadeIn } from '@/lib/motion';
 import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { queryClient } from '@/lib/queryClient';
+import { fetchWithAuth } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
-import { Send, Clock, CheckCircle } from 'lucide-react';
+import socketService from '@/lib/socketService';
+import ChatUserList from './ChatUserList';
+import ChatInterface from './ChatInterface';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Bell, MessageSquare, X, Minimize2, Maximize2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { formatDistanceToNow } from 'date-fns';
-import { User } from '@shared/schema';
+import { Message } from '@shared/schema';
 
-interface MessageCenterProps {
-  role: 'client' | 'supervisor';
-}
-
-interface Message {
+// Define notification type if it's not exported from schema
+interface Notification {
   id: number;
-  fromUserId: number;
-  toUserId: number;
+  userId: number;
+  title: string;
   content: string;
-  messageType: string;
-  read: boolean;
-  createdAt: Date;
-  senderName?: string;
+  isRead: boolean;
+  createdAt: Date | string;
+  type?: string;
 }
 
-interface Contact {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-  unreadCount: number;
-  lastMessage?: string;
-  lastMessageTime?: Date;
-}
-
-export function MessageCenter({ role }: MessageCenterProps) {
+const MessageCenter: React.FC = () => {
   const { user } = useAuth();
-  const { messages, sendMessage, markAsRead } = useSocket();
-  const [newMessage, setNewMessage] = useState('');
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Fetch contacts
-  const { data: contactUsers } = useQuery<User[]>({
-    queryKey: [role === 'client' ? '/api/client/supervisors' : '/api/supervisor/clients'],
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [showMessageButton, setShowMessageButton] = useState(true);
+  const [isNotificationDialogOpen, setIsNotificationDialogOpen] = useState(false);
+  
+  // Fetch total unread message count
+  const { data: totalUnreadCount = 0, refetch: refetchUnreadCount } = useQuery<number>({
+    queryKey: ['/api/messages/unread/total'],
+    queryFn: () => fetchWithAuth('/api/messages/unread/total'),
     enabled: !!user,
+    refetchInterval: 30000, // Check every 30 seconds
   });
-
-  // Update contacts based on users and messages
+  
+  // Fetch notifications
+  const { data: notifications = [], refetch: refetchNotifications } = useQuery<Notification[]>({
+    queryKey: ['/api/notifications'],
+    queryFn: () => fetchWithAuth('/api/notifications'),
+    enabled: !!user,
+    refetchInterval: 60000, // Check every minute
+  });
+  
+  // Count unread notifications
+  const unreadNotifications = notifications.filter(n => !n.isRead).length;
+  
+  // Listen for socket events
   useEffect(() => {
-    if (!contactUsers || !user) return;
-
-    const newContacts = contactUsers.map(contactUser => {
-      // Count unread messages from this contact
-      const unreadCount = messages.filter(
-        m => m.fromUserId === contactUser.id && m.toUserId === user.id && !m.read
-      ).length;
-
-      // Find last message with this contact
-      const conversationMessages = messages.filter(
-        m => (m.fromUserId === contactUser.id && m.toUserId === user.id) ||
-             (m.fromUserId === user.id && m.toUserId === contactUser.id)
-      ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-      const lastMessage = conversationMessages.length > 0 ? conversationMessages[0] : undefined;
-
-      return {
-        id: contactUser.id,
-        name: contactUser.name,
-        email: contactUser.email,
-        role: contactUser.role,
-        unreadCount,
-        lastMessage: lastMessage?.content,
-        lastMessageTime: lastMessage?.createdAt
-      };
-    });
-
-    setContacts(newContacts);
-  }, [contactUsers, messages, user]);
-
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages, selectedContact]);
-
-  // Mark messages as read when selecting a contact
-  useEffect(() => {
-    if (selectedContact && user) {
-      markAsRead(selectedContact.id);
-    }
-  }, [selectedContact, markAsRead, user]);
-
-  const handleSendMessage = () => {
-    if (!selectedContact || !newMessage.trim() || !user) return;
+    // Handle new messages
+    const handleNewMessage = (message: Message) => {
+      if (message.toUserId === user?.id) {
+        refetchUnreadCount();
+        
+        // If chat is not open with the sender, show a browser notification
+        if (!isChatOpen || selectedUserId !== message.fromUserId) {
+          showBrowserNotification('New Message', message.content);
+        }
+      }
+    };
     
-    sendMessage(selectedContact.id, newMessage);
-    setNewMessage('');
-  };
-
-  const renderContactList = () => (
-    <ScrollArea className="h-[400px]">
-      <div className="space-y-2 p-2">
-        {contacts.length === 0 ? (
-          <div className="text-center py-4 text-muted-foreground">
-            No contacts available
-          </div>
-        ) : (
-          contacts.map(contact => (
-            <div
-              key={contact.id}
-              className={`flex items-center gap-3 p-2 rounded-md cursor-pointer hover:bg-accent ${
-                selectedContact?.id === contact.id ? 'bg-accent' : ''
-              }`}
-              onClick={() => setSelectedContact(contact)}
-            >
-              <Avatar>
-                <AvatarFallback>{contact.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-center">
-                  <p className="font-medium truncate">{contact.name}</p>
-                  {contact.lastMessageTime && (
-                    <span className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(contact.lastMessageTime), { addSuffix: true })}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground truncate">
-                  {contact.lastMessage || 'No messages yet'}
-                </p>
-              </div>
-              {contact.unreadCount > 0 && (
-                <Badge variant="secondary" className="ml-auto">
-                  {contact.unreadCount}
-                </Badge>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-    </ScrollArea>
-  );
-
-  const renderMessageThread = () => {
-    if (!selectedContact) {
-      return (
-        <div className="h-[400px] flex items-center justify-center">
-          <p className="text-muted-foreground">Select a contact to start messaging</p>
-        </div>
-      );
+    // Handle message read status updated
+    const handleReadStatusUpdated = () => {
+      refetchUnreadCount();
+    };
+    
+    // Handle new notification
+    const handleNewNotification = (notification: Notification) => {
+      refetchNotifications();
+      showBrowserNotification(notification.title, notification.content);
+    };
+    
+    socketService.on('receive_message', handleNewMessage);
+    socketService.on('message_read', handleReadStatusUpdated);
+    socketService.on('notification', handleNewNotification);
+    
+    return () => {
+      socketService.off('receive_message', handleNewMessage);
+      socketService.off('message_read', handleReadStatusUpdated);
+      socketService.off('notification', handleNewNotification);
+    };
+  }, [user?.id, isChatOpen, selectedUserId, refetchUnreadCount, refetchNotifications]);
+  
+  // Request notification permission
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
     }
-
-    // Filter messages between current user and selected contact
-    const conversationMessages = user
-      ? messages.filter(
-          msg =>
-            (msg.fromUserId === user.id && msg.toUserId === selectedContact.id) ||
-            (msg.fromUserId === selectedContact.id && msg.toUserId === user.id)
-        ).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-      : [];
-
-    return (
-      <>
-        <ScrollArea className="h-[350px] pr-4">
-          <div className="space-y-4 pt-4">
-            {conversationMessages.length === 0 ? (
-              <div className="text-center py-10 text-muted-foreground">
-                No messages yet. Start the conversation!
-              </div>
-            ) : (
-              conversationMessages.map(msg => {
-                const isSentByMe = user && msg.fromUserId === user.id;
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex ${isSentByMe ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[80%] px-4 py-2 rounded-lg ${
-                        isSentByMe
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-foreground'
-                      }`}
-                    >
-                      <p>{msg.content}</p>
-                      <div className={`flex items-center gap-1 text-xs mt-1 ${
-                        isSentByMe ? 'text-primary-foreground/80' : 'text-muted-foreground'
-                      }`}>
-                        {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
-                        {isSentByMe && (
-                          <span className="ml-1">
-                            {msg.read ? (
-                              <CheckCircle className="h-3 w-3" />
-                            ) : (
-                              <Clock className="h-3 w-3" />
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
-        <div className="mt-4 flex gap-2">
-          <Textarea
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type your message here..."
-            className="min-h-[80px]"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
-          />
+  }, []);
+  
+  // Show browser notification
+  const showBrowserNotification = (title: string, body: string) => {
+    if ("Notification" in window && Notification.permission === "granted") {
+      // Create notification
+      new Notification(title, {
+        body,
+        icon: '/logo.png', // Update with your app's logo
+      });
+    }
+  };
+  
+  // Mark notification as read
+  const markNotificationAsRead = async (id: number) => {
+    try {
+      await fetch(`/api/notifications/${id}/read`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      refetchNotifications();
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
+  
+  // Format notification time
+  const formatNotificationTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.round(diffMs / (1000 * 60));
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return date.toLocaleDateString();
+  };
+  
+  // Handle user selection
+  const handleUserSelect = (userId: number) => {
+    setSelectedUserId(userId);
+    setIsChatOpen(true);
+  };
+  
+  // Toggle chat visibility
+  const toggleChat = () => {
+    setIsChatOpen(!isChatOpen);
+    if (!isChatOpen) {
+      setIsMinimized(false);
+    }
+  };
+  
+  // Toggle minimized state
+  const toggleMinimized = () => {
+    setIsMinimized(!isMinimized);
+  };
+  
+  // Close chat
+  const closeChat = () => {
+    setIsChatOpen(false);
+    setShowMessageButton(true);
+  };
+  
+  if (!user) return null;
+  
+  return (
+    <>
+      {/* Floating Message Button */}
+      {showMessageButton && (
+        <div className="fixed bottom-6 right-6 z-40">
           <Button
-            type="button"
-            onClick={handleSendMessage}
-            className="self-end"
-            disabled={!newMessage.trim()}
+            onClick={toggleChat}
+            className="h-14 w-14 rounded-full bg-[#800000] hover:bg-[#600000] shadow-lg relative"
           >
-            <Send className="h-4 w-4 mr-2" /> Send
+            <MessageSquare className="h-6 w-6" />
+            {totalUnreadCount > 0 && (
+              <Badge className="absolute -top-2 -right-2 bg-red-500 border-white border-2">
+                {totalUnreadCount}
+              </Badge>
+            )}
           </Button>
         </div>
-      </>
-    );
-  };
-
-  return (
-    <Card className="w-full h-[560px]">
-      <CardHeader>
-        <CardTitle>Messages</CardTitle>
-        <CardDescription>
-          {role === 'client'
-            ? 'Chat with your wedding supervisor'
-            : 'Chat with your clients'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="contacts" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="contacts">
-              Contacts
-              {contacts.reduce((sum, contact) => sum + contact.unreadCount, 0) > 0 && (
-                <Badge variant="secondary" className="ml-2">
-                  {contacts.reduce((sum, contact) => sum + contact.unreadCount, 0)}
-                </Badge>
+      )}
+      
+      {/* Notification Button */}
+      <div className="fixed bottom-6 right-24 z-40">
+        <Button
+          onClick={() => setIsNotificationDialogOpen(true)}
+          variant="outline"
+          className="h-14 w-14 rounded-full bg-white shadow-lg relative border-[#800000] text-[#800000]"
+        >
+          <Bell className="h-6 w-6" />
+          {unreadNotifications > 0 && (
+            <Badge className="absolute -top-2 -right-2 bg-red-500 border-white border-2 text-white">
+              {unreadNotifications}
+            </Badge>
+          )}
+        </Button>
+      </div>
+      
+      {/* Notification Dialog */}
+      <Dialog
+        open={isNotificationDialogOpen}
+        onOpenChange={setIsNotificationDialogOpen}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Notifications</DialogTitle>
+          </DialogHeader>
+          
+          <div className="max-h-[60vh] overflow-y-auto">
+            {notifications.length === 0 ? (
+              <div className="py-6 text-center text-gray-500">
+                <Bell className="mx-auto h-12 w-12 text-gray-300 mb-2" />
+                <p>No notifications yet</p>
+              </div>
+            ) : (
+              <div className="divide-y">
+                {notifications.map(notification => (
+                  <div
+                    key={notification.id}
+                    className={`p-3 hover:bg-gray-50 ${!notification.isRead ? 'bg-gray-50' : ''}`}
+                    onClick={() => markNotificationAsRead(notification.id)}
+                  >
+                    <div className="flex justify-between">
+                      <h4 className="font-medium text-sm">{notification.title}</h4>
+                      <span className="text-xs text-gray-500">
+                        {notification.createdAt ? formatNotificationTime(notification.createdAt.toString()) : ''}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">{notification.content}</p>
+                    {!notification.isRead && (
+                      <div className="flex justify-end mt-1">
+                        <Badge variant="outline" className="text-xs bg-[#800000] text-white">
+                          New
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Chat Panel */}
+      {isChatOpen && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          transition={{ duration: 0.2 }}
+          className={`fixed z-50 bg-white shadow-xl rounded-t-lg overflow-hidden transition-all duration-300 ${
+            isMinimized
+              ? 'bottom-0 right-6 w-80 h-14'
+              : 'bottom-0 right-6 w-[400px] h-[550px]'
+          }`}
+        >
+          {/* Chat Header */}
+          <div className="bg-[#800000] text-white p-3 flex justify-between items-center">
+            <h3 className="font-medium text-sm">
+              {isMinimized ? 'Chat' : selectedUserId ? 'Conversation' : 'Messages'}
+              {totalUnreadCount > 0 && (
+                <Badge className="ml-2 bg-white text-[#800000]">{totalUnreadCount}</Badge>
               )}
-            </TabsTrigger>
-            <TabsTrigger value="messages">
-              {selectedContact ? selectedContact.name : 'Messages'}
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="contacts" className="mt-4">
-            {renderContactList()}
-          </TabsContent>
-          <TabsContent value="messages" className="mt-4">
-            {renderMessageThread()}
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+            </h3>
+            <div className="flex space-x-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleMinimized}
+                className="h-7 w-7 p-0 text-white hover:bg-[#700000] rounded-full"
+              >
+                {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={closeChat}
+                className="h-7 w-7 p-0 text-white hover:bg-[#700000] rounded-full"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          
+          {/* Chat Content */}
+          {!isMinimized && (
+            <div className="flex h-[calc(100%-48px)]">
+              {!selectedUserId ? (
+                <div className="w-full h-full overflow-hidden">
+                  <ChatUserList
+                    onUserSelect={handleUserSelect}
+                    selectedUserId={selectedUserId}
+                  />
+                </div>
+              ) : (
+                <div className="w-full h-full overflow-hidden">
+                  <ChatInterface
+                    selectedUserId={selectedUserId}
+                    onClose={() => setSelectedUserId(null)}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </motion.div>
+      )}
+    </>
   );
-}
+};
+
+export default MessageCenter;

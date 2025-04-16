@@ -184,6 +184,30 @@ export const timelineEvents = pgTable("timeline_events", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Messages table for supervisor-client communication
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  fromUserId: integer("from_user_id").notNull(),
+  toUserId: integer("to_user_id").notNull(),
+  message: text("message").notNull(),
+  read: boolean("read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Client contact status
+export const contactStatus = pgTable("contact_status", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().unique(),
+  supervisorId: integer("supervisor_id").notNull(),
+  contactComplete: boolean("contact_complete").default(false),
+  supervisorStatus: text("supervisor_status").default("pending"), // pending, contacted, in_progress
+  lastUpdated: timestamp("last_updated").defaultNow(),
+  address: text("address"),
+  city: text("city"),
+  pincode: text("pincode"),
+  state: text("state"),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users)
   .omit({ id: true, createdAt: true });
@@ -215,6 +239,12 @@ export const insertUserProgressSchema = createInsertSchema(userProgress)
 
 export const insertTimelineEventSchema = createInsertSchema(timelineEvents)
   .omit({ id: true, createdAt: true });
+
+export const insertMessageSchema = createInsertSchema(messages)
+  .omit({ id: true, createdAt: true });
+
+export const insertContactStatusSchema = createInsertSchema(contactStatus)
+  .omit({ id: true, lastUpdated: true });
 
 // Custom auth schemas
 export const loginSchema = z.object({
@@ -255,6 +285,8 @@ export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
 export type InsertUserAchievement = z.infer<typeof insertUserAchievementSchema>;
 export type InsertUserProgress = z.infer<typeof insertUserProgressSchema>;
 export type InsertTimelineEvent = z.infer<typeof insertTimelineEventSchema>;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type InsertContactStatus = z.infer<typeof insertContactStatusSchema>;
 
 export type User = typeof users.$inferSelect;
 export type VendorProfile = typeof vendorProfiles.$inferSelect;
@@ -266,6 +298,8 @@ export type Achievement = typeof achievements.$inferSelect;
 export type UserAchievement = typeof userAchievements.$inferSelect;
 export type UserProgress = typeof userProgress.$inferSelect;
 export type TimelineEvent = typeof timelineEvents.$inferSelect;
+export type Message = typeof messages.$inferSelect;
+export type ContactStatus = typeof contactStatus.$inferSelect;
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;

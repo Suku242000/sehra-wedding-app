@@ -94,9 +94,11 @@ const BudgetCard: React.FC = () => {
   const [spendingTrend, setSpendingTrend] = useState<'increasing' | 'decreasing' | 'stable'>('stable');
   const [previousSpentAmount, setPreviousSpentAmount] = useState(0);
   
-  // Fetch budget items
+  // Fetch budget items with auth
   const { data: budgetItems = [], isLoading } = useQuery<BudgetItem[]>({
     queryKey: ['/api/budget'],
+    queryFn: () => fetchWithAuth('/api/budget'),
+    enabled: true, // Always enabled
   });
   
   // Form

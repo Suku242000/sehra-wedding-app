@@ -1,0 +1,113 @@
+Full Supervisor + Vendor System Integration
+Build a complete role-based dashboard system for the Sehra wedding planning app using React.js, Tailwind CSS, Node.js, Express.js, and MongoDB, deployed on Replit.
+
+Core Roles:
+
+Customer (Bride/Groom)
+
+Vendor (Photographer, Hotel, etc.)
+
+Supervisor (Internal Staff Only)
+
+Admin (Superuser)
+
+🔐 Authentication & Routing:
+Use JWT for secure role-based login.
+
+Setup 4 login pages: /login-customer, /login-vendor, /login-supervisor, /admin.
+
+Protect dashboards with role-based middleware in Express.
+
+Separate React Routes for each role, based on login token.
+
+📋 Unique ID Generation:
+On registration:
+
+Customer gets ID starting from S#0001, then S#0002, auto-incremented.
+
+Vendor gets ID starting from SV#0001, SV#0002, auto-incremented.
+
+Supervisor gets ID from admin only, starting from SP#0001.
+
+Use a MongoDB model like Counter to track and auto-increment unique IDs.
+
+🧑‍💼 Supervisor Functionality:
+Admin can create supervisor accounts via /admin/supervisors/create.
+
+Supervisors get login info auto-sent (no public signup).
+
+Supervisor dashboard:
+
+See Assigned Customers and Vendors
+
+Edit/Delete Customer/Vendor Profiles
+
+Connect Vendor with Customers (match services)
+
+Mark themselves available/unavailable
+
+View unassigned Vendors and assist them in profile setup
+
+View and track assigned tasks
+
+🧑‍🍳 Vendor Dashboard:
+After login, vendors see:
+
+Assigned Weddings
+
+Booking Requests
+
+Manage Profile, Add Portfolio Images
+
+Update Services, Location, Pricing
+
+Chat/Connect with assigned Supervisor
+
+Vendor categories (dynamic dropdown on register):
+
+Hotel, Photographer, Videographer, Catering, Makeup Artist, Mehendi Artist, Event Planner, Hairdresser, Priest, Florist, Band, Light Decorator, Car Rental, Bartender, Security
+
+📊 Admin Dashboard:
+Create/Edit/Delete:
+
+Supervisors
+
+Customers
+
+Vendors
+
+Assign Supervisors to Customers based on location or availability
+
+View all roles with dashboard stats (cards, graphs)
+
+Manage vendor categories, images, homepage content
+
+🎨 Frontend:
+Use TailwindCSS + Framer Motion for UI
+
+Role-based sidebars (Customer, Vendor, Supervisor, Admin)
+
+Navbar shows name, role, and logout
+
+Use icons for clarity (Heroicons or Lucide)
+
+Responsive design with clean color palette:
+
+Royal Maroon #800000, Classic Gold #FFD700, Ivory, Soft Pink, Rich Gray
+
+🧪 Testing:
+✅ Test registration for Customer/Vendor assigns correct Unique ID
+
+✅ Supervisor can login from separate page and see only Supervisor Dashboard
+
+✅ Admin can create Supervisor, which gets unique SP# ID
+
+✅ Vendors can login, manage profile, and see wedding bookings
+
+✅ Supervisors can edit customer/vendor profiles
+
+✅ Prevent unauthorized access across dashboards
+
+✅ Ensure each role routes to proper landing page after login
+
+✅ Token expires and forces re-login securely

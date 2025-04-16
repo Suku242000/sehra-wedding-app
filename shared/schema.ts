@@ -50,6 +50,10 @@ export const users = pgTable("users", {
   weddingDate: text("wedding_date"),
   customerId: text("customer_id"),
   supervisorId: integer("supervisor_id"),
+  uniqueId: text("unique_id").unique(), // Unique ID for each user (SC#0001, SV#0001, SP#0001)
+  available: boolean("available").default(true), // For supervisors to mark availability
+  location: text("location"), // User's location for assignment purposes
+  phone: text("phone"), // User's contact number
   createdAt: timestamp("created_at").defaultNow(),
 });
 

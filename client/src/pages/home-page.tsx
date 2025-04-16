@@ -259,11 +259,17 @@ const HomePage: React.FC = () => {
                     <Link href="/auth">Get Started</Link>
                   </Button>
                   <Button 
-                    asChild 
                     size="lg" 
                     className="bg-white text-[#800000] hover:bg-white/90 border-2 border-white px-8 font-semibold"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const packagesSection = document.getElementById('packages');
+                      if (packagesSection) {
+                        packagesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
+                    }}
                   >
-                    <Link href="#packages">View Packages</Link>
+                    View Packages
                   </Button>
                 </>
               )}

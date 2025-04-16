@@ -20,11 +20,27 @@ const Navbar: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Function to scroll to section with ID
+  const scrollToSection = (e: React.MouseEvent, sectionId: string) => {
+    e.preventDefault();
+    if (window.location.pathname !== '/') {
+      // If not on home page, navigate to home then scroll
+      window.location.href = `/${sectionId}`;
+      return;
+    }
+
+    // On home page, scroll to section
+    const section = document.getElementById(sectionId);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   const navLinks = [
     { text: 'Home', href: '/' },
-    { text: 'Packages', href: '/#packages' },
-    { text: 'Testimonials', href: '/#testimonials' },
-    { text: 'Contact', href: '/#contact' }
+    { text: 'Packages', href: '/#packages', id: 'packages' },
+    { text: 'Testimonials', href: '/#testimonials', id: 'testimonials' },
+    { text: 'Contact', href: '/#contact', id: 'contact' }
   ];
 
   return (
@@ -57,13 +73,27 @@ const Navbar: React.FC = () => {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
             {navLinks.map((link, index) => (
-              <Link key={index} href={link.href}>
-                <div className={`font-medium transition-colors cursor-pointer ${
-                  isScrolled ? 'text-gray-700 hover:text-[#800000]' : 'text-white hover:text-[#FFD700]'
-                }`}>
-                  {link.text}
-                </div>
-              </Link>
+              <div key={index}>
+                {link.id ? (
+                  <a 
+                    href={link.href}
+                    onClick={(e) => link.id && scrollToSection(e, link.id)}
+                    className={`font-medium transition-colors cursor-pointer ${
+                      isScrolled ? 'text-gray-700 hover:text-[#800000]' : 'text-white hover:text-[#FFD700]'
+                    }`}
+                  >
+                    {link.text}
+                  </a>
+                ) : (
+                  <Link href={link.href}>
+                    <div className={`font-medium transition-colors cursor-pointer ${
+                      isScrolled ? 'text-gray-700 hover:text-[#800000]' : 'text-white hover:text-[#FFD700]'
+                    }`}>
+                      {link.text}
+                    </div>
+                  </Link>
+                )}
+              </div>
             ))}
             {isAuthenticated ? (
               <div className="flex items-center gap-3">
@@ -116,14 +146,27 @@ const Navbar: React.FC = () => {
             <div className="px-4 py-5 space-y-4">
               {navLinks.map((link, index) => (
                 <div key={index}>
-                  <Link href={link.href}>
-                    <div
+                  {link.id ? (
+                    <a 
+                      href={link.href}
                       className="block px-3 py-2 text-[#800000] font-medium hover:bg-[#FFC0CB]/10 rounded-md cursor-pointer"
-                      onClick={() => setMobileMenuOpen(false)}
+                      onClick={(e) => {
+                        setMobileMenuOpen(false);
+                        if (link.id) scrollToSection(e, link.id);
+                      }}
                     >
                       {link.text}
-                    </div>
-                  </Link>
+                    </a>
+                  ) : (
+                    <Link href={link.href}>
+                      <div
+                        className="block px-3 py-2 text-[#800000] font-medium hover:bg-[#FFC0CB]/10 rounded-md cursor-pointer"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        {link.text}
+                      </div>
+                    </Link>
+                  )}
                 </div>
               ))}
               <div className="pt-2">

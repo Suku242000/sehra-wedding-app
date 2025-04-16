@@ -8,7 +8,7 @@ import { BudgetItem } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { BUDGET_CATEGORIES } from '@/types';
-import { CheckCircle2, AlertTriangle, Frown, Smile, MehIcon, ArrowTrendingUp, ArrowTrendingDown } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Frown, Smile, Meh, TrendingUp, TrendingDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
   Dialog,
@@ -50,6 +50,38 @@ const budgetItemSchema = z.object({
 
 type BudgetFormValues = z.infer<typeof budgetItemSchema>;
 
+// Mood types
+type BudgetMoodType = 'excellent' | 'good' | 'fair' | 'warning' | 'critical';
+
+// Mood mapping for colors and icons
+const budgetMoodConfig: Record<BudgetMoodType, { color: string; icon: React.ReactNode; description: string }> = {
+  excellent: { 
+    color: 'bg-green-500', 
+    icon: <Smile className="h-5 w-5 text-green-500" />,
+    description: 'Well under budget'
+  },
+  good: { 
+    color: 'bg-green-400', 
+    icon: <Smile className="h-5 w-5 text-green-400" />,
+    description: 'Under budget'
+  },
+  fair: { 
+    color: 'bg-yellow-400', 
+    icon: <Meh className="h-5 w-5 text-yellow-500" />,
+    description: 'On budget'
+  },
+  warning: { 
+    color: 'bg-orange-500', 
+    icon: <AlertTriangle className="h-5 w-5 text-orange-500" />,
+    description: 'Approaching limit'
+  },
+  critical: { 
+    color: 'bg-red-500', 
+    icon: <Frown className="h-5 w-5 text-red-500" />,
+    description: 'Over budget'
+  }
+};
+
 const BudgetCard: React.FC = () => {
   const { toast } = useToast();
   const [openDialog, setOpenDialog] = useState(false);
@@ -58,6 +90,9 @@ const BudgetCard: React.FC = () => {
   const [spentAmount, setSpentAmount] = useState(0);
   const [budgetPercentage, setBudgetPercentage] = useState(0);
   const [categoryTotals, setCategoryTotals] = useState<Record<string, number>>({});
+  const [budgetMood, setBudgetMood] = useState<BudgetMoodType>('fair');
+  const [spendingTrend, setSpendingTrend] = useState<'increasing' | 'decreasing' | 'stable'>('stable');
+  const [previousSpentAmount, setPreviousSpentAmount] = useState(0);
   
   // Fetch budget items
   const { data: budgetItems = [], isLoading } = useQuery<BudgetItem[]>({
@@ -98,7 +133,7 @@ const BudgetCard: React.FC = () => {
     }
   });
   
-  // Calculate totals
+  // Calculate totals and budget mood
   useEffect(() => {
     if (budgetItems.length > 0) {
       const totals: Record<string, number> = {};
@@ -116,10 +151,36 @@ const BudgetCard: React.FC = () => {
       });
       
       setCategoryTotals(totals);
+      
+      // Set spending trend
+      if (total > previousSpentAmount) {
+        setSpendingTrend('increasing');
+      } else if (total < previousSpentAmount) {
+        setSpendingTrend('decreasing');
+      } else {
+        setSpendingTrend('stable');
+      }
+      
+      setPreviousSpentAmount(spentAmount);
       setSpentAmount(total);
-      setBudgetPercentage(Math.round((total / totalBudget) * 100));
+      
+      const percentage = Math.round((total / totalBudget) * 100);
+      setBudgetPercentage(percentage);
+      
+      // Calculate budget mood based on percentage of budget used
+      if (percentage <= 30) {
+        setBudgetMood('excellent');
+      } else if (percentage <= 60) {
+        setBudgetMood('good');
+      } else if (percentage <= 80) {
+        setBudgetMood('fair');
+      } else if (percentage <= 100) {
+        setBudgetMood('warning');
+      } else {
+        setBudgetMood('critical');
+      }
     }
-  }, [budgetItems, totalBudget]);
+  }, [budgetItems, totalBudget, previousSpentAmount, spentAmount]);
   
   // Handle form submission
   const onSubmit = (data: BudgetFormValues) => {
@@ -193,14 +254,44 @@ const BudgetCard: React.FC = () => {
           </div>
         </div>
         
+        {/* Budget Mood Indicator */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center">
+            {budgetMoodConfig[budgetMood].icon}
+            <span className="ml-2 text-sm font-medium">Budget Mood: {budgetMood.charAt(0).toUpperCase() + budgetMood.slice(1)}</span>
+          </div>
+          <Badge 
+            className={`flex items-center ${
+              spendingTrend === 'increasing' 
+                ? 'bg-red-100 text-red-800 border-red-200' 
+                : spendingTrend === 'decreasing' 
+                ? 'bg-green-100 text-green-800 border-green-200' 
+                : 'bg-blue-100 text-blue-800 border-blue-200'
+            }`}
+          >
+            {spendingTrend === 'increasing' ? (
+              <TrendingUp className="w-3 h-3 mr-1" />
+            ) : spendingTrend === 'decreasing' ? (
+              <TrendingDown className="w-3 h-3 mr-1" />
+            ) : null}
+            {spendingTrend.charAt(0).toUpperCase() + spendingTrend.slice(1)}
+          </Badge>
+        </div>
+        
         {/* Progress Bar */}
-        <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden mb-4">
+        <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden mb-2">
           <motion.div 
-            className="bg-[#800000] h-full rounded-full"
+            className={`h-full rounded-full ${budgetMoodConfig[budgetMood].color}`}
             initial={{ width: '0%' }}
             animate={{ width: `${budgetPercentage}%` }}
             transition={{ duration: 1, ease: 'easeInOut' }}
           ></motion.div>
+        </div>
+        
+        {/* Budget Status */}
+        <div className="flex justify-between items-center mb-4 text-xs text-gray-500">
+          <span>{formatCurrency(spentAmount)} spent of {formatCurrency(totalBudget)}</span>
+          <span>{budgetMoodConfig[budgetMood].description}</span>
         </div>
         
         {/* Categories */}

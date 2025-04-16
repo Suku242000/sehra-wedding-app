@@ -70,6 +70,12 @@ const AppWithAuth: React.FC = () => {
         </ProtectedRoute>
       </Route>
       
+      <Route path="/wedding-journey">
+        <ProtectedRoute requirePackage={true}>
+          <GamificationDashboard />
+        </ProtectedRoute>
+      </Route>
+      
       <Route>
         <NotFound />
       </Route>

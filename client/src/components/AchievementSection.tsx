@@ -25,7 +25,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 
 // Map category to icon
 const categoryIcons = {

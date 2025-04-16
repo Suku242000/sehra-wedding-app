@@ -54,7 +54,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export function TimelineCreator() {

@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AchievementSection } from '@/components/AchievementSection';
 import { ProgressTracker } from '@/components/ProgressTracker';
 import { TimelineCreator } from '@/components/TimelineCreator';
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 
 export default function GamificationDashboard() {
   const { user } = useAuth();

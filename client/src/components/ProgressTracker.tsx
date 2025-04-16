@@ -33,7 +33,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const moodColorMap = {

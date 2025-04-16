@@ -57,6 +57,7 @@ export interface IStorage {
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: number, task: Partial<Task>): Promise<Task | undefined>;
   deleteTask(id: number): Promise<boolean>;
+  getAllTasks(): Promise<Task[]>;
   
   // Guest methods
   getGuest(id: number): Promise<Guest | undefined>;
@@ -64,6 +65,7 @@ export interface IStorage {
   createGuest(guest: InsertGuest): Promise<Guest>;
   updateGuest(id: number, guest: Partial<Guest>): Promise<Guest | undefined>;
   deleteGuest(id: number): Promise<boolean>;
+  getAllGuests(): Promise<Guest[]>;
   
   // Budget methods
   getBudgetItem(id: number): Promise<BudgetItem | undefined>;
@@ -71,6 +73,7 @@ export interface IStorage {
   createBudgetItem(item: InsertBudgetItem): Promise<BudgetItem>;
   updateBudgetItem(id: number, item: Partial<BudgetItem>): Promise<BudgetItem | undefined>;
   deleteBudgetItem(id: number): Promise<boolean>;
+  getAllBudgetItems(): Promise<BudgetItem[]>;
   
   // Vendor booking methods
   getVendorBooking(id: number): Promise<VendorBooking | undefined>;
@@ -79,6 +82,7 @@ export interface IStorage {
   createVendorBooking(booking: InsertVendorBooking): Promise<VendorBooking>;
   updateVendorBooking(id: number, booking: Partial<VendorBooking>): Promise<VendorBooking | undefined>;
   deleteVendorBooking(id: number): Promise<boolean>;
+  getAllVendorBookings(): Promise<VendorBooking[]>;
   
   // Achievement methods
   getAchievement(id: number): Promise<Achievement | undefined>;
@@ -324,6 +328,10 @@ export class MemStorage implements IStorage {
   async deleteTask(id: number): Promise<boolean> {
     return this.tasks.delete(id);
   }
+  
+  async getAllTasks(): Promise<Task[]> {
+    return Array.from(this.tasks.values());
+  }
 
   // Guest methods
   async getGuest(id: number): Promise<Guest | undefined> {
@@ -356,6 +364,10 @@ export class MemStorage implements IStorage {
   async deleteGuest(id: number): Promise<boolean> {
     return this.guests.delete(id);
   }
+  
+  async getAllGuests(): Promise<Guest[]> {
+    return Array.from(this.guests.values());
+  }
 
   // Budget methods
   async getBudgetItem(id: number): Promise<BudgetItem | undefined> {
@@ -387,6 +399,10 @@ export class MemStorage implements IStorage {
 
   async deleteBudgetItem(id: number): Promise<boolean> {
     return this.budgetItems.delete(id);
+  }
+  
+  async getAllBudgetItems(): Promise<BudgetItem[]> {
+    return Array.from(this.budgetItems.values());
   }
 
   // Vendor booking methods
@@ -425,6 +441,10 @@ export class MemStorage implements IStorage {
 
   async deleteVendorBooking(id: number): Promise<boolean> {
     return this.vendorBookings.delete(id);
+  }
+  
+  async getAllVendorBookings(): Promise<VendorBooking[]> {
+    return Array.from(this.vendorBookings.values());
   }
   
   // Achievement methods

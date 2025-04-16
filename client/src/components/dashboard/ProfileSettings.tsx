@@ -43,8 +43,31 @@ const ProfileSettings: React.FC = () => {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (profileData: Partial<User>) => {
-      const response = await apiRequest('PATCH', '/api/users/me', profileData);
-      return await response.json();
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error("Authentication token not found. Please log in again.");
+        }
+        
+        const response = await fetch('/api/users/me', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(profileData)
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to update profile");
+        }
+        
+        return await response.json();
+      } catch (error) {
+        console.error("Profile update error:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({

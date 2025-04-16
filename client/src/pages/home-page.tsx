@@ -31,6 +31,7 @@ import {
 import weddingLights from '@assets/55108fbd-fa8c-45c3-93c3-7db28631ff72_1744735052150.jpg';
 import moroccanDecor from '@assets/Moroccan Arabian Nights Decor_1744735065406.jpg';
 import pinkFlowerDecor from '@assets/Pink Flower Decor 🩷✨_1744735079925.jpg';
+import traditionalWedding from '@assets/d5ee3a09-8df7-45ae-a484-2370559882e2_1744735071301.jpg';
 
 const fadeIn = (direction: 'up' | 'down' | 'left' | 'right', type: string, delay: number, duration: number) => {
   return {

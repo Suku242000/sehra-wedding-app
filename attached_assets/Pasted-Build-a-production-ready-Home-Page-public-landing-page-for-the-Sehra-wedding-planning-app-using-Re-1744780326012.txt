@@ -1,0 +1,89 @@
+Build a production-ready Home Page (public landing page) for the Sehra wedding planning app using React.js, Tailwind CSS, and Framer Motion for animations. This should be separate from the user dashboard and accessible at the root / route. Use beautiful design, animations, and Indian wedding-themed imagery to give a premium feel.
+
+Main Requirements:
+
+🔹 Home Page Sections:
+
+Hero section with Sehra logo, tagline: “Your Wedding, Our Responsibility”, CTA buttons: “Get Started” → redirects to Login/Signup.
+
+About Us section explaining Sehra’s mission and what makes it different.
+
+Features section (animated cards or icons):
+
+End-to-End Wedding Planning
+
+Budget Calculator
+
+Verified Vendors
+
+Personalized Support
+
+Progress Tracker
+
+Packages Preview (Silver, Gold, Platinum) with “Learn More” button
+
+Testimonials Carousel using Framer Motion (real or sample user feedback)
+
+Contact Us / Support section with email or form
+
+Footer with social links, copyright, legal
+
+🎨 Styling Guidelines:
+
+Use the Sehra color palette:
+
+Royal Maroon #800000
+
+Classic Gold #FFD700
+
+Soft Pink #FFC0CB
+
+Ivory #F5F5F5
+
+Rich Dark Gray #2C2C2C
+
+Use consistent font throughout; modern serif or elegant sans-serif.
+
+Add animations on scroll and transitions between sections.
+
+✨ Enhancements:
+
+Responsive layout (mobile, tablet, desktop)
+
+Framer Motion entrance animation for each section
+
+Navbar with “Home | Packages | Testimonials | Contact | Login”
+
+Use a single-page layout with smooth scroll
+
+Button hover and entrance effects
+
+Lazy load any images to improve performance
+
+🔁 Routing:
+
+The Home Page should be accessible at /
+
+Login/Signup → /login and /register
+
+Dashboard → /dashboard (only accessible after login using JWT)
+
+Use React Router v6 and role-based protected routes
+
+📦 Backend Integration:
+
+No sensitive data needed on home page
+
+Contact form (optional) can POST to /api/contact and store in MongoDB
+
+🧪 Testing Tips:
+
+Confirm routing to /dashboard is blocked unless logged in
+
+Verify all CTA buttons work and navigate correctly
+
+Check all sections scroll and animate properly
+
+Ensure responsive display across devices
+
+Use dummy images for vendors, weddings, etc. until real assets are available

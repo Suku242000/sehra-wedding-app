@@ -1,6 +1,6 @@
 import React from 'react';
 import { Switch, Route } from "wouter";
-import HomePage from "@/pages/index";
+import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth";
 import SelectPackagePage from "@/pages/select-package";
 import Dashboard from "@/pages/dashboard";

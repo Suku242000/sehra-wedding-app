@@ -17,7 +17,7 @@ import Footer from '@/components/dashboard/Footer';
 import VendorList from '@/components/vendors/VendorList';
 import EnhancedVendorList from '@/components/vendors/EnhancedVendorList';
 import EnhancedGuestManagement from '@/components/guests/EnhancedGuestManagement';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { fadeIn } from '@/lib/motion';
 import { UserRole } from '@shared/schema';
 
@@ -28,9 +28,9 @@ const Dashboard: React.FC = () => {
   
   // Extract tab from URL query parameter if present
   useEffect(() => {
-    const searchParams = new URLSearchParams(location.split('?')[1]);
+    const searchParams = new URLSearchParams(location.split('?')[1] || '');
     const tabParam = searchParams.get('tab');
-    if (tabParam) {
+    if (tabParam && ['dashboard', 'wedding', 'vendors', 'guests'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [location]);
@@ -47,6 +47,40 @@ const Dashboard: React.FC = () => {
     window.history.pushState(null, '', url);
   };
 
+  // Render the active tab content
+  const renderActiveTabContent = () => {
+    switch(activeTab) {
+      case 'wedding':
+        return <MyWeddingSection />;
+      case 'vendors':
+        return <EnhancedVendorList />;
+      case 'guests':
+        return <EnhancedGuestManagement />;
+      case 'dashboard':
+      default:
+        return (
+          <motion.div
+            variants={fadeIn('up', 'tween', 0.2, 0.5)}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 md:grid-cols-3 gap-6"
+          >
+            {/* First Row */}
+            <TaskManager />
+            <SupervisorCard />
+            
+            {/* Second Row */}
+            <BudgetCard />
+            <GuestManagement />
+            <VendorCard />
+            
+            {/* Third Row */}
+            <WeddingDateBanner />
+          </motion.div>
+        );
+    }
+  };
+
   return (
     <ProtectedRoute requirePackage={true}>
       <Layout className="flex flex-col">
@@ -58,7 +92,7 @@ const Dashboard: React.FC = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Desktop Tabs */}
             <div className="hidden md:block mb-6">
-              <Tabs defaultValue={activeTab} onValueChange={handleTabChange}>
+              <Tabs value={activeTab} onValueChange={handleTabChange}>
                 <TabsList>
                   <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
                   <TabsTrigger value="wedding">My Wedding</TabsTrigger>
@@ -70,7 +104,7 @@ const Dashboard: React.FC = () => {
             
             {/* Mobile Tabs */}
             <div className="md:hidden mb-6">
-              <Tabs defaultValue={activeTab} onValueChange={handleTabChange}>
+              <Tabs value={activeTab} onValueChange={handleTabChange}>
                 <TabsList className="grid grid-cols-4 w-full">
                   <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
                   <TabsTrigger value="wedding">Wedding</TabsTrigger>
@@ -80,42 +114,8 @@ const Dashboard: React.FC = () => {
               </Tabs>
             </div>
             
-            {/* Dashboard Tab */}
-            {activeTab === 'dashboard' && (
-              <motion.div
-                variants={fadeIn('up', 'tween', 0.2, 0.5)}
-                initial="hidden"
-                animate="show"
-                className="grid grid-cols-1 md:grid-cols-3 gap-6"
-              >
-                {/* First Row */}
-                <TaskManager />
-                <SupervisorCard />
-                
-                {/* Second Row */}
-                <BudgetCard />
-                <GuestManagement />
-                <VendorCard />
-                
-                {/* Third Row */}
-                <WeddingDateBanner />
-              </motion.div>
-            )}
-            
-            {/* Wedding Tab - Upgraded with MyWeddingSection */}
-            {activeTab === 'wedding' && (
-              <MyWeddingSection />
-            )}
-            
-            {/* Vendors Tab - Upgraded with EnhancedVendorList */}
-            {activeTab === 'vendors' && (
-              <EnhancedVendorList />
-            )}
-            
-            {/* Guests Tab - Upgraded with EnhancedGuestManagement */}
-            {activeTab === 'guests' && (
-              <EnhancedGuestManagement />
-            )}
+            {/* Render the active tab content */}
+            {renderActiveTabContent()}
           </div>
         </main>
         <Footer />

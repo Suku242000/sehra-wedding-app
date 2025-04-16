@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -133,6 +133,57 @@ export const vendorBookings = pgTable("vendor_bookings", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Achievements table
+export const achievements = pgTable("achievements", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  icon: text("icon").notNull(), // URL or name of the icon
+  category: text("category").notNull(), // wedding planning, budget management, etc.
+  requiredPoints: integer("required_points").notNull(),
+  requiredTasks: json("required_tasks").$type<string[]>(), // List of specific task IDs required
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User achievements table (junction table)
+export const userAchievements = pgTable("user_achievements", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  achievementId: integer("achievement_id").notNull(),
+  unlockedAt: timestamp("unlocked_at").defaultNow(),
+  displayed: boolean("displayed").default(false), // Has the user seen this achievement notification
+  sharedSocial: boolean("shared_social").default(false), // Has the user shared this on social media
+});
+
+// User progress table
+export const userProgress = pgTable("user_progress", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  totalPoints: integer("total_points").default(0),
+  level: integer("level").default(1),
+  tasksCompleted: integer("tasks_completed").default(0),
+  checklistProgress: real("checklist_progress").default(0), // Percentage of checklist completed
+  budgetHealth: real("budget_health").default(100), // Percentage representing budget status (over/under)
+  budgetMood: text("budget_mood").default("neutral"), // happy, neutral, concerned, stressed
+  streak: integer("streak").default(0), // consecutive days of app usage
+  lastActive: timestamp("last_active").defaultNow(),
+});
+
+// Timeline events table
+export const timelineEvents = pgTable("timeline_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  eventDate: text("event_date").notNull(),
+  category: text("category"), // pre-wedding, wedding, post-wedding
+  icon: text("icon"),
+  color: text("color"),
+  completed: boolean("completed").default(false),
+  orderIndex: integer("order_index"), // For drag and drop reordering
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users)
   .omit({ id: true, createdAt: true });
@@ -150,6 +201,19 @@ export const insertBudgetItemSchema = createInsertSchema(budgetItems)
   .omit({ id: true, createdAt: true });
 
 export const insertVendorBookingSchema = createInsertSchema(vendorBookings)
+  .omit({ id: true, createdAt: true });
+
+// Insert schemas for gamification features
+export const insertAchievementSchema = createInsertSchema(achievements)
+  .omit({ id: true, createdAt: true });
+
+export const insertUserAchievementSchema = createInsertSchema(userAchievements)
+  .omit({ id: true, unlockedAt: true });
+
+export const insertUserProgressSchema = createInsertSchema(userProgress)
+  .omit({ id: true, lastActive: true });
+
+export const insertTimelineEventSchema = createInsertSchema(timelineEvents)
   .omit({ id: true, createdAt: true });
 
 // Custom auth schemas
@@ -187,6 +251,10 @@ export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type InsertGuest = z.infer<typeof insertGuestSchema>;
 export type InsertBudgetItem = z.infer<typeof insertBudgetItemSchema>;
 export type InsertVendorBooking = z.infer<typeof insertVendorBookingSchema>;
+export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
+export type InsertUserAchievement = z.infer<typeof insertUserAchievementSchema>;
+export type InsertUserProgress = z.infer<typeof insertUserProgressSchema>;
+export type InsertTimelineEvent = z.infer<typeof insertTimelineEventSchema>;
 
 export type User = typeof users.$inferSelect;
 export type VendorProfile = typeof vendorProfiles.$inferSelect;
@@ -194,6 +262,10 @@ export type Task = typeof tasks.$inferSelect;
 export type Guest = typeof guests.$inferSelect;
 export type BudgetItem = typeof budgetItems.$inferSelect;
 export type VendorBooking = typeof vendorBookings.$inferSelect;
+export type Achievement = typeof achievements.$inferSelect;
+export type UserAchievement = typeof userAchievements.$inferSelect;
+export type UserProgress = typeof userProgress.$inferSelect;
+export type TimelineEvent = typeof timelineEvents.$inferSelect;
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;

@@ -11,12 +11,24 @@ import {
   InsertBudgetItem,
   VendorBooking,
   InsertVendorBooking,
+  Achievement,
+  InsertAchievement,
+  UserAchievement,
+  InsertUserAchievement,
+  UserProgress,
+  InsertUserProgress,
+  TimelineEvent,
+  InsertTimelineEvent,
   users,
   vendorProfiles,
   tasks,
   guests,
   budgetItems,
-  vendorBookings
+  vendorBookings,
+  achievements,
+  userAchievements,
+  userProgress,
+  timelineEvents
 } from "@shared/schema";
 
 // Interface for storage methods
@@ -67,6 +79,34 @@ export interface IStorage {
   createVendorBooking(booking: InsertVendorBooking): Promise<VendorBooking>;
   updateVendorBooking(id: number, booking: Partial<VendorBooking>): Promise<VendorBooking | undefined>;
   deleteVendorBooking(id: number): Promise<boolean>;
+  
+  // Achievement methods
+  getAchievement(id: number): Promise<Achievement | undefined>;
+  getAllAchievements(): Promise<Achievement[]>;
+  getAchievementsByCategory(category: string): Promise<Achievement[]>;
+  createAchievement(achievement: InsertAchievement): Promise<Achievement>;
+  updateAchievement(id: number, achievement: Partial<Achievement>): Promise<Achievement | undefined>;
+  deleteAchievement(id: number): Promise<boolean>;
+  
+  // User Achievement methods
+  getUserAchievement(id: number): Promise<UserAchievement | undefined>;
+  getUserAchievementsByUserId(userId: number): Promise<UserAchievement[]>;
+  createUserAchievement(userAchievement: InsertUserAchievement): Promise<UserAchievement>;
+  updateUserAchievement(id: number, userAchievement: Partial<UserAchievement>): Promise<UserAchievement | undefined>;
+  
+  // User Progress methods
+  getUserProgress(id: number): Promise<UserProgress | undefined>;
+  getUserProgressByUserId(userId: number): Promise<UserProgress | undefined>;
+  createUserProgress(userProgress: InsertUserProgress): Promise<UserProgress>;
+  updateUserProgress(id: number, userProgress: Partial<UserProgress>): Promise<UserProgress | undefined>;
+  
+  // Timeline Event methods
+  getTimelineEvent(id: number): Promise<TimelineEvent | undefined>;
+  getTimelineEventsByUserId(userId: number): Promise<TimelineEvent[]>;
+  createTimelineEvent(timelineEvent: InsertTimelineEvent): Promise<TimelineEvent>;
+  updateTimelineEvent(id: number, timelineEvent: Partial<TimelineEvent>): Promise<TimelineEvent | undefined>;
+  deleteTimelineEvent(id: number): Promise<boolean>;
+  reorderTimelineEvents(userId: number, eventIds: number[]): Promise<TimelineEvent[]>;
 }
 
 // In-memory storage implementation
@@ -77,6 +117,10 @@ export class MemStorage implements IStorage {
   private guests: Map<number, Guest>;
   private budgetItems: Map<number, BudgetItem>;
   private vendorBookings: Map<number, VendorBooking>;
+  private achievements: Map<number, Achievement>;
+  private userAchievements: Map<number, UserAchievement>;
+  private userProgress: Map<number, UserProgress>;
+  private timelineEvents: Map<number, TimelineEvent>;
   
   private userId: number;
   private vendorProfileId: number;
@@ -84,6 +128,10 @@ export class MemStorage implements IStorage {
   private guestId: number;
   private budgetItemId: number;
   private vendorBookingId: number;
+  private achievementId: number;
+  private userAchievementId: number;
+  private userProgressId: number;
+  private timelineEventId: number;
 
   constructor() {
     this.users = new Map();
@@ -92,6 +140,10 @@ export class MemStorage implements IStorage {
     this.guests = new Map();
     this.budgetItems = new Map();
     this.vendorBookings = new Map();
+    this.achievements = new Map();
+    this.userAchievements = new Map();
+    this.userProgress = new Map();
+    this.timelineEvents = new Map();
     
     this.userId = 1;
     this.vendorProfileId = 1;
@@ -99,6 +151,10 @@ export class MemStorage implements IStorage {
     this.guestId = 1;
     this.budgetItemId = 1;
     this.vendorBookingId = 1;
+    this.achievementId = 1;
+    this.userAchievementId = 1;
+    this.userProgressId = 1;
+    this.timelineEventId = 1;
     
     // Initialize with admin user
     this.createUser({
@@ -369,6 +425,183 @@ export class MemStorage implements IStorage {
 
   async deleteVendorBooking(id: number): Promise<boolean> {
     return this.vendorBookings.delete(id);
+  }
+  
+  // Achievement methods
+  async getAchievement(id: number): Promise<Achievement | undefined> {
+    return this.achievements.get(id);
+  }
+
+  async getAllAchievements(): Promise<Achievement[]> {
+    return Array.from(this.achievements.values());
+  }
+
+  async getAchievementsByCategory(category: string): Promise<Achievement[]> {
+    return Array.from(this.achievements.values()).filter(
+      (achievement) => achievement.category === category
+    );
+  }
+
+  async createAchievement(achievement: InsertAchievement): Promise<Achievement> {
+    const id = this.achievementId++;
+    const now = new Date().toISOString();
+    const newAchievement: Achievement = { ...achievement, id, createdAt: now };
+    this.achievements.set(id, newAchievement);
+    return newAchievement;
+  }
+
+  async updateAchievement(id: number, achievementData: Partial<Achievement>): Promise<Achievement | undefined> {
+    const achievement = await this.getAchievement(id);
+    if (!achievement) return undefined;
+    
+    const updatedAchievement = { ...achievement, ...achievementData };
+    this.achievements.set(id, updatedAchievement);
+    return updatedAchievement;
+  }
+
+  async deleteAchievement(id: number): Promise<boolean> {
+    return this.achievements.delete(id);
+  }
+
+  // User Achievement methods
+  async getUserAchievement(id: number): Promise<UserAchievement | undefined> {
+    return this.userAchievements.get(id);
+  }
+
+  async getUserAchievementsByUserId(userId: number): Promise<UserAchievement[]> {
+    return Array.from(this.userAchievements.values()).filter(
+      (userAchievement) => userAchievement.userId === userId
+    );
+  }
+
+  async createUserAchievement(userAchievement: InsertUserAchievement): Promise<UserAchievement> {
+    const id = this.userAchievementId++;
+    const now = new Date().toISOString();
+    const newUserAchievement: UserAchievement = { 
+      ...userAchievement, 
+      id, 
+      unlockedAt: now,
+      displayed: userAchievement.displayed || false,
+      sharedSocial: userAchievement.sharedSocial || false
+    };
+    this.userAchievements.set(id, newUserAchievement);
+    return newUserAchievement;
+  }
+
+  async updateUserAchievement(id: number, userAchievementData: Partial<UserAchievement>): Promise<UserAchievement | undefined> {
+    const userAchievement = await this.getUserAchievement(id);
+    if (!userAchievement) return undefined;
+    
+    const updatedUserAchievement = { ...userAchievement, ...userAchievementData };
+    this.userAchievements.set(id, updatedUserAchievement);
+    return updatedUserAchievement;
+  }
+
+  // User Progress methods
+  async getUserProgress(id: number): Promise<UserProgress | undefined> {
+    return this.userProgress.get(id);
+  }
+
+  async getUserProgressByUserId(userId: number): Promise<UserProgress | undefined> {
+    return Array.from(this.userProgress.values()).find(
+      (progress) => progress.userId === userId
+    );
+  }
+
+  async createUserProgress(userProgress: InsertUserProgress): Promise<UserProgress> {
+    const id = this.userProgressId++;
+    const now = new Date().toISOString();
+    const newUserProgress: UserProgress = { 
+      ...userProgress, 
+      id, 
+      lastActive: now,
+      totalPoints: userProgress.totalPoints || 0,
+      level: userProgress.level || 1,
+      tasksCompleted: userProgress.tasksCompleted || 0,
+      checklistProgress: userProgress.checklistProgress || 0,
+      budgetHealth: userProgress.budgetHealth || 100,
+      budgetMood: userProgress.budgetMood || 'neutral',
+      streak: userProgress.streak || 0
+    };
+    this.userProgress.set(id, newUserProgress);
+    return newUserProgress;
+  }
+
+  async updateUserProgress(id: number, userProgressData: Partial<UserProgress>): Promise<UserProgress | undefined> {
+    const userProgress = await this.getUserProgress(id);
+    if (!userProgress) return undefined;
+    
+    const updatedUserProgress = { ...userProgress, ...userProgressData };
+    this.userProgress.set(id, updatedUserProgress);
+    return updatedUserProgress;
+  }
+
+  // Timeline Event methods
+  async getTimelineEvent(id: number): Promise<TimelineEvent | undefined> {
+    return this.timelineEvents.get(id);
+  }
+
+  async getTimelineEventsByUserId(userId: number): Promise<TimelineEvent[]> {
+    return Array.from(this.timelineEvents.values())
+      .filter((event) => event.userId === userId)
+      .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+  }
+
+  async createTimelineEvent(timelineEvent: InsertTimelineEvent): Promise<TimelineEvent> {
+    const id = this.timelineEventId++;
+    const now = new Date().toISOString();
+    
+    // Get the highest order index for this user
+    const userEvents = await this.getTimelineEventsByUserId(timelineEvent.userId);
+    const maxOrderIndex = userEvents.length > 0
+      ? Math.max(...userEvents.map(e => e.orderIndex || 0))
+      : -1;
+    
+    const newTimelineEvent: TimelineEvent = { 
+      ...timelineEvent, 
+      id, 
+      createdAt: now,
+      completed: timelineEvent.completed || false,
+      orderIndex: timelineEvent.orderIndex ?? maxOrderIndex + 1
+    };
+    this.timelineEvents.set(id, newTimelineEvent);
+    return newTimelineEvent;
+  }
+
+  async updateTimelineEvent(id: number, timelineEventData: Partial<TimelineEvent>): Promise<TimelineEvent | undefined> {
+    const timelineEvent = await this.getTimelineEvent(id);
+    if (!timelineEvent) return undefined;
+    
+    const updatedTimelineEvent = { ...timelineEvent, ...timelineEventData };
+    this.timelineEvents.set(id, updatedTimelineEvent);
+    return updatedTimelineEvent;
+  }
+
+  async deleteTimelineEvent(id: number): Promise<boolean> {
+    return this.timelineEvents.delete(id);
+  }
+  
+  async reorderTimelineEvents(userId: number, eventIds: number[]): Promise<TimelineEvent[]> {
+    // Check if all events exist and belong to the user
+    const events = await Promise.all(eventIds.map(id => this.getTimelineEvent(id)));
+    const validEvents = events.filter(
+      (event): event is TimelineEvent => 
+        event !== undefined && event.userId === userId
+    );
+    
+    if (validEvents.length !== eventIds.length) {
+      throw new Error("Some events don't exist or don't belong to the user");
+    }
+    
+    // Update order index for each event
+    const updatedEvents = await Promise.all(
+      eventIds.map((id, index) => 
+        this.updateTimelineEvent(id, { orderIndex: index })
+      )
+    );
+    
+    // Return events in the new order
+    return updatedEvents.filter((event): event is TimelineEvent => event !== undefined);
   }
 }
 

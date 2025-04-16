@@ -208,7 +208,9 @@ const HomePage: React.FC = () => {
 
       {/* Hero Section */}
       <section className="relative h-screen flex items-center">
-        <div className="absolute inset-0 bg-black/50 z-0"></div>
+        {/* Overlay to darken the image */}
+        <div className="absolute inset-0 bg-black/60 z-0"></div>
+        {/* Background Image */}
         <div 
           className="absolute inset-0 bg-cover bg-center z-[-1]"
           style={{ backgroundImage: `url(${weddingLights})` }}
@@ -220,7 +222,7 @@ const HomePage: React.FC = () => {
             initial="hidden"
             animate="show"
           >
-            <Badge className="bg-[#FFD700] text-[#800000] mb-4">Premium Indian Wedding Management</Badge>
+            <Badge className="bg-[#FFD700] text-[#800000] mb-4 py-1 px-4 text-sm font-medium">Premium Indian Wedding Management</Badge>
             <h1 className="text-4xl md:text-6xl font-serif font-bold text-white mb-6">
               Your Wedding, <br /> 
               Our <span className="text-[#FFD700] font-script">Responsibility</span>
@@ -230,10 +232,14 @@ const HomePage: React.FC = () => {
               comprehensive wedding planning platform
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Button asChild size="lg" className="bg-[#FFD700] text-[#800000] hover:bg-[#FFD700]/90 px-8">
+              <Button asChild size="lg" className="bg-[#FFD700] text-[#800000] hover:bg-[#FFD700]/90 px-8 font-semibold">
                 <Link href="/auth">Get Started</Link>
               </Button>
-              <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
+              <Button 
+                asChild 
+                size="lg" 
+                className="bg-white text-[#800000] hover:bg-white/90 border-2 border-white px-8 font-semibold"
+              >
                 <Link href="#packages">View Packages</Link>
               </Button>
             </div>

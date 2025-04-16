@@ -37,7 +37,7 @@ const Navbar: React.FC = () => {
         <div className="flex justify-between items-center">
           {/* Logo */}
           <Link href="/">
-            <a className="flex items-center">
+            <div className="flex items-center cursor-pointer">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                 isScrolled ? 'bg-[#800000]' : 'bg-white'
               }`}>
@@ -48,26 +48,24 @@ const Navbar: React.FC = () => {
               <span className={`ml-2 font-serif text-xl font-bold ${
                 isScrolled ? 'text-[#800000]' : 'text-white'
               }`}>Sehra</span>
-            </a>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
             {navLinks.map((link, index) => (
               <Link key={index} href={link.href}>
-                <a className={`font-medium transition-colors ${
+                <div className={`font-medium transition-colors cursor-pointer ${
                   isScrolled ? 'text-gray-700 hover:text-[#800000]' : 'text-white hover:text-[#FFD700]'
                 }`}>
                   {link.text}
-                </a>
+                </div>
               </Link>
             ))}
             <Link href="/auth">
-              <a>
                 <Button className="bg-[#800000] hover:bg-[#800000]/90 text-white">
                   Login
                 </Button>
-              </a>
             </Link>
           </nav>
 
@@ -99,22 +97,22 @@ const Navbar: React.FC = () => {
               {navLinks.map((link, index) => (
                 <div key={index}>
                   <Link href={link.href}>
-                    <a
-                      className="block px-3 py-2 text-[#800000] font-medium hover:bg-[#FFC0CB]/10 rounded-md"
+                    <div
+                      className="block px-3 py-2 text-[#800000] font-medium hover:bg-[#FFC0CB]/10 rounded-md cursor-pointer"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       {link.text}
-                    </a>
+                    </div>
                   </Link>
                 </div>
               ))}
               <div className="pt-2">
                 <Link href="/auth">
-                  <a className="block">
+                  <div className="block">
                     <Button className="w-full bg-[#800000] hover:bg-[#800000]/90 text-white">
                       Login / Sign Up
                     </Button>
-                  </a>
+                  </div>
                 </Link>
               </div>
             </div>

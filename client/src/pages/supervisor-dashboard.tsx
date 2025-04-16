@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { AlarmClockIcon, CalendarIcon, CheckIcon, ListTodoIcon, UserIcon } from 'lucide-react';
+import { AlarmClockIcon, CalendarIcon, CheckIcon, ListTodoIcon, UserIcon, Phone } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import VendorAssignment from '@/components/supervisor/VendorAssignment';
 

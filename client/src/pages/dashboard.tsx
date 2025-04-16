@@ -13,6 +13,7 @@ import GuestManagement from '@/components/dashboard/GuestManagement';
 import VendorCard from '@/components/dashboard/VendorCard';
 import WeddingDateBanner from '@/components/dashboard/WeddingDateBanner';
 import MyWeddingSection from '@/components/dashboard/MyWeddingSection';
+import ProfileSettings from '@/components/dashboard/ProfileSettings';
 import Footer from '@/components/dashboard/Footer';
 import VendorList from '@/components/vendors/VendorList';
 import EnhancedVendorList from '@/components/vendors/EnhancedVendorList';
@@ -90,6 +91,11 @@ const Dashboard: React.FC = () => {
             
             {/* Third Row */}
             <WeddingDateBanner />
+            
+            {/* Profile Settings */}
+            <div className="md:col-span-3">
+              <ProfileSettings />
+            </div>
           </motion.div>
         );
     }

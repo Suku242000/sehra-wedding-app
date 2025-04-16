@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, User } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { goToDashboard } from '@/lib/navigation';
 
 const Navbar: React.FC = () => {
+  const { isAuthenticated, user } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -62,11 +65,28 @@ const Navbar: React.FC = () => {
                 </div>
               </Link>
             ))}
-            <Link href="/auth">
+            {isAuthenticated ? (
+              <div className="flex items-center gap-3">
+                <Button 
+                  onClick={() => goToDashboard()} 
+                  className="bg-[#800000] hover:bg-[#800000]/90 text-white"
+                >
+                  Go to Dashboard
+                </Button>
+                <div className={`flex items-center gap-2 font-medium ${
+                  isScrolled ? 'text-gray-700' : 'text-white'
+                }`}>
+                  <User className="h-4 w-4" />
+                  <span>{user?.name || 'User'}</span>
+                </div>
+              </div>
+            ) : (
+              <Link href="/auth">
                 <Button className="bg-[#800000] hover:bg-[#800000]/90 text-white">
                   Login
                 </Button>
-            </Link>
+              </Link>
+            )}
           </nav>
 
           {/* Mobile Menu Button */}

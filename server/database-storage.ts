@@ -234,4 +234,151 @@ export class DatabaseStorage implements IStorage {
     const result = await db.delete(vendorBookings).where(eq(vendorBookings.id, id));
     return !!result;
   }
+
+  // Achievement methods
+  async getAchievement(id: number): Promise<Achievement | undefined> {
+    const [achievement] = await db.select().from(achievements).where(eq(achievements.id, id));
+    return achievement;
+  }
+
+  async getAllAchievements(): Promise<Achievement[]> {
+    return await db.select().from(achievements);
+  }
+
+  async getAchievementsByCategory(category: string): Promise<Achievement[]> {
+    return await db.select().from(achievements).where(eq(achievements.category, category));
+  }
+
+  async createAchievement(achievement: InsertAchievement): Promise<Achievement> {
+    const [newAchievement] = await db.insert(achievements).values(achievement).returning();
+    return newAchievement;
+  }
+
+  async updateAchievement(id: number, achievementData: Partial<Achievement>): Promise<Achievement | undefined> {
+    const [updatedAchievement] = await db
+      .update(achievements)
+      .set(achievementData)
+      .where(eq(achievements.id, id))
+      .returning();
+    return updatedAchievement;
+  }
+
+  async deleteAchievement(id: number): Promise<boolean> {
+    const result = await db.delete(achievements).where(eq(achievements.id, id));
+    return !!result;
+  }
+
+  // User Achievement methods
+  async getUserAchievement(id: number): Promise<UserAchievement | undefined> {
+    const [userAchievement] = await db.select().from(userAchievements).where(eq(userAchievements.id, id));
+    return userAchievement;
+  }
+
+  async getUserAchievementsByUserId(userId: number): Promise<UserAchievement[]> {
+    return await db.select().from(userAchievements).where(eq(userAchievements.userId, userId));
+  }
+
+  async createUserAchievement(userAchievement: InsertUserAchievement): Promise<UserAchievement> {
+    const [newUserAchievement] = await db.insert(userAchievements).values(userAchievement).returning();
+    return newUserAchievement;
+  }
+
+  async updateUserAchievement(id: number, userAchievementData: Partial<UserAchievement>): Promise<UserAchievement | undefined> {
+    const [updatedUserAchievement] = await db
+      .update(userAchievements)
+      .set(userAchievementData)
+      .where(eq(userAchievements.id, id))
+      .returning();
+    return updatedUserAchievement;
+  }
+
+  // User Progress methods
+  async getUserProgress(id: number): Promise<UserProgress | undefined> {
+    const [progress] = await db.select().from(userProgress).where(eq(userProgress.id, id));
+    return progress;
+  }
+
+  async getUserProgressByUserId(userId: number): Promise<UserProgress | undefined> {
+    const [progress] = await db.select().from(userProgress).where(eq(userProgress.userId, userId));
+    return progress;
+  }
+
+  async createUserProgress(progress: InsertUserProgress): Promise<UserProgress> {
+    const [newProgress] = await db.insert(userProgress).values(progress).returning();
+    return newProgress;
+  }
+
+  async updateUserProgress(id: number, progressData: Partial<UserProgress>): Promise<UserProgress | undefined> {
+    const [updatedProgress] = await db
+      .update(userProgress)
+      .set(progressData)
+      .where(eq(userProgress.id, id))
+      .returning();
+    return updatedProgress;
+  }
+
+  // Timeline Event methods
+  async getTimelineEvent(id: number): Promise<TimelineEvent | undefined> {
+    const [event] = await db.select().from(timelineEvents).where(eq(timelineEvents.id, id));
+    return event;
+  }
+
+  async getTimelineEventsByUserId(userId: number): Promise<TimelineEvent[]> {
+    return await db.select()
+      .from(timelineEvents)
+      .where(eq(timelineEvents.userId, userId))
+      .orderBy(timelineEvents.order);
+  }
+
+  async createTimelineEvent(timelineEvent: InsertTimelineEvent): Promise<TimelineEvent> {
+    // Get the maximum order for this user
+    const events = await this.getTimelineEventsByUserId(timelineEvent.userId);
+    const maxOrder = events.length > 0 ? Math.max(...events.map(e => e.order)) : 0;
+    
+    // Set the order to be one more than the maximum
+    const eventWithOrder = {
+      ...timelineEvent,
+      order: maxOrder + 1
+    };
+    
+    const [newEvent] = await db.insert(timelineEvents).values(eventWithOrder).returning();
+    return newEvent;
+  }
+
+  async updateTimelineEvent(id: number, eventData: Partial<TimelineEvent>): Promise<TimelineEvent | undefined> {
+    const [updatedEvent] = await db
+      .update(timelineEvents)
+      .set(eventData)
+      .where(eq(timelineEvents.id, id))
+      .returning();
+    return updatedEvent;
+  }
+
+  async deleteTimelineEvent(id: number): Promise<boolean> {
+    const result = await db.delete(timelineEvents).where(eq(timelineEvents.id, id));
+    return !!result;
+  }
+
+  async reorderTimelineEvents(userId: number, eventIds: number[]): Promise<TimelineEvent[]> {
+    // Validate that all events belong to this user
+    const userEvents = await this.getTimelineEventsByUserId(userId);
+    const userEventIds = userEvents.map(e => e.id);
+    
+    // Check if all provided event IDs belong to this user
+    const allBelongToUser = eventIds.every(id => userEventIds.includes(id));
+    if (!allBelongToUser) {
+      throw new Error("Some events do not belong to this user");
+    }
+    
+    // Update the order of each event
+    for (let i = 0; i < eventIds.length; i++) {
+      await db
+        .update(timelineEvents)
+        .set({ order: i + 1 })
+        .where(eq(timelineEvents.id, eventIds[i]));
+    }
+    
+    // Return the reordered events
+    return await this.getTimelineEventsByUserId(userId);
+  }
 }

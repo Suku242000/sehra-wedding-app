@@ -12,8 +12,11 @@ import BudgetCard from '@/components/dashboard/BudgetCard';
 import GuestManagement from '@/components/dashboard/GuestManagement';
 import VendorCard from '@/components/dashboard/VendorCard';
 import WeddingDateBanner from '@/components/dashboard/WeddingDateBanner';
+import MyWeddingSection from '@/components/dashboard/MyWeddingSection';
 import Footer from '@/components/dashboard/Footer';
 import VendorList from '@/components/vendors/VendorList';
+import EnhancedVendorList from '@/components/vendors/EnhancedVendorList';
+import EnhancedGuestManagement from '@/components/guests/EnhancedGuestManagement';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { fadeIn } from '@/lib/motion';
 import { UserRole } from '@shared/schema';
@@ -53,6 +56,18 @@ const Dashboard: React.FC = () => {
         
         <main className="flex-1 bg-[#F5F5F5]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* Desktop Tabs */}
+            <div className="hidden md:block mb-6">
+              <Tabs defaultValue={activeTab} onValueChange={handleTabChange}>
+                <TabsList>
+                  <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+                  <TabsTrigger value="wedding">My Wedding</TabsTrigger>
+                  <TabsTrigger value="vendors">Vendors</TabsTrigger>
+                  <TabsTrigger value="guests">Guests</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+            
             {/* Mobile Tabs */}
             <div className="md:hidden mb-6">
               <Tabs defaultValue={activeTab} onValueChange={handleTabChange}>
@@ -87,36 +102,19 @@ const Dashboard: React.FC = () => {
               </motion.div>
             )}
             
-            {/* Wedding Tab */}
+            {/* Wedding Tab - Upgraded with MyWeddingSection */}
             {activeTab === 'wedding' && (
-              <motion.div
-                variants={fadeIn('up', 'tween', 0.2, 0.5)}
-                initial="hidden"
-                animate="show"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <TaskManager />
-                  <BudgetCard />
-                </div>
-                <WeddingDateBanner />
-              </motion.div>
+              <MyWeddingSection />
             )}
             
-            {/* Vendors Tab */}
+            {/* Vendors Tab - Upgraded with EnhancedVendorList */}
             {activeTab === 'vendors' && (
-              <VendorList />
+              <EnhancedVendorList />
             )}
             
-            {/* Guests Tab */}
+            {/* Guests Tab - Upgraded with EnhancedGuestManagement */}
             {activeTab === 'guests' && (
-              <motion.div
-                variants={fadeIn('up', 'tween', 0.2, 0.5)}
-                initial="hidden"
-                animate="show"
-                className="grid grid-cols-1 gap-6"
-              >
-                <GuestManagement />
-              </motion.div>
+              <EnhancedGuestManagement />
             )}
           </div>
         </main>

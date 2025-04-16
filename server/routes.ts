@@ -745,6 +745,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete user" });
     }
   });
+  
+  // Admin analytics endpoints
+  app.get("/api/admin/all-tasks", authenticateToken, authorizeRoles([UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const tasks = await storage.getAllTasks();
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching all tasks:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.get("/api/admin/all-guests", authenticateToken, authorizeRoles([UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const guests = await storage.getAllGuests();
+      res.json(guests);
+    } catch (error) {
+      console.error("Error fetching all guests:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.get("/api/admin/all-budget-items", authenticateToken, authorizeRoles([UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const budgetItems = await storage.getAllBudgetItems();
+      res.json(budgetItems);
+    } catch (error) {
+      console.error("Error fetching all budget items:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.get("/api/admin/all-bookings", authenticateToken, authorizeRoles([UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const bookings = await storage.getAllVendorBookings();
+      res.json(bookings);
+    } catch (error) {
+      console.error("Error fetching all bookings:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
 
   // Supervisor routes
   app.get("/api/supervisor/clients", authenticateToken, authorizeRoles([UserRole.SUPERVISOR]), async (req: Request, res: Response) => {

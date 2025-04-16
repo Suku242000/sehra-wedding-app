@@ -67,24 +67,24 @@ const Footer: React.FC = () => {
             <h3 className="text-[#FFD700] font-medium mb-3">Support</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/help">
-                  <span className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">Help Center</span>
-                </Link>
+                <button onClick={() => window.location.href = '/help'} className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">
+                  Help Center
+                </button>
               </li>
               <li>
-                <Link href="/contact">
-                  <span className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">Contact Us</span>
-                </Link>
+                <button onClick={() => window.location.href = '/contact'} className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">
+                  Contact Us
+                </button>
               </li>
               <li>
-                <Link href="/faq">
-                  <span className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">FAQ</span>
-                </Link>
+                <button onClick={() => window.location.href = '/faq'} className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">
+                  FAQ
+                </button>
               </li>
               <li>
-                <Link href="/privacy">
-                  <span className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">Privacy Policy</span>
-                </Link>
+                <button onClick={() => window.location.href = '/privacy'} className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">
+                  Privacy Policy
+                </button>
               </li>
             </ul>
           </motion.div>

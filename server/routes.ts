@@ -54,14 +54,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For customer roles (bride, groom, family)
       if ([UserRole.BRIDE, UserRole.GROOM, UserRole.FAMILY].includes(validatedData.role)) {
         const customerCount = await storage.getUserCountByRoles([UserRole.BRIDE, UserRole.GROOM, UserRole.FAMILY]);
-        uniqueId = `SC${(customerCount + 1).toString().padStart(4, '0')}`;
+        // Adding timestamp to ensure uniqueness
+        uniqueId = `SC${(customerCount + 1 + Date.now() % 1000).toString().padStart(4, '0')}`;
       } 
       // For vendor role
       else if (validatedData.role === UserRole.VENDOR) {
         const vendorCount = await storage.getUserCountByRoles([UserRole.VENDOR]);
-        uniqueId = `SV${(vendorCount + 1).toString().padStart(4, '0')}`;
+        // Adding timestamp to ensure uniqueness
+        uniqueId = `SV${(vendorCount + 1 + Date.now() % 1000).toString().padStart(4, '0')}`;
       }
-      // Supervisors can only be created by admins, so no uniqueId here
+      // For admin role
+      else if (validatedData.role === UserRole.ADMIN) {
+        const adminCount = await storage.getUserCountByRoles([UserRole.ADMIN]);
+        // Adding timestamp to ensure uniqueness
+        uniqueId = `SA${(adminCount + 1 + Date.now() % 1000).toString().padStart(4, '0')}`;
+      }
+      // For supervisor role
+      else if (validatedData.role === UserRole.SUPERVISOR) {
+        const supervisorCount = await storage.getUserCountByRoles([UserRole.SUPERVISOR]);
+        // Adding timestamp to ensure uniqueness
+        uniqueId = `SP${(supervisorCount + 1 + Date.now() % 1000).toString().padStart(4, '0')}`;
+      }
       
       // Create user
       const user = await storage.createUser({

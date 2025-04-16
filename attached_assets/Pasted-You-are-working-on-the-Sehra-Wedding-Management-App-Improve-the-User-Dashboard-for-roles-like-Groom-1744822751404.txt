@@ -1,0 +1,55 @@
+You are working on the Sehra Wedding Management App. Improve the User Dashboard for roles like Groom, Bride, and Family Member. The dashboard should feature a fully working and **visually updated Taskbar and Budgetbar**. Here's what you need to do:
+
+1. 🧠 **TASKBAR FUNCTIONALITY:**
+   - Create a persistent Taskbar section where users can:
+     - Add tasks (e.g., "Book Photographer", "Send Invitations")
+     - Mark tasks as complete
+     - Delete or edit tasks
+   - Store tasks in the MongoDB backend, associated with the authenticated user via their `userId`.
+   - Tasks must auto-refresh on page load and reflect updates in real-time.
+   - Add confetti animation when all tasks are completed.
+
+2. 💸 **BUDGETBAR FUNCTIONALITY:**
+   - Create a Budget section where:
+     - Users can manually add budget items (e.g., "Venue ₹200,000")
+     - The system automatically adds budget entries when vendors are assigned (e.g., when a makeup artist is added, it adds "Makeup Artist - ₹50,000")
+   - Create a clean table/chart showing:
+     - Category, Amount, Vendor (if applicable)
+     - Total Budget vs Remaining Budget
+   - Enable deletion and editing of budget items
+   - Store all budget entries in MongoDB and fetch them on dashboard load
+
+3. 🔗 **INTEGRATION:**
+   - When a vendor is booked by the user:
+     - Automatically insert that vendor’s service into the Budgetbar with the price.
+     - Allow editing of that value only if the vendor isn’t finalized.
+   - Vendor name should be clickable in budget to view their profile.
+
+4. 💾 **DATA FLOW & STORAGE:**
+   - Ensure backend routes are created:
+     - POST `/api/tasks/add` → Add task
+     - GET `/api/tasks/:userId` → Fetch all tasks
+     - POST `/api/budget/add` → Add or auto-insert budget items
+     - GET `/api/budget/:userId` → Fetch user's budget items
+   - All routes must include `userId` from JWT auth middleware
+
+5. 🎨 **UI ENHANCEMENTS:**
+   - Use Tailwind CSS to:
+     - Show progress bars (Tasks Completed % and Budget Used %)
+     - Add light animations when adding/removing tasks or budget items
+   - Add floating “Add Task” and “Add Budget” buttons with modals
+   - Ensure responsiveness on mobile and tablet
+
+6. 🧪 **TESTING & SMOOTH FLOW:**
+   - Test the following scenarios:
+     - Task added → persists after refresh
+     - Vendor added → budget auto-updates
+     - Task completion → UI progress and celebration
+     - Budget entry removal → total recalculates instantly
+
+7. 🧩 **BONUS:**
+   - Add quick filters: "All Tasks", "Completed", "Pending"
+   - Show Budget Alerts: “You're exceeding budget!” if over limit
+   - Enable download of tasks & budget report as PDF
+
+This feature should enhance the overall wedding planning experience for users and seamlessly connect their vendor bookings with budget planning, encouraging smooth navigation between sections and data visibility. All code should be tested, optimized, and visually refined using animations and transitions.

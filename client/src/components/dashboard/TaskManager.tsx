@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { 
   fetchWithAuth, 
@@ -8,7 +8,7 @@ import {
   invalidateQueries 
 } from '@/lib/api';
 import { Task } from '@shared/schema';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { fadeIn, itemVariants } from '@/lib/motion';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -16,7 +16,10 @@ import {
   Clock, 
   AlertTriangle, 
   Trash2, 
-  Plus 
+  Plus,
+  Filter,
+  CheckCheck,
+  Clock8 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +52,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import confetti from 'canvas-confetti';
 
 const taskSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters long'),

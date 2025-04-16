@@ -357,9 +357,13 @@ const SupervisorDashboard: React.FC = () => {
                     </TabsContent>
 
                     <TabsContent value="vendors">
-                      <div className="text-center py-8 text-gray-500">
-                        Vendor bookings will appear here
-                      </div>
+                      {selectedClient ? (
+                        <VendorAssignment client={selectedClient} />
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          Select a client to manage vendor assignments
+                        </div>
+                      )}
                     </TabsContent>
 
                     <TabsContent value="timeline">

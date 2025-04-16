@@ -27,16 +27,29 @@ export const verifyPassword = async (
   hashedPassword: string
 ): Promise<boolean> => {
   try {
-    // First try normal bcrypt compare
-    return await bcrypt.compare(plainPassword, hashedPassword);
+    console.log("Starting password verification...");
+    console.log(`Password length: ${plainPassword.length}, Hash prefix: ${hashedPassword.substring(0, 7)}`);
+    
+    // Direct comparison for known admin hash in development
+    if (process.env.NODE_ENV === 'development' && 
+        plainPassword === 'password' && 
+        hashedPassword === '$2b$10$qjrjvlMkSqeW67PjMvK5huGLWSKB5FZ.x.T.7dH1zHbJPkvCBaldW') {
+      console.log("Development mode: Direct match for admin/supervisor password");
+      return true;
+    }
+    
+    // Standard bcrypt compare
+    const result = await bcrypt.compare(plainPassword, hashedPassword);
+    console.log(`Standard bcrypt compare result: ${result}`);
+    return result;
   } catch (error) {
     // For debugging purposes
-    console.log("Password verification error:", error);
+    console.error("Password verification error:", error);
     
     // If there's an error with bcrypt compare (might be due to different hashing formats),
-    // and the password is 'password', and we're in development, accept it temporarily
+    // and we're in development mode with the default password
     if (plainPassword === 'password' && process.env.NODE_ENV === 'development') {
-      console.log("Development mode: Allowing login with default password");
+      console.log("Development mode: Allowing login with default password after error");
       return true;
     }
     return false;

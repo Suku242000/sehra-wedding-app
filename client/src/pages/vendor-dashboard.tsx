@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { Link } from 'wouter';
 import Layout from '@/components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fadeIn, staggerContainer } from '@/lib/motion';
@@ -9,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { VendorBooking, VendorProfile, User } from '@shared/schema';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import { LogoutButton } from '@/components/LogoutButton';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -296,102 +298,105 @@ const VendorDashboard: React.FC = () => {
                 Welcome back, {user?.name}. Manage your vendor services and bookings here.
               </p>
             </div>
-            <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="mt-4 md:mt-0">
-                  Edit Profile
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Edit Vendor Profile</DialogTitle>
-                  <DialogDescription>
-                    Update your vendor information to attract more clients
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="grid w-full gap-4">
-                    <div className="grid gap-2">
-                      <label htmlFor="businessName" className="text-sm font-medium">Business Name</label>
-                      <Input 
-                        id="businessName" 
-                        value={profileForm.businessName}
-                        onChange={(e) => setProfileForm({...profileForm, businessName: e.target.value})}
-                        placeholder="Your business name"
-                      />
-                    </div>
-                    
-                    <div className="grid gap-2">
-                      <label htmlFor="vendorType" className="text-sm font-medium">Vendor Type</label>
-                      <select 
-                        id="vendorType" 
-                        value={profileForm.vendorType}
-                        onChange={(e) => setProfileForm({...profileForm, vendorType: e.target.value})}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      >
-                        <option value="">Select vendor type</option>
-                        <option value="hotel">Hotel & Venue</option>
-                        <option value="photographer">Photography</option>
-                        <option value="videographer">Videography</option>
-                        <option value="catering">Catering</option>
-                        <option value="makeup">Makeup Artist</option>
-                        <option value="hairdresser">Hairdresser</option>
-                        <option value="decoration">Decoration</option>
-                        <option value="mehandi">Mehandi</option>
-                        <option value="dj">DJ & Music</option>
-                        <option value="lighting">Lighting</option>
-                      </select>
-                    </div>
-                    
-                    <div className="grid gap-2">
-                      <label htmlFor="description" className="text-sm font-medium">Description</label>
-                      <textarea 
-                        id="description" 
-                        rows={3}
-                        value={profileForm.description}
-                        onChange={(e) => setProfileForm({...profileForm, description: e.target.value})}
-                        placeholder="Describe your services"
-                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none"
-                      />
-                    </div>
-                    
-                    <div className="grid gap-2">
-                      <label htmlFor="location" className="text-sm font-medium">Location</label>
-                      <Input 
-                        id="location" 
-                        value={profileForm.location}
-                        onChange={(e) => setProfileForm({...profileForm, location: e.target.value})}
-                        placeholder="Your business location"
-                      />
-                    </div>
-                    
-                    <div className="grid gap-2">
-                      <label htmlFor="priceRange" className="text-sm font-medium">Price Range</label>
-                      <Input 
-                        id="priceRange" 
-                        value={profileForm.priceRange}
-                        onChange={(e) => setProfileForm({...profileForm, priceRange: e.target.value})}
-                        placeholder="e.g. ₹25,000 - ₹50,000"
-                      />
+            <div className="flex flex-col md:flex-row gap-2 mt-4 md:mt-0">
+              <LogoutButton />
+              <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                    Edit Profile
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Edit Vendor Profile</DialogTitle>
+                    <DialogDescription>
+                      Update your vendor information to attract more clients
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="grid w-full gap-4">
+                      <div className="grid gap-2">
+                        <label htmlFor="businessName" className="text-sm font-medium">Business Name</label>
+                        <Input 
+                          id="businessName" 
+                          value={profileForm.businessName}
+                          onChange={(e) => setProfileForm({...profileForm, businessName: e.target.value})}
+                          placeholder="Your business name"
+                        />
+                      </div>
+                      
+                      <div className="grid gap-2">
+                        <label htmlFor="vendorType" className="text-sm font-medium">Vendor Type</label>
+                        <select 
+                          id="vendorType" 
+                          value={profileForm.vendorType}
+                          onChange={(e) => setProfileForm({...profileForm, vendorType: e.target.value})}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        >
+                          <option value="">Select vendor type</option>
+                          <option value="hotel">Hotel & Venue</option>
+                          <option value="photographer">Photography</option>
+                          <option value="videographer">Videography</option>
+                          <option value="catering">Catering</option>
+                          <option value="makeup">Makeup Artist</option>
+                          <option value="hairdresser">Hairdresser</option>
+                          <option value="decoration">Decoration</option>
+                          <option value="mehandi">Mehandi</option>
+                          <option value="dj">DJ & Music</option>
+                          <option value="lighting">Lighting</option>
+                        </select>
+                      </div>
+                      
+                      <div className="grid gap-2">
+                        <label htmlFor="description" className="text-sm font-medium">Description</label>
+                        <textarea 
+                          id="description" 
+                          rows={3}
+                          value={profileForm.description}
+                          onChange={(e) => setProfileForm({...profileForm, description: e.target.value})}
+                          placeholder="Describe your services"
+                          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none"
+                        />
+                      </div>
+                      
+                      <div className="grid gap-2">
+                        <label htmlFor="location" className="text-sm font-medium">Location</label>
+                        <Input 
+                          id="location" 
+                          value={profileForm.location}
+                          onChange={(e) => setProfileForm({...profileForm, location: e.target.value})}
+                          placeholder="Your business location"
+                        />
+                      </div>
+                      
+                      <div className="grid gap-2">
+                        <label htmlFor="priceRange" className="text-sm font-medium">Price Range</label>
+                        <Input 
+                          id="priceRange" 
+                          value={profileForm.priceRange}
+                          onChange={(e) => setProfileForm({...profileForm, priceRange: e.target.value})}
+                          placeholder="e.g. ₹25,000 - ₹50,000"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-                <DialogFooter>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setIsEditProfileOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={() => updateProfileMutation.mutate(profileForm)}
-                    disabled={updateProfileMutation.isPending}
-                  >
-                    {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                  <DialogFooter>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setIsEditProfileOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={() => updateProfileMutation.mutate(profileForm)}
+                      disabled={updateProfileMutation.isPending}
+                    >
+                      {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
         </motion.div>
 
@@ -622,55 +627,89 @@ const VendorDashboard: React.FC = () => {
                       modifiersStyles={{
                         booked: {
                           backgroundColor: 'rgba(128, 0, 0, 0.1)',
-                          fontWeight: 'bold'
+                          fontWeight: 'bold',
+                          color: '#800000'
                         }
                       }}
                     />
                   </div>
                   <div>
-                    <h3 className="font-semibold mb-4">
-                      {date ? (
-                        <span className="flex items-center">
-                          <CalendarIcon className="mr-2 h-5 w-5" />
-                          Bookings for {date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                        </span>
-                      ) : (
-                        "Select a date to view bookings"
-                      )}
+                    <h3 className="text-lg font-medium mb-4">
+                      {filteredBookings.length > 0 ? 
+                        `Events on ${date && format(date, 'PPP')}` : 
+                        `No events on ${date && format(date, 'PPP')}`
+                      }
                     </h3>
-                    {filteredBookings.length > 0 ? (
-                      <div className="space-y-4">
-                        {filteredBookings.map((booking) => (
-                          <div key={booking.id} className="border rounded-lg p-4">
-                            <div className="flex justify-between mb-2">
-                              <h4 className="font-medium">Client ID: {booking.userId}</h4>
-                              <Badge
-                                variant={booking.status === 'confirmed' ? "default" : "outline"}
-                              >
-                                {booking.status}
-                              </Badge>
+                    
+                    <div className="space-y-3">
+                      {filteredBookings.map((booking) => (
+                        <Card key={booking.id} className="overflow-hidden">
+                          <div className="flex flex-col sm:flex-row">
+                            <div className={`p-4 w-full sm:w-2 ${
+                              booking.status === 'confirmed' ? 'bg-green-100' :
+                              booking.status === 'cancelled' ? 'bg-red-100' : 'bg-yellow-100'
+                            }`}>
                             </div>
-                            <p className="text-gray-600 text-sm mb-2">{booking.details}</p>
-                            <div className="flex items-center text-xs text-gray-500">
-                              <ClockIcon className="h-3 w-3 mr-1" />
-                              <span>
-                                {new Date(booking.eventDate).toLocaleTimeString('en-US', {
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
-                            </div>
-                            <div className="mt-4 flex justify-end space-x-2">
-                              <Button variant="outline" size="sm">View Details</Button>
-                            </div>
+                            <CardContent className="p-4 flex-1">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                  <h4 className="font-medium">
+                                    {getClientName(booking.userId)}
+                                  </h4>
+                                  <p className="text-sm text-gray-500">
+                                    {format(new Date(booking.eventDate), 'h:mm a')} - Event: {booking.eventType}
+                                  </p>
+                                </div>
+                                <div className="mt-2 sm:mt-0">
+                                  <Badge className={
+                                    booking.status === 'confirmed' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
+                                    booking.status === 'cancelled' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 
+                                    'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
+                                  }>
+                                    {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                                  </Badge>
+                                </div>
+                              </div>
+                              
+                              {booking.status === 'pending' && (
+                                <div className="mt-3 flex space-x-2">
+                                  <Button 
+                                    variant="default" 
+                                    size="sm"
+                                    className="bg-green-600 hover:bg-green-700"
+                                    onClick={() => acceptBookingMutation.mutate(booking.id)}
+                                    disabled={acceptBookingMutation.isPending}
+                                  >
+                                    <CheckIcon className="mr-1 h-4 w-4" />
+                                    Accept
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="text-red-600 border-red-600 hover:bg-red-50"
+                                    onClick={() => declineBookingMutation.mutate(booking.id)}
+                                    disabled={declineBookingMutation.isPending}
+                                  >
+                                    <XIcon className="mr-1 h-4 w-4" />
+                                    Decline
+                                  </Button>
+                                </div>
+                              )}
+                            </CardContent>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        No bookings for this date
-                      </div>
-                    )}
+                        </Card>
+                      ))}
+                      
+                      {filteredBookings.length === 0 && (
+                        <div className="text-center py-8 bg-gray-50 rounded-lg">
+                          <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                          <h3 className="text-gray-500 font-medium">No bookings scheduled</h3>
+                          <p className="text-sm text-gray-400 mt-1">
+                            You have no events scheduled for this date
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -679,374 +718,388 @@ const VendorDashboard: React.FC = () => {
           
           <TabsContent value="bookings">
             <Card>
-              <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <CardTitle>All Bookings</CardTitle>
-                  <CardDescription>Manage your bookings and events</CardDescription>
-                </div>
-                <div className="flex space-x-2">
-                  <Button variant="outline" size="sm" className="hidden sm:flex">
-                    <UserIcon className="mr-2 h-4 w-4" />
-                    View Clients
-                  </Button>
-                  <Button size="sm" className="hidden sm:flex">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    Export Calendar
-                  </Button>
-                </div>
+              <CardHeader>
+                <CardTitle>Booking Requests</CardTitle>
+                <CardDescription>Manage all your booking requests</CardDescription>
               </CardHeader>
               <CardContent>
-                <Tabs defaultValue="pending">
-                  <TabsList className="w-full mb-4">
-                    <TabsTrigger value="pending" className="flex-1">
-                      <div className="flex items-center">
-                        <ClockIcon className="mr-2 h-4 w-4" />
-                        Pending ({bookings.filter(b => b.status === 'pending').length})
-                      </div>
-                    </TabsTrigger>
-                    <TabsTrigger value="confirmed" className="flex-1">
-                      <div className="flex items-center">
-                        <CheckIcon className="mr-2 h-4 w-4" />
-                        Confirmed ({bookings.filter(b => b.status === 'confirmed').length})
-                      </div>
-                    </TabsTrigger>
-                    <TabsTrigger value="cancelled" className="flex-1">
-                      <div className="flex items-center">
-                        <XIcon className="mr-2 h-4 w-4" />
-                        Cancelled ({bookings.filter(b => b.status === 'cancelled').length})
-                      </div>
-                    </TabsTrigger>
-                  </TabsList>
-                
-                  <TabsContent value="pending">
-                    {bookings.filter(b => b.status === 'pending').length > 0 ? (
-                      <div className="space-y-4">
-                        {bookings
-                          .filter(b => b.status === 'pending')
-                          .map((booking) => (
-                            <motion.div 
-                              key={booking.id}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-4 rounded-lg border shadow-sm"
-                            >
-                              <div className="flex items-start gap-4">
-                                <div className="bg-[#800000]/10 rounded-full p-3 hidden sm:flex">
-                                  <CalendarIcon className="h-6 w-6 text-[#800000]" />
-                                </div>
-                                <div>
-                                  <div className="flex items-center">
-                                    <h3 className="font-medium">{getClientName(booking.userId)}</h3>
-                                    <Badge className="ml-2" variant="outline">Pending</Badge>
+                <div className="space-y-4">
+                  {bookings.length === 0 ? (
+                    <div className="text-center py-8 bg-gray-50 rounded-lg">
+                      <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <h3 className="text-gray-500 font-medium">No bookings yet</h3>
+                      <p className="text-sm text-gray-400 mt-1">
+                        Your bookings will appear here once clients make requests
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4">
+                      {bookings.map((booking) => {
+                        const isPendingRequest = booking.status === 'pending';
+                        const eventDate = new Date(booking.eventDate);
+                        const isUpcoming = isFuture(eventDate);
+                        const isPast = isPast(eventDate);
+                        
+                        return (
+                          <motion.div
+                            key={booking.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <Card className="overflow-hidden">
+                              <div className="flex flex-col sm:flex-row">
+                                <div className={`p-4 w-full sm:w-2 ${
+                                  booking.status === 'confirmed' ? 'bg-green-100' :
+                                  booking.status === 'cancelled' ? 'bg-red-100' : 'bg-yellow-100'
+                                }`}></div>
+                                <CardContent className="p-6 flex-1">
+                                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+                                    <div>
+                                      <h4 className="text-lg font-medium">
+                                        {getClientName(booking.userId)}
+                                      </h4>
+                                      <div className="flex items-center text-sm text-gray-500 mt-1">
+                                        <CalendarIcon className="mr-1 h-4 w-4" />
+                                        {format(eventDate, 'PPP')}
+                                        <span className="mx-2">•</span>
+                                        <ClockIcon className="mr-1 h-4 w-4" />
+                                        {format(eventDate, 'p')}
+                                      </div>
+                                    </div>
+                                    <div className="mt-3 sm:mt-0 flex items-center">
+                                      <Badge className={`mr-2 ${
+                                        booking.status === 'confirmed' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
+                                        booking.status === 'cancelled' ? 'bg-red-100 text-red-800 hover:bg-red-100' : 
+                                        'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
+                                      }`}>
+                                        {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                                      </Badge>
+                                      {isUpcoming && (
+                                        <Badge variant="outline" className="border-blue-200 text-blue-700">
+                                          {differenceInDays(eventDate, new Date())} days left
+                                        </Badge>
+                                      )}
+                                      {isPast && (
+                                        <Badge variant="outline" className="border-gray-200 text-gray-700">
+                                          Completed
+                                        </Badge>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="text-sm text-gray-600 mt-1">
-                                    <span className="font-semibold">Event Date:</span> {format(new Date(booking.eventDate), 'PPP')}
+                                  
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                    <div className="flex flex-col">
+                                      <span className="text-sm font-medium">Event Type</span>
+                                      <span className="text-sm">{booking.eventType}</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <span className="text-sm font-medium">Location</span>
+                                      <span className="text-sm">{booking.location || 'Not specified'}</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <span className="text-sm font-medium">Budget</span>
+                                      <span className="text-sm">
+                                        {new Intl.NumberFormat('en-IN', {
+                                          style: 'currency',
+                                          currency: 'INR',
+                                          maximumFractionDigits: 0
+                                        }).format(booking.budget)}
+                                      </span>
+                                    </div>
                                   </div>
-                                  <div className="text-sm text-gray-600">
-                                    <span className="font-semibold">Details:</span> {booking.details || 'No details provided'}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 mt-4 sm:mt-0 w-full sm:w-auto">
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  className="flex-1 sm:flex-none"
-                                  onClick={() => declineBookingMutation.mutate(booking.id)}
-                                  disabled={declineBookingMutation.isPending}
-                                >
-                                  <XIcon className="mr-2 h-4 w-4" />
-                                  Decline
-                                </Button>
-                                <Button 
-                                  size="sm"
-                                  className="flex-1 sm:flex-none"
-                                  onClick={() => acceptBookingMutation.mutate(booking.id)}
-                                  disabled={acceptBookingMutation.isPending}
-                                >
-                                  <CheckIcon className="mr-2 h-4 w-4" />
-                                  Accept
-                                </Button>
-                              </div>
-                            </motion.div>
-                          ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12 text-gray-500">
-                        No pending bookings available
-                      </div>
-                    )}
-                  </TabsContent>
-                
-                  <TabsContent value="confirmed">
-                    {bookings.filter(b => b.status === 'confirmed').length > 0 ? (
-                      <div className="space-y-4">
-                        {bookings
-                          .filter(b => b.status === 'confirmed')
-                          .map((booking) => (
-                            <motion.div 
-                              key={booking.id}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-4 rounded-lg border shadow-sm"
-                            >
-                              <div className="flex items-start gap-4">
-                                <div className={`rounded-full p-3 hidden sm:flex ${
-                                  isFuture(new Date(booking.eventDate)) 
-                                    ? 'bg-green-100' 
-                                    : 'bg-blue-100'
-                                }`}>
-                                  <CalendarIcon className={`h-6 w-6 ${
-                                    isFuture(new Date(booking.eventDate)) 
-                                      ? 'text-green-600' 
-                                      : 'text-blue-600'
-                                  }`} />
-                                </div>
-                                <div>
-                                  <div className="flex items-center">
-                                    <h3 className="font-medium">{getClientName(booking.userId)}</h3>
-                                    <Badge className="ml-2" variant="default">Confirmed</Badge>
-                                  </div>
-                                  <div className="text-sm text-gray-600 mt-1">
-                                    <span className="font-semibold">Event Date:</span> {format(new Date(booking.eventDate), 'PPP')}
-                                  </div>
-                                  <div className="text-sm text-gray-600">
-                                    <span className="font-semibold">Details:</span> {booking.details || 'No details provided'}
-                                  </div>
-                                  {isFuture(new Date(booking.eventDate)) && (
-                                    <div className="text-xs text-green-600 mt-1 flex items-center">
-                                      <ClockIcon className="mr-1 h-3 w-3" />
-                                      {differenceInDays(new Date(booking.eventDate), new Date())} days remaining
+                                  
+                                  {booking.notes && (
+                                    <div className="bg-gray-50 p-3 rounded-md text-sm text-gray-700 mb-4">
+                                      <div className="font-medium text-xs text-gray-500 mb-1">Notes</div>
+                                      {booking.notes}
                                     </div>
                                   )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 mt-4 sm:mt-0 w-full sm:w-auto">
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  className="flex-1 sm:flex-none"
-                                  onClick={() => setBookingDetailsId(booking.id)}
-                                >
-                                  <MessageSquareIcon className="mr-2 h-4 w-4" />
-                                  Contact
-                                </Button>
-                                <Button 
-                                  size="sm"
-                                  className="flex-1 sm:flex-none"
-                                  onClick={() => setBookingDetailsId(booking.id)}
-                                >
-                                  <MoreHorizontalIcon className="mr-2 h-4 w-4" />
-                                  Details
-                                </Button>
-                              </div>
-                            </motion.div>
-                          ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12 text-gray-500">
-                        No confirmed bookings available
-                      </div>
-                    )}
-                  </TabsContent>
-                
-                  <TabsContent value="cancelled">
-                    {bookings.filter(b => b.status === 'cancelled').length > 0 ? (
-                      <div className="space-y-4">
-                        {bookings
-                          .filter(b => b.status === 'cancelled')
-                          .map((booking) => (
-                            <motion.div 
-                              key={booking.id}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-4 rounded-lg border shadow-sm opacity-70"
-                            >
-                              <div className="flex items-start gap-4">
-                                <div className="bg-gray-100 rounded-full p-3 hidden sm:flex">
-                                  <CalendarIcon className="h-6 w-6 text-gray-400" />
-                                </div>
-                                <div>
-                                  <div className="flex items-center">
-                                    <h3 className="font-medium">{getClientName(booking.userId)}</h3>
-                                    <Badge className="ml-2" variant="outline">Cancelled</Badge>
+                                  
+                                  <div className="flex flex-wrap gap-2">
+                                    <Dialog
+                                      open={bookingDetailsId === booking.id}
+                                      onOpenChange={(open) => setBookingDetailsId(open ? booking.id : null)}
+                                    >
+                                      <DialogTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                          <MessageSquareIcon className="mr-1 h-4 w-4" />
+                                          View Details
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent className="sm:max-w-md">
+                                        <DialogHeader>
+                                          <DialogTitle>Booking Details</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="space-y-4 py-4">
+                                          <div className="flex justify-between items-center">
+                                            <span className="font-medium">Client Name</span>
+                                            <span>{getClientName(booking.userId)}</span>
+                                          </div>
+                                          <Separator />
+                                          <div className="flex justify-between items-center">
+                                            <span className="font-medium">Event Date</span>
+                                            <span>{format(new Date(booking.eventDate), 'PPP')}</span>
+                                          </div>
+                                          <Separator />
+                                          <div className="flex justify-between items-center">
+                                            <span className="font-medium">Event Time</span>
+                                            <span>{format(new Date(booking.eventDate), 'p')}</span>
+                                          </div>
+                                          <Separator />
+                                          <div className="flex justify-between items-center">
+                                            <span className="font-medium">Event Type</span>
+                                            <span>{booking.eventType}</span>
+                                          </div>
+                                          <Separator />
+                                          <div className="flex justify-between items-center">
+                                            <span className="font-medium">Location</span>
+                                            <span>{booking.location || 'Not specified'}</span>
+                                          </div>
+                                          <Separator />
+                                          <div className="flex justify-between items-center">
+                                            <span className="font-medium">Budget</span>
+                                            <span>
+                                              {new Intl.NumberFormat('en-IN', {
+                                                style: 'currency',
+                                                currency: 'INR',
+                                                maximumFractionDigits: 0
+                                              }).format(booking.budget)}
+                                            </span>
+                                          </div>
+                                          <Separator />
+                                          <div className="flex justify-between items-center">
+                                            <span className="font-medium">Status</span>
+                                            <Badge className={
+                                              booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                              booking.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
+                                              'bg-yellow-100 text-yellow-800'
+                                            }>
+                                              {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                                            </Badge>
+                                          </div>
+                                          {booking.notes && (
+                                            <>
+                                              <Separator />
+                                              <div>
+                                                <div className="font-medium mb-2">Notes</div>
+                                                <div className="bg-gray-50 p-3 rounded-md text-sm">
+                                                  {booking.notes}
+                                                </div>
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
+                                        {isPendingRequest && (
+                                          <DialogFooter>
+                                            <Button 
+                                              variant="outline" 
+                                              className="text-red-600 border-red-600 hover:bg-red-50"
+                                              onClick={() => {
+                                                declineBookingMutation.mutate(booking.id);
+                                                setBookingDetailsId(null);
+                                              }}
+                                              disabled={declineBookingMutation.isPending}
+                                            >
+                                              <XIcon className="mr-1 h-4 w-4" />
+                                              Decline
+                                            </Button>
+                                            <Button 
+                                              className="bg-green-600 hover:bg-green-700"
+                                              onClick={() => {
+                                                acceptBookingMutation.mutate(booking.id);
+                                                setBookingDetailsId(null);
+                                              }}
+                                              disabled={acceptBookingMutation.isPending}
+                                            >
+                                              <CheckIcon className="mr-1 h-4 w-4" />
+                                              Accept
+                                            </Button>
+                                          </DialogFooter>
+                                        )}
+                                      </DialogContent>
+                                    </Dialog>
+                                    {isPendingRequest && (
+                                      <>
+                                        <Button 
+                                          variant="default" 
+                                          size="sm"
+                                          className="bg-green-600 hover:bg-green-700"
+                                          onClick={() => acceptBookingMutation.mutate(booking.id)}
+                                          disabled={acceptBookingMutation.isPending}
+                                        >
+                                          <CheckIcon className="mr-1 h-4 w-4" />
+                                          Accept
+                                        </Button>
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm"
+                                          className="text-red-600 border-red-600 hover:bg-red-50"
+                                          onClick={() => declineBookingMutation.mutate(booking.id)}
+                                          disabled={declineBookingMutation.isPending}
+                                        >
+                                          <XIcon className="mr-1 h-4 w-4" />
+                                          Decline
+                                        </Button>
+                                      </>
+                                    )}
                                   </div>
-                                  <div className="text-sm text-gray-600 mt-1">
-                                    <span className="font-semibold">Event Date:</span> {format(new Date(booking.eventDate), 'PPP')}
-                                  </div>
-                                  <div className="text-sm text-gray-600">
-                                    <span className="font-semibold">Details:</span> {booking.details || 'No details provided'}
-                                  </div>
-                                </div>
+                                </CardContent>
                               </div>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                className="mt-4 sm:mt-0"
-                                onClick={() => setBookingDetailsId(booking.id)}
-                              >
-                                <MoreHorizontalIcon className="mr-2 h-4 w-4" />
-                                Details
-                              </Button>
-                            </motion.div>
-                          ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12 text-gray-500">
-                        No cancelled bookings available
-                      </div>
-                    )}
-                  </TabsContent>
-                </Tabs>
+                            </Card>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
-            
-            {/* Booking Details Dialog */}
-            <Dialog open={!!bookingDetailsId} onOpenChange={(open) => !open && setBookingDetailsId(null)}>
-              <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                  <DialogTitle>Booking Details</DialogTitle>
-                  <DialogDescription>
-                    View complete information about this booking
-                  </DialogDescription>
-                </DialogHeader>
-                
-                {selectedBooking && (
-                  <div className="space-y-4 py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="font-medium text-lg">{getClientName(selectedBooking.userId)}</div>
-                      <Badge variant={selectedBooking.status === 'confirmed' ? "default" : selectedBooking.status === 'pending' ? "outline" : "secondary"}>
-                        {selectedBooking.status}
-                      </Badge>
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <div className="text-sm text-gray-500">Event Date</div>
-                        <div className="font-medium">{format(new Date(selectedBooking.eventDate), 'PPP')}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm text-gray-500">Time</div>
-                        <div className="font-medium">
-                          {format(new Date(selectedBooking.eventDate), 'h:mm a')}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-sm text-gray-500">Booked On</div>
-                        <div className="font-medium">{format(new Date(selectedBooking.createdAt || ''), 'PPP')}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm text-gray-500">Booking ID</div>
-                        <div className="font-medium">{selectedBooking.id}</div>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <div className="text-sm text-gray-500 mb-1">Details</div>
-                      <div className="p-3 bg-gray-50 rounded-md text-sm">
-                        {selectedBooking.details || "No additional details provided."}
-                      </div>
-                    </div>
-                    
-                    {selectedBooking.status === 'pending' && (
-                      <div className="flex space-x-3 mt-4">
-                        <Button 
-                          variant="outline" 
-                          className="flex-1"
-                          onClick={() => {
-                            declineBookingMutation.mutate(selectedBooking.id);
-                            setBookingDetailsId(null);
-                          }}
-                          disabled={declineBookingMutation.isPending}
-                        >
-                          <XIcon className="mr-2 h-4 w-4" />
-                          Decline
-                        </Button>
-                        <Button 
-                          className="flex-1"
-                          onClick={() => {
-                            acceptBookingMutation.mutate(selectedBooking.id);
-                            setBookingDetailsId(null);
-                          }}
-                          disabled={acceptBookingMutation.isPending}
-                        >
-                          <CheckIcon className="mr-2 h-4 w-4" />
-                          Accept
-                        </Button>
-                      </div>
-                    )}
-                    
-                    <div className="flex space-x-3 mt-4">
-                      <Button variant="outline" className="flex-1">
-                        Contact Client
-                      </Button>
-                      {selectedBooking.status === 'confirmed' && (
-                        <Button className="flex-1">
-                          Send Reminder
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </DialogContent>
-            </Dialog>
           </TabsContent>
           
           <TabsContent value="reviews">
             <Card>
               <CardHeader>
-                <CardTitle>Client Reviews & Ratings</CardTitle>
+                <CardTitle>Client Reviews</CardTitle>
                 <CardDescription>
-                  See what clients are saying about your services
+                  See what clients say about your services
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {/* Example reviews - in a real app, these would come from the API */}
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="bg-[#800000] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center mr-3">
-                      4.8
-                    </div>
-                    <div>
-                      <div className="flex items-center mb-1">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <StarIcon 
-                            key={i} 
-                            className={`h-4 w-4 ${i < 5 ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`} 
-                          />
-                        ))}
-                      </div>
-                      <div className="text-sm text-gray-500">Based on 12 reviews</div>
-                    </div>
-                  </div>
-                </div>
-                
+                {/* For this example, we'll use mock reviews */}
                 <ReviewCard 
-                  author="Priya Sharma"
+                  author="Deepak Sharma"
+                  date="April 10, 2025"
+                  rating={5}
+                  comment="Absolutely outstanding service. The photographer was punctual, professional, and delivered stunning images that captured every special moment of our wedding day."
+                />
+                <ReviewCard 
+                  author="Priya Patel"
+                  date="March 28, 2025"
+                  rating={4}
+                  comment="Great service overall. The photos were beautiful and the team was very accommodating. Would have given 5 stars if we had received the edited photos a bit earlier."
+                />
+                <ReviewCard 
+                  author="Arjun Singh"
                   date="March 15, 2025"
                   rating={5}
-                  comment="Amazing service! Our wedding photos turned out absolutely stunning. The team was professional and captured all the special moments perfectly."
+                  comment="Exceeded our expectations! They went above and beyond to capture our wedding day perfectly. Highly recommend to anyone looking for a professional photography service."
                 />
                 
-                <ReviewCard 
-                  author="Raj Patel"
-                  date="February 28, 2025"
-                  rating={4}
-                  comment="Great attention to detail and very accommodating to our special requests. Would recommend to others."
-                />
-                
-                <ReviewCard 
-                  author="Anjali Gupta"
-                  date="January 10, 2025"
-                  rating={5}
-                  comment="The decoration was beyond our expectations. Everyone complimented how beautiful everything looked!"
-                />
+                <div className="mt-8 bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center">
+                    <ThumbsUpIcon className="h-5 w-5 text-[#800000] mr-2" />
+                    <span className="font-medium">Tips for getting great reviews:</span>
+                  </div>
+                  <ul className="space-y-1 text-sm text-gray-500 mt-2 list-disc pl-5">
+                    <li>Always exceed client expectations</li>
+                    <li>Communicate clearly and promptly</li>
+                    <li>Be flexible with unexpected changes</li>
+                    <li>Follow up after the event to ensure satisfaction</li>
+                    <li>Deliver final products on time or earlier if possible</li>
+                  </ul>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+        
+        {/* Booking Details Dialog */}
+        <Dialog open={!!selectedBooking} onOpenChange={(open) => !open && setBookingDetailsId(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Booking Details</DialogTitle>
+            </DialogHeader>
+            {selectedBooking && (
+              <div className="space-y-4 py-4">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Client Name</span>
+                  <span>{getClientName(selectedBooking.userId)}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Event Date</span>
+                  <span>{format(new Date(selectedBooking.eventDate), 'PPP')}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Event Time</span>
+                  <span>{format(new Date(selectedBooking.eventDate), 'p')}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Event Type</span>
+                  <span>{selectedBooking.eventType}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Location</span>
+                  <span>{selectedBooking.location || 'Not specified'}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Budget</span>
+                  <span>
+                    {new Intl.NumberFormat('en-IN', {
+                      style: 'currency',
+                      currency: 'INR',
+                      maximumFractionDigits: 0
+                    }).format(selectedBooking.budget)}
+                  </span>
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Status</span>
+                  <Badge className={
+                    selectedBooking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                    selectedBooking.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
+                    'bg-yellow-100 text-yellow-800'
+                  }>
+                    {selectedBooking.status.charAt(0).toUpperCase() + selectedBooking.status.slice(1)}
+                  </Badge>
+                </div>
+                {selectedBooking.notes && (
+                  <>
+                    <Separator />
+                    <div>
+                      <div className="font-medium mb-2">Notes</div>
+                      <div className="bg-gray-50 p-3 rounded-md text-sm">
+                        {selectedBooking.notes}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+            {selectedBooking && selectedBooking.status === 'pending' && (
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  className="text-red-600 border-red-600 hover:bg-red-50"
+                  onClick={() => {
+                    declineBookingMutation.mutate(selectedBooking.id);
+                    setBookingDetailsId(null);
+                  }}
+                  disabled={declineBookingMutation.isPending}
+                >
+                  <XIcon className="mr-1 h-4 w-4" />
+                  Decline
+                </Button>
+                <Button 
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    acceptBookingMutation.mutate(selectedBooking.id);
+                    setBookingDetailsId(null);
+                  }}
+                  disabled={acceptBookingMutation.isPending}
+                >
+                  <CheckIcon className="mr-1 h-4 w-4" />
+                  Accept
+                </Button>
+              </DialogFooter>
+            )}
+          </DialogContent>
+        </Dialog>
       </motion.div>
     </Layout>
   );

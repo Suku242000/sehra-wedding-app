@@ -103,19 +103,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
+      console.log("Login attempt with:", { email: req.body.email, password: req.body.password ? "******" : undefined });
+      
       const validatedData = loginSchema.parse(req.body);
       
       // Check if user exists
       const user = await storage.getUserByEmail(validatedData.email);
+      console.log("User found:", user ? { id: user.id, email: user.email, role: user.role } : "No user found");
+      
       if (!user) {
         return res.status(400).json({ message: "Invalid email or password" });
       }
       
       // Verify password
+      console.log("Attempting password verification with provided password and hash:", { 
+        providedPasswordLength: validatedData.password.length,
+        storedHashFormat: user.password.substring(0, 10) + "..." 
+      });
+      
       const isPasswordValid = await verifyPassword(
         validatedData.password,
         user.password
       );
+      
+      console.log("Password verification result:", isPasswordValid);
       
       if (!isPasswordValid) {
         return res.status(400).json({ message: "Invalid email or password" });
@@ -123,6 +134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Generate token
       const token = generateToken(user);
+      console.log("Login successful, token generated");
       
       // Return user data (excluding password) and token
       const { password, ...userData } = user;

@@ -1,0 +1,79 @@
+Enhance the Sehra wedding planning app (React frontend + Node.js/Express backend + MongoDB) by implementing three key sections in the user dashboard for bride, groom, and family roles. These sections are: My Wedding, Vendors, and Guests. Each section should be visually engaging, feature-rich, and role-specific.
+
+💍 1. My Wedding Section:
+A complete personal wedding overview with planning status and tools.
+
+Features to include:
+
+Wedding Date & Venue (editable)
+
+Wedding Countdown Timer with Milestone Reminders
+
+Package Overview (Silver, Gold, Platinum – show what’s included)
+
+Assigned Supervisor Info with contact
+
+Wedding Progress Bar (auto-updates as tasks complete)
+
+Wedding Checklist (interactive, shows XP or badge unlocks)
+
+Budget Overview (linked to Budget Mood Tracker)
+
+Wedding Style Board (Moodboard integration – pin styles & colors)
+
+Invite Link Generator (for guests)
+
+Option to Upload/Preview Invitation Card Design
+
+🤝 2. Vendors Section:
+Helps users discover, shortlist, and communicate with vendors.
+
+Features to include:
+
+Vendor Discovery Grid by Category:
+
+Hotel, Catering, Makeup, Photography, Videography, Designer, Mehendi, Mandap, Pandit, Entertainment, Travel
+
+Vendor Cards: Name, rating, image, price range, availability badge
+
+Emoji-react Chat Interface for each vendor
+
+Vendor Profile Pages with images, services, reviews, past weddings
+
+Bookmark Vendor Feature (Add to Favorite)
+
+Booking Request/Inquiry button with calendar
+
+Supervisor Suggestions: Vendors handpicked by the assigned supervisor
+
+🧑‍🤝‍🧑 3. Guests Section:
+A dynamic interface for managing the wedding guest list.
+
+Features to include:
+
+Add Guest Form: Name, phone, relation, number of invitees, RSVP status
+
+Group Guests by Family, Friends, Work
+
+Guest RSVP Tracker: Accepted, Declined, Pending
+
+Import Contacts via CSV
+
+Wedding Invitation Link with WhatsApp Share Button
+
+Interactive Guest Map: Plots guest locations on a map (optional browser-based)
+
+QR Code Generator for entry passes (for on-ground verification)
+
+Event Segmentation: Assign guests to specific events (sangeet, haldi, wedding)
+
+✨ Additional Enhancements:
+All sections should be animated using Framer Motion
+
+Use Tailwind CSS for styling
+
+Mobile responsive views
+
+Token-authenticated API calls for data fetching and updates
+
+Connect with MongoDB (guest list, vendor selection, wedding data, etc.)

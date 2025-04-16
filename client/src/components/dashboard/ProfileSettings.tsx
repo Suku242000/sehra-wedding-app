@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { User } from '@shared/schema';
-import { apiRequest, queryClient } from '@/lib/queryClient';
-import { useMutation } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 import { Button } from '@/components/ui/button';
@@ -20,8 +18,9 @@ import {
 import { Loader2, Phone, Mail, User as UserIcon, Settings, Calendar } from 'lucide-react';
 
 const ProfileSettings: React.FC = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [profileForm, setProfileForm] = useState({
     name: '',
     email: '',
@@ -41,55 +40,29 @@ const ProfileSettings: React.FC = () => {
     }
   }, [user]);
 
-  const updateProfileMutation = useMutation({
-    mutationFn: async (profileData: Partial<User>) => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          throw new Error("Authentication token not found. Please log in again.");
-        }
-        
-        const response = await fetch('/api/users/me', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(profileData)
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to update profile");
-        }
-        
-        return await response.json();
-      } catch (error) {
-        console.error("Profile update error:", error);
-        throw error;
-      }
-    },
-    onSuccess: () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    try {
+      await updateUser(profileForm);
+      
       toast({
         title: "Profile Updated",
         description: "Your profile information has been updated successfully.",
         variant: "default",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/users/me'] });
+      
       setIsOpen(false);
-    },
-    onError: (error: Error) => {
+    } catch (error) {
       toast({
         title: "Update Failed",
-        description: error.message || "There was an error updating your profile.",
+        description: error instanceof Error ? error.message : "There was an error updating your profile.",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateProfileMutation.mutate(profileForm);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,10 +137,10 @@ const ProfileSettings: React.FC = () => {
               </Button>
               <Button 
                 type="submit" 
-                disabled={updateProfileMutation.isPending}
+                disabled={isSubmitting}
                 className="relative"
               >
-                {updateProfileMutation.isPending && (
+                {isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
                 Save Changes

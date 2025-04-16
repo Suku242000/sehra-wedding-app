@@ -126,13 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'LOGIN_REQUEST' });
     
     try {
-      const response = await apiRequest('POST', '/api/auth/login', { email, password });
-      
-      if (!response) {
-        throw new Error('Login failed. Please try again.');
-      }
-      
-      const data = await response.json();
+      const data = await apiRequest('POST', '/api/auth/login', { email, password });
       console.log('Login response data:', data);
       
       if (!data.user || !data.token) {
@@ -174,12 +168,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       dispatch({
         type: 'LOGIN_FAILURE',
-        payload: error.message || 'Login failed. Please check your credentials.'
+        payload: error instanceof Error ? error.message : 'Login failed. Please check your credentials.'
       });
       
       toast({
         title: 'Login Failed',
-        description: error.message || 'Please check your credentials.',
+        description: error instanceof Error ? error.message : 'Please check your credentials.',
         variant: 'destructive'
       });
     }
@@ -195,18 +189,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'REGISTER_REQUEST' });
     
     try {
-      const response = await apiRequest('POST', '/api/auth/register', {
+      const data = await apiRequest('POST', '/api/auth/register', {
         name,
         email,
         password,
         role
       });
-      
-      if (!response) {
-        throw new Error('Registration failed. Please try again.');
-      }
-      
-      const data = await response.json();
       console.log('Register response data:', data);
       
       if (!data.user || !data.token) {
@@ -246,12 +234,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       dispatch({
         type: 'REGISTER_FAILURE',
-        payload: error.message || 'Registration failed. Please try again.'
+        payload: error instanceof Error ? error.message : 'Registration failed. Please try again.'
       });
       
       toast({
         title: 'Registration Failed',
-        description: error.message || 'Please try again.',
+        description: error instanceof Error ? error.message : 'Please try again.',
         variant: 'destructive'
       });
     }
@@ -278,15 +266,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'SELECT_PACKAGE_REQUEST' });
     
     try {
-      const response = await apiRequest('POST', '/api/auth/select-package', {
+      const data = await apiRequest('POST', '/api/auth/select-package', {
         package: packageType
       });
-      
-      if (!response) {
-        throw new Error('Failed to select package. Please try again.');
-      }
-      
-      const data = await response.json();
       console.log('Select package response data:', data);
       
       if (!data.user) {
@@ -315,12 +297,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       dispatch({
         type: 'SELECT_PACKAGE_FAILURE',
-        payload: error.message || 'Failed to select package. Please try again.'
+        payload: error instanceof Error ? error.message : 'Failed to select package. Please try again.'
       });
       
       toast({
         title: 'Package Selection Failed',
-        description: error.message || 'Please try again.',
+        description: error instanceof Error ? error.message : 'Please try again.',
         variant: 'destructive'
       });
     }
@@ -332,10 +314,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       const response = await apiRequest<User>('PATCH', '/api/users/me', userData);
-      
-      if (!response) {
-        throw new Error('Failed to update profile. Please try again.');
-      }
       
       // Update user in localStorage
       if (state.user) {
@@ -358,12 +336,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       dispatch({
         type: 'UPDATE_USER_FAILURE',
-        payload: error.message || 'Failed to update profile. Please try again.'
+        payload: error instanceof Error ? error.message : 'Failed to update profile. Please try again.'
       });
       
       toast({
         title: 'Update Failed',
-        description: error.message || 'Please try again.',
+        description: error instanceof Error ? error.message : 'Please try again.',
         variant: 'destructive'
       });
     }

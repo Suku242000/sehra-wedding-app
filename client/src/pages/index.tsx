@@ -35,21 +35,21 @@ const HomePage: React.FC = () => {
   const packages = [
     {
       name: 'Silver',
-      price: '₹25,000',
+      price: '₹10L - ₹30L',
       features: ['Guest Management', 'Task Tracking', 'Budget Basics'],
       popular: false,
       color: 'bg-gray-50 border-gray-200'
     },
     {
       name: 'Gold',
-      price: '₹65,000',
+      price: '₹31L - ₹60L',
       features: ['All Silver Features', 'Premium Vendor Access', 'Dedicated Supervisor'],
       popular: true,
       color: 'bg-yellow-50 border-[#FFD700]'
     },
     {
       name: 'Platinum',
-      price: '₹125,000',
+      price: '₹61L - ₹1Cr+',
       features: ['All Gold Features', 'Elite Venue Options', 'Full Event Coordination'],
       popular: false,
       color: 'bg-slate-50 border-slate-200'

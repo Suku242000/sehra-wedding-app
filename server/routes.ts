@@ -25,7 +25,8 @@ import {
   authorizeRoles, 
   generateToken, 
   verifyPassword, 
-  hashPassword 
+  hashPassword,
+  verifyToken
 } from "./utils/auth";
 import {
   sendWelcomeEmail,

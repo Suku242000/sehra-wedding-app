@@ -33,11 +33,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       // Redirect if user doesn't have required role
       if (requiredRoles.length > 0 && user && !requiredRoles.includes(user.role as UserRoleType)) {
         // Redirect based on user's role
-        if (user.role === 'admin') {
+        const lowerCaseRole = user.role.toLowerCase();
+        if (lowerCaseRole === 'admin') {
           setLocation('/admin-dashboard');
-        } else if (user.role === 'vendor') {
+        } else if (lowerCaseRole === 'vendor') {
           setLocation('/vendor-dashboard');
-        } else if (user.role === 'supervisor') {
+        } else if (lowerCaseRole === 'supervisor') {
           setLocation('/supervisor-dashboard');
         } else {
           setLocation('/dashboard');
@@ -74,11 +75,12 @@ export const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children 
     // Wait for authentication check to complete
     if (!loading && isAuthenticated && user) {
       // Redirect based on user's role
-      if (user.role === 'admin') {
+      const lowerCaseRole = user.role.toLowerCase();
+      if (lowerCaseRole === 'admin') {
         setLocation('/admin-dashboard');
-      } else if (user.role === 'vendor') {
+      } else if (lowerCaseRole === 'vendor') {
         setLocation('/vendor-dashboard');
-      } else if (user.role === 'supervisor') {
+      } else if (lowerCaseRole === 'supervisor') {
         setLocation('/supervisor-dashboard');
       } else if (user.package) {
         setLocation('/dashboard');
@@ -107,5 +109,6 @@ export const useHasRole = (roles: UserRoleType | UserRoleType[]): boolean => {
   }
   
   const rolesToCheck = Array.isArray(roles) ? roles : [roles];
-  return rolesToCheck.includes(user.role as UserRoleType);
+  const lowerCaseUserRole = user.role.toLowerCase();
+  return rolesToCheck.some(role => role.toLowerCase() === lowerCaseUserRole);
 };

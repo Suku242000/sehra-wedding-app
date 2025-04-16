@@ -150,11 +150,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       // Redirect based on role and package
-      if (user.role === 'admin') {
+      const lowerCaseRole = user.role.toLowerCase();
+      if (lowerCaseRole === 'admin') {
         setLocation('/admin-dashboard');
-      } else if (user.role === 'vendor') {
+      } else if (lowerCaseRole === 'vendor') {
         setLocation('/vendor-dashboard');
-      } else if (user.role === 'supervisor') {
+      } else if (lowerCaseRole === 'supervisor') {
         setLocation('/supervisor-dashboard');
       } else if (user.package) {
         setLocation('/dashboard');
@@ -216,11 +217,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       // Redirect based on role
-      if (user.role === 'admin') {
+      const lowerCaseRole = user.role.toLowerCase();
+      if (lowerCaseRole === 'admin') {
         setLocation('/admin-dashboard');
-      } else if (user.role === 'vendor') {
+      } else if (lowerCaseRole === 'vendor') {
         setLocation('/vendor-dashboard');
-      } else if (user.role === 'supervisor') {
+      } else if (lowerCaseRole === 'supervisor') {
         setLocation('/supervisor-dashboard');
       } else {
         setLocation('/select-package');

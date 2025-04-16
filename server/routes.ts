@@ -47,11 +47,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Hash password
       const hashedPassword = await hashPassword(validatedData.password);
+
+      // Generate unique ID based on role
+      let uniqueId = "";
+      
+      // For customer roles (bride, groom, family)
+      if ([UserRole.BRIDE, UserRole.GROOM, UserRole.FAMILY].includes(validatedData.role)) {
+        const customerCount = await storage.getUserCountByRoles([UserRole.BRIDE, UserRole.GROOM, UserRole.FAMILY]);
+        uniqueId = `SC${(customerCount + 1).toString().padStart(4, '0')}`;
+      } 
+      // For vendor role
+      else if (validatedData.role === UserRole.VENDOR) {
+        const vendorCount = await storage.getUserCountByRoles([UserRole.VENDOR]);
+        uniqueId = `SV${(vendorCount + 1).toString().padStart(4, '0')}`;
+      }
+      // Supervisors can only be created by admins, so no uniqueId here
       
       // Create user
       const user = await storage.createUser({
         ...validatedData,
         password: hashedPassword,
+        uniqueId: uniqueId || undefined,
       });
       
       // Generate token

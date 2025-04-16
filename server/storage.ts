@@ -28,6 +28,7 @@ export interface IStorage {
   updateUser(id: number, user: Partial<User>): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
   getUsersByRole(role: string): Promise<User[]>;
+  getUserCountByRoles(roles: string[]): Promise<number>;
   getUsersBySupervisorId(supervisorId: number): Promise<User[]>;
   
   // Vendor methods
@@ -184,6 +185,12 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values()).filter(
       (user) => user.role === role
     );
+  }
+  
+  async getUserCountByRoles(roles: string[]): Promise<number> {
+    return Array.from(this.users.values()).filter(
+      (user) => roles.includes(user.role)
+    ).length;
   }
 
   async getUsersBySupervisorId(supervisorId: number): Promise<User[]> {

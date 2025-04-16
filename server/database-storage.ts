@@ -56,6 +56,15 @@ export class DatabaseStorage implements IStorage {
   async getUsersByRole(role: string): Promise<User[]> {
     return await db.select().from(users).where(eq(users.role, role));
   }
+  
+  async getUserCountByRoles(roles: string[]): Promise<number> {
+    const usersWithRoles = await db.select()
+      .from(users)
+      .where(roles.length > 0 ? 
+        roles.map(role => eq(users.role, role)).reduce((a, b) => a || b) : 
+        eq(users.role, roles[0]));
+    return usersWithRoles.length;
+  }
 
   async getUsersBySupervisorId(supervisorId: number): Promise<User[]> {
     return await db.select().from(users).where(eq(users.supervisorId, supervisorId));

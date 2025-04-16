@@ -94,9 +94,17 @@ const VendorDashboard: React.FC = () => {
   const { user } = useAuth();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [bookingDetailsId, setBookingDetailsId] = useState<number | null>(null);
   const [portfolioImages, setPortfolioImages] = useState<string[]>([]);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [profileForm, setProfileForm] = useState({
+    businessName: '',
+    description: '',
+    location: '',
+    priceRange: '',
+    vendorType: ''
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -106,8 +114,19 @@ const VendorDashboard: React.FC = () => {
     queryKey: ['/api/vendors/my-profile'],
     enabled: !!user,
     onSuccess: (data: VendorProfile | undefined) => {
-      if (data && data.portfolio) {
-        setPortfolioImages(data.portfolio);
+      if (data) {
+        if (data.portfolio) {
+          setPortfolioImages(data.portfolio);
+        }
+        
+        // Populate profile form with current data
+        setProfileForm({
+          businessName: data.businessName || '',
+          description: data.description || '',
+          location: data.location || '',
+          priceRange: data.priceRange || '',
+          vendorType: data.vendorType || ''
+        });
       }
     }
   } as any);
@@ -163,6 +182,31 @@ const VendorDashboard: React.FC = () => {
       toast({
         title: 'Portfolio updated',
         description: 'Your portfolio has been updated successfully',
+      });
+    }
+  });
+  
+  // Mutation for updating vendor profile
+  const updateProfileMutation = useMutation({
+    mutationFn: (profileData: typeof profileForm) => {
+      if (!vendorProfile || typeof vendorProfile === 'undefined') {
+        throw new Error('Vendor profile not found');
+      }
+      return apiRequest('PATCH', `/api/vendors/${(vendorProfile as any).id}`, profileData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/vendors/my-profile'] });
+      toast({
+        title: 'Profile updated',
+        description: 'Your vendor profile has been updated successfully',
+      });
+      setIsEditProfileOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Update failed',
+        description: error.toString(),
+        variant: 'destructive'
       });
     }
   });
@@ -252,9 +296,102 @@ const VendorDashboard: React.FC = () => {
                 Welcome back, {user?.name}. Manage your vendor services and bookings here.
               </p>
             </div>
-            <Button variant="outline" className="mt-4 md:mt-0">
-              Edit Profile
-            </Button>
+            <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="mt-4 md:mt-0">
+                  Edit Profile
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Edit Vendor Profile</DialogTitle>
+                  <DialogDescription>
+                    Update your vendor information to attract more clients
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="grid w-full gap-4">
+                    <div className="grid gap-2">
+                      <label htmlFor="businessName" className="text-sm font-medium">Business Name</label>
+                      <Input 
+                        id="businessName" 
+                        value={profileForm.businessName}
+                        onChange={(e) => setProfileForm({...profileForm, businessName: e.target.value})}
+                        placeholder="Your business name"
+                      />
+                    </div>
+                    
+                    <div className="grid gap-2">
+                      <label htmlFor="vendorType" className="text-sm font-medium">Vendor Type</label>
+                      <select 
+                        id="vendorType" 
+                        value={profileForm.vendorType}
+                        onChange={(e) => setProfileForm({...profileForm, vendorType: e.target.value})}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Select vendor type</option>
+                        <option value="hotel">Hotel & Venue</option>
+                        <option value="photographer">Photography</option>
+                        <option value="videographer">Videography</option>
+                        <option value="catering">Catering</option>
+                        <option value="makeup">Makeup Artist</option>
+                        <option value="hairdresser">Hairdresser</option>
+                        <option value="decoration">Decoration</option>
+                        <option value="mehandi">Mehandi</option>
+                        <option value="dj">DJ & Music</option>
+                        <option value="lighting">Lighting</option>
+                      </select>
+                    </div>
+                    
+                    <div className="grid gap-2">
+                      <label htmlFor="description" className="text-sm font-medium">Description</label>
+                      <textarea 
+                        id="description" 
+                        rows={3}
+                        value={profileForm.description}
+                        onChange={(e) => setProfileForm({...profileForm, description: e.target.value})}
+                        placeholder="Describe your services"
+                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none"
+                      />
+                    </div>
+                    
+                    <div className="grid gap-2">
+                      <label htmlFor="location" className="text-sm font-medium">Location</label>
+                      <Input 
+                        id="location" 
+                        value={profileForm.location}
+                        onChange={(e) => setProfileForm({...profileForm, location: e.target.value})}
+                        placeholder="Your business location"
+                      />
+                    </div>
+                    
+                    <div className="grid gap-2">
+                      <label htmlFor="priceRange" className="text-sm font-medium">Price Range</label>
+                      <Input 
+                        id="priceRange" 
+                        value={profileForm.priceRange}
+                        onChange={(e) => setProfileForm({...profileForm, priceRange: e.target.value})}
+                        placeholder="e.g. ₹25,000 - ₹50,000"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsEditProfileOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={() => updateProfileMutation.mutate(profileForm)}
+                    disabled={updateProfileMutation.isPending}
+                  >
+                    {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </motion.div>
 

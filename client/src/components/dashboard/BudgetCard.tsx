@@ -58,7 +58,7 @@ const BudgetCard: React.FC = () => {
   const [categoryTotals, setCategoryTotals] = useState<Record<string, number>>({});
   
   // Fetch budget items
-  const { data: budgetItems = [], isLoading } = useQuery({
+  const { data: budgetItems = [], isLoading } = useQuery<BudgetItem[]>({
     queryKey: ['/api/budget'],
   });
   
@@ -102,7 +102,7 @@ const BudgetCard: React.FC = () => {
       const totals: Record<string, number> = {};
       let total = 0;
       
-      budgetItems.forEach((item: BudgetItem) => {
+      budgetItems.forEach((item) => {
         const cost = item.actualCost || item.estimatedCost;
         total += cost;
         

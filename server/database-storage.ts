@@ -13,6 +13,10 @@ import {
   InsertVendorBooking,
   Achievement,
   InsertAchievement,
+  Message,
+  InsertMessage,
+  ContactStatus,
+  InsertContactStatus,
   UserAchievement,
   InsertUserAchievement,
   UserProgress,
@@ -28,10 +32,12 @@ import {
   achievements,
   userAchievements,
   userProgress,
-  timelineEvents
+  timelineEvents,
+  messages,
+  contactStatus
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, count } from "drizzle-orm";
 import { IStorage } from "./storage";
 
 // Database storage implementation
@@ -327,18 +333,18 @@ export class DatabaseStorage implements IStorage {
     return await db.select()
       .from(timelineEvents)
       .where(eq(timelineEvents.userId, userId))
-      .orderBy(timelineEvents.order);
+      .orderBy(timelineEvents.orderIndex);
   }
 
   async createTimelineEvent(timelineEvent: InsertTimelineEvent): Promise<TimelineEvent> {
     // Get the maximum order for this user
     const events = await this.getTimelineEventsByUserId(timelineEvent.userId);
-    const maxOrder = events.length > 0 ? Math.max(...events.map(e => e.order)) : 0;
+    const maxOrder = events.length > 0 ? Math.max(...events.map(e => e.orderIndex ?? 0)) : 0;
     
     // Set the order to be one more than the maximum
     const eventWithOrder = {
       ...timelineEvent,
-      order: maxOrder + 1
+      orderIndex: maxOrder + 1
     };
     
     const [newEvent] = await db.insert(timelineEvents).values(eventWithOrder).returning();

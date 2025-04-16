@@ -99,6 +99,9 @@ const BudgetCard: React.FC = () => {
     queryKey: ['/api/budget'],
     queryFn: () => fetchWithAuth('/api/budget'),
     enabled: true, // Always enabled
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5000, // Refetch every 5 seconds to ensure data is updated
   });
   
   // Form
@@ -118,7 +121,9 @@ const BudgetCard: React.FC = () => {
   const createBudgetItemMutation = useMutation({
     mutationFn: (newItem: BudgetFormValues) => createWithAuth('/api/budget', newItem),
     onSuccess: () => {
-      invalidateQueries('/api/budget');
+      import('@/lib/queryClient').then(({ queryClient }) => {
+        queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
+      });
       toast({ 
         title: "Budget Item Added", 
         description: "Your budget item has been added successfully." 

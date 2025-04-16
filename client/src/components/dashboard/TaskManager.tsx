@@ -7,6 +7,7 @@ import {
   deleteWithAuth, 
   invalidateQueries 
 } from '@/lib/api';
+import { queryClient } from '@/lib/queryClient';
 import { Task } from '@shared/schema';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fadeIn, itemVariants } from '@/lib/motion';
@@ -144,7 +145,7 @@ const TaskManager: React.FC = () => {
   const createTaskMutation = useMutation({
     mutationFn: (newTask: TaskFormValues) => createWithAuth('/api/tasks', newTask),
     onSuccess: () => {
-      invalidateQueries('/api/tasks');
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       toast({ 
         title: "Task Created", 
         description: "Your task has been created successfully." 
@@ -166,7 +167,7 @@ const TaskManager: React.FC = () => {
     mutationFn: ({ id, data }: { id: number; data: Partial<Task> }) => 
       updateWithAuth(`/api/tasks/${id}`, data),
     onSuccess: () => {
-      invalidateQueries('/api/tasks');
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       toast({ title: "Task Updated", description: "Task has been updated successfully." });
       form.reset();
       setEditingTask(null);
@@ -185,7 +186,7 @@ const TaskManager: React.FC = () => {
   const deleteTaskMutation = useMutation({
     mutationFn: (id: number) => deleteWithAuth(`/api/tasks/${id}`),
     onSuccess: () => {
-      invalidateQueries('/api/tasks');
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       toast({ title: "Task Deleted", description: "Task has been deleted successfully." });
     },
     onError: (error: Error) => {

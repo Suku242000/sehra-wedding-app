@@ -54,29 +54,48 @@ const DashboardHero: React.FC = () => {
   
   // Calculate stats
   useEffect(() => {
-    if (tasks && guests && bookings && user) {
-      const completedTasks = tasks.filter((task: Task) => task.status === 'completed').length;
-      const totalTasks = tasks.length;
-      const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-      const pendingTasks = tasks.filter((task: Task) => task.status !== 'completed').length;
-      
-      const totalGuests = guests.length;
-      const confirmedGuests = guests.filter((guest: any) => guest.status === 'confirmed').length;
-      
-      const vendorsBooked = bookings.filter((booking: any) => booking.status === 'confirmed').length;
-      
-      const daysLeft = user.weddingDate ? calculateDaysLeft(user.weddingDate) : 0;
-      
-      setStats({
-        completedTasks,
-        totalTasks,
-        progress,
-        daysLeft,
-        pendingTasks,
-        totalGuests,
-        confirmedGuests,
-        vendorsBooked
-      });
+    if (tasks && guests && user) {
+      try {
+        const completedTasks = tasks.filter((task: Task) => task.status === 'completed').length;
+        const totalTasks = tasks.length;
+        const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+        const pendingTasks = tasks.filter((task: Task) => task.status !== 'completed').length;
+        
+        const totalGuests = guests.length;
+        const confirmedGuests = guests.filter((guest: any) => guest.status === 'confirmed').length || 0;
+        
+        // Handle bookings separately due to potential database issues
+        let vendorsBooked = 0;
+        try {
+          if (bookings && Array.isArray(bookings)) {
+            vendorsBooked = bookings.filter((booking: any) => booking.status === 'confirmed').length || 0;
+          }
+        } catch (err) {
+          console.error("Error processing bookings:", err);
+        }
+        
+        const daysLeft = user.weddingDate ? calculateDaysLeft(user.weddingDate) : 0;
+        
+        // Deep compare stats before updating to prevent infinite loops
+        const newStats = {
+          completedTasks,
+          totalTasks,
+          progress,
+          daysLeft,
+          pendingTasks,
+          totalGuests,
+          confirmedGuests,
+          vendorsBooked
+        };
+        
+        const statsChanged = JSON.stringify(newStats) !== JSON.stringify(stats);
+        
+        if (statsChanged) {
+          setStats(newStats);
+        }
+      } catch (error) {
+        console.error("Error calculating stats:", error);
+      }
     }
   }, [tasks, guests, bookings, user]);
   

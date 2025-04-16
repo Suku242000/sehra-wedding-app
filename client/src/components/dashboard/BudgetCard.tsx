@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { fadeIn } from '@/lib/motion';
 import { useAuth } from '@/context/AuthContext';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { fetchWithAuth, createWithAuth, updateWithAuth, deleteWithAuth, invalidateQueries } from '@/lib/api';
+import { fetchWithAuth, createWithAuth, updateWithAuth, deleteWithAuth } from '@/lib/api';
 import { BudgetItem } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -48,6 +48,7 @@ import { Switch } from '@/components/ui/switch';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { queryClient } from '@/lib/queryClient';
 
 const budgetItemSchema = z.object({
   category: z.string().min(1, 'Category is required'),
@@ -113,7 +114,6 @@ const BudgetCard: React.FC = () => {
     enabled: true, // Always enabled
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchInterval: 5000, // Refetch every 5 seconds to ensure data is updated
   });
   
   // Form
@@ -133,9 +133,7 @@ const BudgetCard: React.FC = () => {
   const createBudgetItemMutation = useMutation({
     mutationFn: (newItem: BudgetFormValues) => createWithAuth('/api/budget', newItem),
     onSuccess: () => {
-      import('@/lib/queryClient').then(({ queryClient }) => {
-        queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
-      });
+      queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
       toast({ 
         title: "Budget Item Added", 
         description: "Your budget item has been added successfully." 
@@ -157,9 +155,7 @@ const BudgetCard: React.FC = () => {
     mutationFn: ({ id, data }: { id: number, data: BudgetFormValues }) => 
       updateWithAuth(`/api/budget/${id}`, data),
     onSuccess: () => {
-      import('@/lib/queryClient').then(({ queryClient }) => {
-        queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
-      });
+      queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
       toast({ 
         title: "Budget Item Updated", 
         description: "Your budget item has been updated successfully." 
@@ -181,9 +177,7 @@ const BudgetCard: React.FC = () => {
   const deleteBudgetItemMutation = useMutation({
     mutationFn: (id: number) => deleteWithAuth(`/api/budget/${id}`),
     onSuccess: () => {
-      import('@/lib/queryClient').then(({ queryClient }) => {
-        queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
-      });
+      queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
       toast({ 
         title: "Budget Item Deleted", 
         description: "Your budget item has been deleted successfully." 
@@ -200,7 +194,7 @@ const BudgetCard: React.FC = () => {
   
   // Calculate totals and budget mood
   useEffect(() => {
-    if (budgetItems.length > 0) {
+    if (budgetItems && budgetItems.length > 0) {
       const totals: Record<string, number> = {};
       let total = 0;
       
@@ -472,8 +466,8 @@ const BudgetCard: React.FC = () => {
           </div>
         )}
         
-        {/* Manage Budget Items Button */}
-        <div className="flex items-center justify-between mt-4 mb-2">
+        {/* Manage Budget Items Button and Dialog */}
+        <div className="flex items-center justify-between mt-4">
           <Button 
             onClick={() => setShowItemsList(!showItemsList)}
             variant="outline" 
@@ -482,7 +476,13 @@ const BudgetCard: React.FC = () => {
             {showItemsList ? 'Hide All Items' : 'View All Items'}
           </Button>
           
-          <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+          <Dialog open={openDialog} onOpenChange={(open) => {
+            setOpenDialog(open);
+            if (!open) {
+              setEditingBudgetItem(null);
+              form.reset();
+            }
+          }}>
             <DialogTrigger asChild>
               <Button 
                 className="flex-1 ml-2 border border-[#800000] text-[#800000] hover:bg-[#800000] hover:text-white transition-all duration-300"
@@ -508,6 +508,7 @@ const BudgetCard: React.FC = () => {
                         <Select 
                           onValueChange={field.onChange} 
                           defaultValue={field.value}
+                          value={field.value}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -619,7 +620,11 @@ const BudgetCard: React.FC = () => {
                   />
                   
                   <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setOpenDialog(false)}>
+                    <Button type="button" variant="outline" onClick={() => {
+                      setOpenDialog(false);
+                      setEditingBudgetItem(null);
+                      form.reset();
+                    }}>
                       Cancel
                     </Button>
                     <Button type="submit" className="maroon-gradient">

@@ -23,7 +23,7 @@ import { UserRole } from '@shared/schema';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   
   // Extract tab from URL query parameter if present
@@ -34,6 +34,20 @@ const Dashboard: React.FC = () => {
       setActiveTab(tabParam);
     }
   }, [location]);
+
+  // Listen for custom tab change events from the header
+  useEffect(() => {
+    const handleTabChangeEvent = (e: CustomEvent) => {
+      setActiveTab(e.detail);
+    };
+
+    // Need to cast to unknown first due to TypeScript's handling of CustomEvent
+    document.addEventListener('tabChange', handleTabChangeEvent as unknown as EventListener);
+    
+    return () => {
+      document.removeEventListener('tabChange', handleTabChangeEvent as unknown as EventListener);
+    };
+  }, []);
 
   // Handle tab change
   const handleTabChange = (value: string) => {

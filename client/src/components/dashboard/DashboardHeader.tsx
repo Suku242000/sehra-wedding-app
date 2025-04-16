@@ -16,6 +16,21 @@ const DashboardHeader: React.FC = () => {
   const { user, logout } = useAuth();
   const [location] = useLocation();
 
+  // Function to handle tab navigation without reloading page
+  const handleTabNavigation = (e: React.MouseEvent, path: string) => {
+    if (path.startsWith('/dashboard?tab=')) {
+      e.preventDefault();
+      const tab = path.split('=')[1];
+      
+      // Update URL without navigation
+      window.history.pushState(null, '', path);
+      
+      // Manually update the tab state via a custom event
+      const tabChangeEvent = new CustomEvent('tabChange', { detail: tab });
+      document.dispatchEvent(tabChangeEvent);
+    }
+  };
+
   const navItems = [
     { name: 'Home', path: '/' },
     { name: 'Dashboard', path: '/dashboard' },
@@ -30,7 +45,7 @@ const DashboardHeader: React.FC = () => {
         <div className="flex justify-between h-16">
           {/* Logo and Title */}
           <div className="flex items-center">
-            <Link href="/dashboard">
+            <Link href="/">
               <div className="flex-shrink-0 flex items-center cursor-pointer">
                 <motion.div 
                   className="w-10 h-10 bg-[#800000] rounded-full flex items-center justify-center"
@@ -43,17 +58,28 @@ const DashboardHeader: React.FC = () => {
             </Link>
             
             <div className="hidden md:ml-6 md:flex md:space-x-8">
-              {navItems.map((item) => (
-                <Link key={item.path} href={item.path}>
-                  <a className={`${
-                    location === item.path || (item.path === '/dashboard' && location === '/dashboard')
-                      ? 'border-[#800000] text-[#800000]' 
-                      : 'border-transparent text-gray-500 hover:border-[#FFD700] hover:text-[#FFD700]'
-                    } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}>
-                    {item.name}
-                  </a>
-                </Link>
-              ))}
+              {navItems.map((item) => {
+                // Determine if this navigation item should be highlighted
+                const isActive = 
+                  item.path === '/' ? location === '/' : 
+                  item.path === '/dashboard' ? location === '/dashboard' && !location.includes('?tab=') : 
+                  location.includes(item.path);
+                
+                return (
+                  <Link key={item.path} href={item.path}>
+                    <a
+                      className={`${
+                        isActive
+                          ? 'border-[#800000] text-[#800000]' 
+                          : 'border-transparent text-gray-500 hover:border-[#FFD700] hover:text-[#FFD700]'
+                        } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
+                      onClick={(e) => handleTabNavigation(e, item.path)}
+                    >
+                      {item.name}
+                    </a>
+                  </Link>
+                );
+              })}
             </div>
           </div>
           

@@ -1,13 +1,14 @@
 import React from 'react';
-import { Link } from 'wouter';
 import { motion } from 'framer-motion';
 import { fadeIn, itemVariants } from '@/lib/motion';
+import { goToLandingPage, goToDashboard, goToDashboardTab } from '@/lib/navigation';
 import { 
   Facebook, 
   Instagram, 
   Twitter, 
   Mail, 
-  Phone 
+  Phone,
+  Home
 } from 'lucide-react';
 
 const Footer: React.FC = () => {
@@ -34,24 +35,30 @@ const Footer: React.FC = () => {
             <h3 className="text-[#FFD700] font-medium mb-3">Quick Links</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/dashboard">
-                  <span className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">Dashboard</span>
-                </Link>
+                <button onClick={() => goToLandingPage()} className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer flex items-center">
+                  <Home className="w-4 h-4 mr-2" />
+                  Home
+                </button>
               </li>
               <li>
-                <Link href="/dashboard?tab=wedding">
-                  <span className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">My Wedding</span>
-                </Link>
+                <button onClick={() => goToDashboard()} className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">
+                  Dashboard
+                </button>
               </li>
               <li>
-                <Link href="/dashboard?tab=vendors">
-                  <span className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">Vendors</span>
-                </Link>
+                <button onClick={() => goToDashboardTab('wedding')} className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">
+                  My Wedding
+                </button>
               </li>
               <li>
-                <Link href="/dashboard?tab=guests">
-                  <span className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">Guests</span>
-                </Link>
+                <button onClick={() => goToDashboardTab('vendors')} className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">
+                  Vendors
+                </button>
+              </li>
+              <li>
+                <button onClick={() => goToDashboardTab('guests')} className="text-white/80 hover:text-[#FFD700] transition-colors cursor-pointer">
+                  Guests
+                </button>
               </li>
             </ul>
           </motion.div>

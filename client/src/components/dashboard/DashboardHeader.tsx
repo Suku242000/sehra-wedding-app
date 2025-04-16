@@ -11,16 +11,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, LogOut, User, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { goToLandingPage } from '@/lib/navigation';
 
 // Custom link component for direct navigation to landing page
 const HomeLinkButton: React.FC<{className?: string, children: React.ReactNode}> = ({ className, children }) => {
-  const goToLandingPage = (e: React.MouseEvent) => {
-    e.preventDefault();
-    window.location.href = '/';
-  };
-  
   return (
-    <button onClick={goToLandingPage} className={className}>
+    <button onClick={() => goToLandingPage()} className={className}>
       {children}
     </button>
   );

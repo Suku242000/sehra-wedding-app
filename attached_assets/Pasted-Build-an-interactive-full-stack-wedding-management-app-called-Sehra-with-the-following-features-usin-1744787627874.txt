@@ -1,0 +1,77 @@
+Build an interactive full-stack wedding management app called Sehra with the following features using React.js (frontend), Node.js + Express (backend), and MongoDB Atlas (database). The app must support role-based dashboards for admin, supervisor, bride, groom, family, and vendors. Each role should have separate login pages and dashboards with appropriate access.
+
+✅ Core Architecture:
+React frontend with Tailwind CSS for styling.
+
+Express.js backend connected to MongoDB Atlas.
+
+JWT-based authentication with role-based access.
+
+.env support for both frontend and backend with secure keys.
+
+Razorpay payment integration for package upgrades (Silver, Gold, Platinum).
+
+Each user has a Sehra Unique ID format: S#0001 for customers, SV#0001 for vendors.
+
+🎯 Feature Checklist:
+🧩 Role-based Dashboards:
+Admin: Create supervisors, assign them, manage users/vendors.
+
+Supervisor: Superuser access to customer/vendor profiles (CRUD), auto-assigned by availability/location, cannot access regular login.
+
+Vendor: Dedicated dashboard to track bookings, communicate with customers.
+
+Bride/Groom/Family: Personalized dashboard with planning tools and supervisor-assigned assistance.
+
+🕹 Gamification & Interactive Tools:
+Achievement System: Unlock badges as checklist items are completed. Display and share badges.
+
+Color-Coded Budget Mood Tracker: Track overspending and under-spending with emoji & mood-based UI.
+
+Progress-Driven Checklist: Users get XP and rewards for task completion.
+
+Drag-and-Drop Timeline Creator: Confetti animation on major milestone completion.
+
+📱 Communication & Notifications:
+Emoji Reaction Chat System: Emoji-based interaction between users and vendors.
+
+Real-Time Chat & Notifications: Socket.io or polling-based system between customers, vendors, and supervisors.
+
+💳 Payments:
+Integrate Razorpay with all packages (Silver ₹10-30L, Gold ₹31-60L, Platinum ₹61L-1Cr).
+
+Upgrade option within dashboard.
+
+Payment success/failure handling and backend logging.
+
+📡 Social Media & Visual Tools:
+Wedding Updates Share System: Auto-generate hashtags, enable social sharing.
+
+Wedding Countdown Widget: Personalized reminders at 30, 15, 7, 1 day(s) before wedding.
+
+Mood Board: Pinterest-style pinning feature for ideas (drag, like, comment).
+
+Style Recommender AI: Suggest wedding attire and decorations based on uploaded photo or preferences (use AI model or mock now).
+
+📍 Guest Management & RSVP:
+Interactive guest RSVP with real-time map and status (location tracking optional using browser).
+
+Guest grouping by family/region.
+
+📊 Admin Dashboard (Advanced Analytics):
+Analytics on user logins, vendor bookings, task completion, payment success rate, and supervisor efficiency.
+
+Export CSV and visualize trends with charts.
+
+☁️ Production & Testing:
+Deploy backend on Render or Railway.
+
+Deploy frontend on Vercel or Netlify.
+
+Connect MongoDB Atlas with secure credentials.
+
+Include test accounts for all roles and demo data.
+
+Add 404 fallback, loading animations, mobile responsiveness, and animation using Framer Motion.
+
+Include .env files, testing using Postman for backend, and React Testing Library for frontend components.

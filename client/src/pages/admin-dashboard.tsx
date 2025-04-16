@@ -10,6 +10,7 @@ import { User } from '@shared/schema';
 import UserList from '@/components/admin/UserList';
 import SupervisorAssignment from '@/components/admin/SupervisorAssignment';
 import StatsCards from '@/components/admin/StatsCards';
+import AdvancedAnalytics from '@/components/admin/AdvancedAnalytics';
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -40,8 +41,9 @@ const AdminDashboard: React.FC = () => {
 
         <StatsCards users={users} />
 
-        <Tabs defaultValue="users" className="mt-8">
+        <Tabs defaultValue="analytics" className="mt-8">
           <TabsList className="mb-4">
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="supervisors">Supervisor Assignment</TabsTrigger>
             <TabsTrigger value="vendors">Vendor Management</TabsTrigger>
@@ -81,6 +83,19 @@ const AdminDashboard: React.FC = () => {
             </Card>
           </TabsContent>
           
+          <TabsContent value="analytics">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl font-serif">Advanced Analytics Dashboard</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-8">
+                  <AdvancedAnalytics users={users} />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="settings">
             <Card>
               <CardHeader>

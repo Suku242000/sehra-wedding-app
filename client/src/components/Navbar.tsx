@@ -36,8 +36,21 @@ const Navbar: React.FC = () => {
     }
   };
 
+  // Function to scroll to top
+  const scrollToTop = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (window.location.pathname !== '/') {
+      // If not on home page, navigate to home
+      window.location.href = '/';
+      return;
+    }
+    
+    // On home page, scroll to top smoothly
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const navLinks = [
-    { text: 'Home', href: '/' },
+    { text: 'Home', href: '/', scrollAction: scrollToTop },
     { text: 'Packages', href: '/#packages', id: 'packages' },
     { text: 'Testimonials', href: '/#testimonials', id: 'testimonials' },
     { text: 'Contact', href: '/#contact', id: 'contact' }
@@ -78,6 +91,16 @@ const Navbar: React.FC = () => {
                   <a 
                     href={link.href}
                     onClick={(e) => link.id && scrollToSection(e, link.id)}
+                    className={`font-medium transition-colors cursor-pointer ${
+                      isScrolled ? 'text-gray-700 hover:text-[#800000]' : 'text-white hover:text-[#FFD700]'
+                    }`}
+                  >
+                    {link.text}
+                  </a>
+                ) : link.scrollAction ? (
+                  <a 
+                    href={link.href}
+                    onClick={link.scrollAction}
                     className={`font-medium transition-colors cursor-pointer ${
                       isScrolled ? 'text-gray-700 hover:text-[#800000]' : 'text-white hover:text-[#FFD700]'
                     }`}
@@ -153,6 +176,17 @@ const Navbar: React.FC = () => {
                       onClick={(e) => {
                         setMobileMenuOpen(false);
                         if (link.id) scrollToSection(e, link.id);
+                      }}
+                    >
+                      {link.text}
+                    </a>
+                  ) : link.scrollAction ? (
+                    <a 
+                      href={link.href}
+                      className="block px-3 py-2 text-[#800000] font-medium hover:bg-[#FFC0CB]/10 rounded-md cursor-pointer"
+                      onClick={(e) => {
+                        setMobileMenuOpen(false);
+                        link.scrollAction && link.scrollAction(e);
                       }}
                     >
                       {link.text}

@@ -3,12 +3,22 @@ import { motion } from 'framer-motion';
 import { fadeIn } from '@/lib/motion';
 import { useAuth } from '@/context/AuthContext';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { fetchWithAuth, createWithAuth, invalidateQueries } from '@/lib/api';
+import { fetchWithAuth, createWithAuth, updateWithAuth, deleteWithAuth, invalidateQueries } from '@/lib/api';
 import { BudgetItem } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { BUDGET_CATEGORIES } from '@/types';
-import { CheckCircle2, AlertTriangle, Frown, Smile, Meh, TrendingUp, TrendingDown } from 'lucide-react';
+import { 
+  CheckCircle2, 
+  AlertTriangle, 
+  Frown, 
+  Smile, 
+  Meh, 
+  TrendingUp, 
+  TrendingDown,
+  Pencil,
+  Trash2
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
   Dialog,
@@ -93,6 +103,8 @@ const BudgetCard: React.FC = () => {
   const [budgetMood, setBudgetMood] = useState<BudgetMoodType>('fair');
   const [spendingTrend, setSpendingTrend] = useState<'increasing' | 'decreasing' | 'stable'>('stable');
   const [previousSpentAmount, setPreviousSpentAmount] = useState(0);
+  const [editingBudgetItem, setEditingBudgetItem] = useState<BudgetItem | null>(null);
+  const [showItemsList, setShowItemsList] = useState(false);
   
   // Fetch budget items with auth
   const { data: budgetItems = [], isLoading } = useQuery<BudgetItem[]>({
@@ -135,6 +147,52 @@ const BudgetCard: React.FC = () => {
       toast({ 
         title: "Error", 
         description: error.message || "Failed to add budget item.", 
+        variant: "destructive" 
+      });
+    }
+  });
+  
+  // Update budget item mutation
+  const updateBudgetItemMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number, data: BudgetFormValues }) => 
+      updateWithAuth(`/api/budget/${id}`, data),
+    onSuccess: () => {
+      import('@/lib/queryClient').then(({ queryClient }) => {
+        queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
+      });
+      toast({ 
+        title: "Budget Item Updated", 
+        description: "Your budget item has been updated successfully." 
+      });
+      form.reset();
+      setEditingBudgetItem(null);
+      setOpenDialog(false);
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to update budget item.", 
+        variant: "destructive" 
+      });
+    }
+  });
+  
+  // Delete budget item mutation
+  const deleteBudgetItemMutation = useMutation({
+    mutationFn: (id: number) => deleteWithAuth(`/api/budget/${id}`),
+    onSuccess: () => {
+      import('@/lib/queryClient').then(({ queryClient }) => {
+        queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
+      });
+      toast({ 
+        title: "Budget Item Deleted", 
+        description: "Your budget item has been deleted successfully." 
+      });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to delete budget item.", 
         variant: "destructive" 
       });
     }
@@ -189,9 +247,37 @@ const BudgetCard: React.FC = () => {
     }
   }, [budgetItems, totalBudget, previousSpentAmount, spentAmount]);
   
+  // Handle edit budget item
+  const handleEdit = (item: BudgetItem) => {
+    setEditingBudgetItem(item);
+    form.reset({
+      category: item.category,
+      item: item.item,
+      estimatedCost: item.estimatedCost,
+      actualCost: item.actualCost || undefined,
+      paid: item.paid || false,
+      notes: item.notes || '',
+    });
+    setOpenDialog(true);
+  };
+
+  // Handle delete budget item
+  const handleDelete = (id: number) => {
+    if (window.confirm('Are you sure you want to delete this budget item?')) {
+      deleteBudgetItemMutation.mutate(id);
+    }
+  };
+
   // Handle form submission
   const onSubmit = (data: BudgetFormValues) => {
-    createBudgetItemMutation.mutate(data);
+    if (editingBudgetItem) {
+      updateBudgetItemMutation.mutate({
+        id: editingBudgetItem.id,
+        data
+      });
+    } else {
+      createBudgetItemMutation.mutate(data);
+    }
   };
   
   // Format as rupees
@@ -329,80 +415,113 @@ const BudgetCard: React.FC = () => {
           )}
         </div>
         
-        <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-          <DialogTrigger asChild>
-            <Button 
-              className="mt-4 w-full border border-[#800000] text-[#800000] py-2 rounded-md text-sm hover:bg-[#800000] hover:text-white transition-all duration-300"
-              variant="outline"
-            >
-              Add Budget Item
-            </Button>
-          </DialogTrigger>
-          
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Add Budget Item</DialogTitle>
-            </DialogHeader>
-            
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Category</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
+        {/* Show Budget Items List */}
+        {showItemsList && (
+          <div className="mt-4 border rounded-md overflow-hidden">
+            <div className="bg-gray-50 py-2 px-3 border-b">
+              <h3 className="text-sm font-medium">All Budget Items</h3>
+            </div>
+            <div className="divide-y max-h-48 overflow-y-auto">
+              {isLoading ? (
+                <div className="p-4 text-center text-gray-500">
+                  Loading budget items...
+                </div>
+              ) : budgetItems.length === 0 ? (
+                <div className="p-4 text-center text-gray-500">
+                  No budget items yet.
+                </div>
+              ) : (
+                budgetItems.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between p-3 hover:bg-gray-50">
+                    <div className="flex-1">
+                      <div className="font-medium">{item.item}</div>
+                      <div className="text-xs text-gray-500">{item.category}</div>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <span className="text-sm">
+                          {formatCurrency(item.actualCost || item.estimatedCost)}
+                        </span>
+                        {item.paid && (
+                          <Badge variant="outline" className="text-green-600 border-green-600 text-xs">
+                            Paid
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleEdit(item)}
+                        className="h-8 w-8 p-0 text-[#800000]"
                       >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {BUDGET_CATEGORIES.map((category) => (
-                            <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="item"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Item Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter item name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="grid grid-cols-2 gap-4">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleDelete(item.id)}
+                        className="h-8 w-8 p-0 text-red-500"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* Manage Budget Items Button */}
+        <div className="flex items-center justify-between mt-4 mb-2">
+          <Button 
+            onClick={() => setShowItemsList(!showItemsList)}
+            variant="outline" 
+            className="flex-1 mr-2 text-[#800000] border-[#800000] hover:bg-[#800000] hover:text-white"
+          >
+            {showItemsList ? 'Hide All Items' : 'View All Items'}
+          </Button>
+          
+          <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+            <DialogTrigger asChild>
+              <Button 
+                className="flex-1 ml-2 border border-[#800000] text-[#800000] hover:bg-[#800000] hover:text-white transition-all duration-300"
+                variant="outline"
+              >
+                Add Budget Item
+              </Button>
+            </DialogTrigger>
+            
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>{editingBudgetItem ? 'Edit Budget Item' : 'Add Budget Item'}</DialogTitle>
+              </DialogHeader>
+              
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <FormField
                     control={form.control}
-                    name="estimatedCost"
+                    name="category"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Estimated Cost</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="0" 
-                            min="0"
-                            {...field}
-                          />
-                        </FormControl>
+                        <FormLabel>Category</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {BUDGET_CATEGORIES.map((category) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -410,73 +529,108 @@ const BudgetCard: React.FC = () => {
                   
                   <FormField
                     control={form.control}
-                    name="actualCost"
+                    name="item"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Actual Cost (Optional)</FormLabel>
+                        <FormLabel>Item Name</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="0" 
-                            min="0"
-                            {...field}
-                            value={field.value || ''}
-                            onChange={(e) => {
-                              const value = e.target.value === '' ? undefined : Number(e.target.value);
-                              field.onChange(value);
-                            }}
-                          />
+                          <Input placeholder="Enter item name" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-                
-                <FormField
-                  control={form.control}
-                  name="paid"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                      <div className="space-y-0.5">
-                        <FormLabel>Paid</FormLabel>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Add notes" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setOpenDialog(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" className="maroon-gradient">
-                    Add Item
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="estimatedCost"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Estimated Cost</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              placeholder="0" 
+                              min="0"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="actualCost"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Actual Cost (Optional)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              placeholder="0" 
+                              min="0"
+                              {...field}
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                const value = e.target.value === '' ? undefined : Number(e.target.value);
+                                field.onChange(value);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="paid"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                          <FormLabel>Paid</FormLabel>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notes (Optional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Add notes" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setOpenDialog(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" className="maroon-gradient">
+                      {editingBudgetItem ? 'Update Item' : 'Add Item'}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
     </motion.div>
   );

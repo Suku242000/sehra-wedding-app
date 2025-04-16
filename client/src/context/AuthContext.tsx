@@ -126,13 +126,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'LOGIN_REQUEST' });
     
     try {
-      const response = await apiRequest<LoginResponse>('POST', '/api/auth/login', { email, password });
+      const response = await apiRequest('POST', '/api/auth/login', { email, password });
       
       if (!response) {
         throw new Error('Login failed. Please try again.');
       }
       
-      const { user, token } = response;
+      const data = await response.json();
+      console.log('Login response data:', data);
+      
+      if (!data.user || !data.token) {
+        throw new Error('Invalid response format from server');
+      }
+      
+      const { user, token } = data;
       
       // Save to localStorage
       localStorage.setItem('token', token);
@@ -188,7 +195,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'REGISTER_REQUEST' });
     
     try {
-      const response = await apiRequest<RegisterResponse>('POST', '/api/auth/register', {
+      const response = await apiRequest('POST', '/api/auth/register', {
         name,
         email,
         password,
@@ -199,7 +206,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Registration failed. Please try again.');
       }
       
-      const { user, token } = response;
+      const data = await response.json();
+      console.log('Register response data:', data);
+      
+      if (!data.user || !data.token) {
+        throw new Error('Invalid response format from server');
+      }
+      
+      const { user, token } = data;
       
       // Save to localStorage
       localStorage.setItem('token', token);
@@ -264,15 +278,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'SELECT_PACKAGE_REQUEST' });
     
     try {
-      const response = await apiRequest<{ user: User }>('POST', '/api/auth/select-package', {
+      const response = await apiRequest('POST', '/api/auth/select-package', {
         package: packageType
       });
       
-      if (!response || !response.user) {
+      if (!response) {
         throw new Error('Failed to select package. Please try again.');
       }
       
-      const updatedUser = response.user;
+      const data = await response.json();
+      console.log('Select package response data:', data);
+      
+      if (!data.user) {
+        throw new Error('Invalid response format from server');
+      }
+      
+      const updatedUser = data.user;
       
       // Update user in localStorage
       localStorage.setItem('user', JSON.stringify(updatedUser));

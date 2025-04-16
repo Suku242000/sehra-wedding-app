@@ -108,12 +108,13 @@ const BudgetCard: React.FC = () => {
   const [showItemsList, setShowItemsList] = useState(false);
   
   // Fetch budget items with auth
-  const { data: budgetItems = [], isLoading } = useQuery<BudgetItem[]>({
+  const { data: budgetItems = [], isLoading, refetch } = useQuery<BudgetItem[]>({
     queryKey: ['/api/budget'],
     queryFn: () => fetchWithAuth('/api/budget'),
     enabled: true, // Always enabled
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+    refetchInterval: 3000, // Auto-refresh every 3 seconds
   });
   
   // Form
@@ -134,12 +135,14 @@ const BudgetCard: React.FC = () => {
     mutationFn: (newItem: BudgetFormValues) => createWithAuth('/api/budget', newItem),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
+      refetch(); // Immediate refetch to update UI
       toast({ 
         title: "Budget Item Added", 
         description: "Your budget item has been added successfully." 
       });
       form.reset();
       setOpenDialog(false);
+      setShowItemsList(true); // Show all items after adding new one
     },
     onError: (error: Error) => {
       toast({ 
@@ -156,6 +159,7 @@ const BudgetCard: React.FC = () => {
       updateWithAuth(`/api/budget/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
+      refetch(); // Immediate refetch to update UI
       toast({ 
         title: "Budget Item Updated", 
         description: "Your budget item has been updated successfully." 
@@ -178,6 +182,7 @@ const BudgetCard: React.FC = () => {
     mutationFn: (id: number) => deleteWithAuth(`/api/budget/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
+      refetch(); // Immediate refetch to update UI
       toast({ 
         title: "Budget Item Deleted", 
         description: "Your budget item has been deleted successfully." 

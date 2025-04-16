@@ -258,7 +258,7 @@ const ClientList: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <Phone className="h-4 w-4 text-[#800000]" />
-                          <span>Contact Phone (not stored)</span>
+                          <span>{client.phone || "No phone number available"}</span>
                         </div>
                       </div>
                     </CardContent>

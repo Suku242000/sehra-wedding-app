@@ -176,6 +176,10 @@ const SupervisorDashboard: React.FC = () => {
                     <div>
                       <CardTitle>{selectedClient.name}</CardTitle>
                       <CardDescription>{selectedClient.email}</CardDescription>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Phone className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-600">{selectedClient.phone || "No phone number available"}</span>
+                      </div>
                     </div>
                     <Badge className="capitalize">{selectedClient.package}</Badge>
                   </div>

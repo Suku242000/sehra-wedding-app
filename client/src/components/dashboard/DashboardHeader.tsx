@@ -31,9 +31,19 @@ const DashboardHeader: React.FC = () => {
     }
   };
 
+  const userRole = user?.role?.toLowerCase();
+  
   const navItems = [
+    // The Home link should go to the landing page
     { name: 'Home', path: '/' },
-    { name: 'Dashboard', path: '/dashboard' },
+    // Based on role, select the appropriate dashboard
+    { 
+      name: 'Dashboard', 
+      path: userRole === 'admin' ? '/admin-dashboard' : 
+            userRole === 'vendor' ? '/vendor-dashboard' : 
+            userRole === 'supervisor' ? '/supervisor-dashboard' : 
+            '/dashboard' 
+    },
     { name: 'My Wedding', path: '/dashboard?tab=wedding' },
     { name: 'Vendors', path: '/dashboard?tab=vendors' },
     { name: 'Guests', path: '/dashboard?tab=guests' },
@@ -45,8 +55,16 @@ const DashboardHeader: React.FC = () => {
         <div className="flex justify-between h-16">
           {/* Logo and Title */}
           <div className="flex items-center">
+            {/* Adding an explicit onClick to ensure it navigates to landing page */}
             <Link href="/">
-              <div className="flex-shrink-0 flex items-center cursor-pointer">
+              <div 
+                className="flex-shrink-0 flex items-center cursor-pointer"
+                onClick={(e) => {
+                  // Ensure this goes to home page, not dashboard
+                  window.location.href = '/';
+                  e.preventDefault(); // Prevent default link behavior
+                }}
+              >
                 <motion.div 
                   className="w-10 h-10 bg-[#800000] rounded-full flex items-center justify-center"
                   whileHover={{ scale: 1.05 }}
@@ -86,6 +104,13 @@ const DashboardHeader: React.FC = () => {
                               ? 'border-[#800000] text-[#800000]' 
                               : 'border-transparent text-gray-500 hover:border-[#FFD700] hover:text-[#FFD700]'
                             } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200 cursor-pointer`}
+                          onClick={(e) => {
+                            // For home link, use direct navigation to ensure it goes to landing page
+                            if (item.path === '/') {
+                              window.location.href = '/';
+                              e.preventDefault();
+                            }
+                          }}
                         >
                           {item.name}
                         </span>

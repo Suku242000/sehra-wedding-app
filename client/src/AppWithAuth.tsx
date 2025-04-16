@@ -29,7 +29,7 @@ const AppWithAuth: React.FC = () => {
   return (
     <Switch>
       <Route path="/">
-        <PublicRoute>
+        <PublicRoute noRedirect={true}>
           <HomePage />
         </PublicRoute>
       </Route>

@@ -67,13 +67,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 /**
  * Higher-order component for public routes (redirect if already authenticated)
  */
-export const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const PublicRoute: React.FC<{ children: React.ReactNode, noRedirect?: boolean }> = ({ children, noRedirect = false }) => {
   const { isAuthenticated, user, loading } = useAuth();
   const [, setLocation] = useLocation();
   
   useEffect(() => {
     // Wait for authentication check to complete
-    if (!loading && isAuthenticated && user) {
+    // Only redirect if noRedirect is false
+    if (!noRedirect && !loading && isAuthenticated && user) {
       // Redirect based on user's role
       const lowerCaseRole = user.role.toLowerCase();
       if (lowerCaseRole === 'admin') {
@@ -88,10 +89,11 @@ export const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children 
         setLocation('/select-package');
       }
     }
-  }, [isAuthenticated, user, loading, setLocation]);
+  }, [isAuthenticated, user, loading, setLocation, noRedirect]);
   
   // Show nothing while checking authentication or redirecting
-  if (loading || (isAuthenticated && user)) {
+  // But if noRedirect is true, always render children regardless of auth state
+  if (!noRedirect && (loading || (isAuthenticated && user))) {
     return null;
   }
   

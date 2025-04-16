@@ -10,6 +10,10 @@ import {
   insertBudgetItemSchema,
   insertVendorBookingSchema,
   insertVendorProfileSchema,
+  insertAchievementSchema,
+  insertUserAchievementSchema,
+  insertUserProgressSchema,
+  insertTimelineEventSchema,
   UserRole
 } from "@shared/schema";
 import { 
@@ -885,6 +889,294 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Update wedding date error:", error);
       res.status(500).json({ message: "Failed to update wedding date" });
+    }
+  });
+
+  // Achievement routes
+  app.get("/api/achievements", async (req: Request, res: Response) => {
+    try {
+      const achievements = await storage.getAllAchievements();
+      res.json(achievements);
+    } catch (error) {
+      console.error("Get achievements error:", error);
+      res.status(500).json({ message: "Failed to retrieve achievements" });
+    }
+  });
+
+  app.get("/api/achievements/category/:category", async (req: Request, res: Response) => {
+    try {
+      const { category } = req.params;
+      const achievements = await storage.getAchievementsByCategory(category);
+      res.json(achievements);
+    } catch (error) {
+      console.error("Get achievements by category error:", error);
+      res.status(500).json({ message: "Failed to retrieve achievements by category" });
+    }
+  });
+
+  app.get("/api/achievements/:id", async (req: Request, res: Response) => {
+    try {
+      const achievementId = parseInt(req.params.id);
+      const achievement = await storage.getAchievement(achievementId);
+      
+      if (!achievement) {
+        return res.status(404).json({ message: "Achievement not found" });
+      }
+      
+      res.json(achievement);
+    } catch (error) {
+      console.error("Get achievement error:", error);
+      res.status(500).json({ message: "Failed to retrieve achievement" });
+    }
+  });
+
+  app.post("/api/achievements", authenticateToken, authorizeRoles([UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertAchievementSchema.parse(req.body);
+      const achievement = await storage.createAchievement(validatedData);
+      res.status(201).json(achievement);
+    } catch (error) {
+      console.error("Create achievement error:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create achievement" });
+    }
+  });
+
+  app.patch("/api/achievements/:id", authenticateToken, authorizeRoles([UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const achievementId = parseInt(req.params.id);
+      const achievement = await storage.getAchievement(achievementId);
+      
+      if (!achievement) {
+        return res.status(404).json({ message: "Achievement not found" });
+      }
+      
+      const updatedAchievement = await storage.updateAchievement(achievementId, req.body);
+      res.json(updatedAchievement);
+    } catch (error) {
+      console.error("Update achievement error:", error);
+      res.status(500).json({ message: "Failed to update achievement" });
+    }
+  });
+
+  app.delete("/api/achievements/:id", authenticateToken, authorizeRoles([UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const achievementId = parseInt(req.params.id);
+      const achievement = await storage.getAchievement(achievementId);
+      
+      if (!achievement) {
+        return res.status(404).json({ message: "Achievement not found" });
+      }
+      
+      await storage.deleteAchievement(achievementId);
+      res.json({ message: "Achievement deleted successfully" });
+    } catch (error) {
+      console.error("Delete achievement error:", error);
+      res.status(500).json({ message: "Failed to delete achievement" });
+    }
+  });
+
+  // User Achievement routes
+  app.get("/api/user-achievements", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user.id;
+      const userAchievements = await storage.getUserAchievementsByUserId(userId);
+      res.json(userAchievements);
+    } catch (error) {
+      console.error("Get user achievements error:", error);
+      res.status(500).json({ message: "Failed to retrieve user achievements" });
+    }
+  });
+
+  app.post("/api/user-achievements", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertUserAchievementSchema.parse({
+        ...req.body,
+        userId: req.user.id,
+      });
+      
+      const userAchievement = await storage.createUserAchievement(validatedData);
+      res.status(201).json(userAchievement);
+    } catch (error) {
+      console.error("Create user achievement error:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create user achievement" });
+    }
+  });
+
+  app.patch("/api/user-achievements/:id", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const achievementId = parseInt(req.params.id);
+      const userId = req.user.id;
+      
+      // Check if user achievement exists and belongs to user
+      const userAchievement = await storage.getUserAchievement(achievementId);
+      if (!userAchievement) {
+        return res.status(404).json({ message: "User achievement not found" });
+      }
+      
+      if (userAchievement.userId !== userId && req.user.role !== UserRole.ADMIN) {
+        return res.status(403).json({ message: "Not authorized to update this user achievement" });
+      }
+      
+      const updatedUserAchievement = await storage.updateUserAchievement(achievementId, req.body);
+      res.json(updatedUserAchievement);
+    } catch (error) {
+      console.error("Update user achievement error:", error);
+      res.status(500).json({ message: "Failed to update user achievement" });
+    }
+  });
+
+  // User Progress routes
+  app.get("/api/user-progress", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user.id;
+      const userProgress = await storage.getUserProgressByUserId(userId);
+      
+      if (!userProgress) {
+        // If no progress record exists yet, create one
+        const newUserProgress = await storage.createUserProgress({
+          userId,
+          totalPoints: 0,
+          level: 1,
+          tasksCompleted: 0,
+          checklistProgress: 0,
+          budgetHealth: 100,
+          budgetMood: 'neutral',
+          streak: 0
+        });
+        return res.json(newUserProgress);
+      }
+      
+      res.json(userProgress);
+    } catch (error) {
+      console.error("Get user progress error:", error);
+      res.status(500).json({ message: "Failed to retrieve user progress" });
+    }
+  });
+  
+  app.patch("/api/user-progress", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user.id;
+      
+      // Check if user progress exists
+      let userProgress = await storage.getUserProgressByUserId(userId);
+      
+      if (!userProgress) {
+        // If no progress record exists yet, create one with the provided data
+        userProgress = await storage.createUserProgress({
+          userId,
+          ...req.body
+        });
+      } else {
+        // Update existing progress
+        userProgress = await storage.updateUserProgress(userProgress.id, {
+          ...req.body,
+          lastActive: new Date().toISOString() // Always update last active timestamp
+        });
+      }
+      
+      res.json(userProgress);
+    } catch (error) {
+      console.error("Update user progress error:", error);
+      res.status(500).json({ message: "Failed to update user progress" });
+    }
+  });
+
+  // Timeline Event routes
+  app.get("/api/timeline-events", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user.id;
+      const timelineEvents = await storage.getTimelineEventsByUserId(userId);
+      res.json(timelineEvents);
+    } catch (error) {
+      console.error("Get timeline events error:", error);
+      res.status(500).json({ message: "Failed to retrieve timeline events" });
+    }
+  });
+
+  app.post("/api/timeline-events", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertTimelineEventSchema.parse({
+        ...req.body,
+        userId: req.user.id,
+      });
+      
+      const timelineEvent = await storage.createTimelineEvent(validatedData);
+      res.status(201).json(timelineEvent);
+    } catch (error) {
+      console.error("Create timeline event error:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create timeline event" });
+    }
+  });
+
+  app.patch("/api/timeline-events/:id", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      const userId = req.user.id;
+      
+      // Check if timeline event exists and belongs to user
+      const timelineEvent = await storage.getTimelineEvent(eventId);
+      if (!timelineEvent) {
+        return res.status(404).json({ message: "Timeline event not found" });
+      }
+      
+      if (timelineEvent.userId !== userId && req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERVISOR) {
+        return res.status(403).json({ message: "Not authorized to update this timeline event" });
+      }
+      
+      const updatedTimelineEvent = await storage.updateTimelineEvent(eventId, req.body);
+      res.json(updatedTimelineEvent);
+    } catch (error) {
+      console.error("Update timeline event error:", error);
+      res.status(500).json({ message: "Failed to update timeline event" });
+    }
+  });
+
+  app.delete("/api/timeline-events/:id", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      const userId = req.user.id;
+      
+      // Check if timeline event exists and belongs to user
+      const timelineEvent = await storage.getTimelineEvent(eventId);
+      if (!timelineEvent) {
+        return res.status(404).json({ message: "Timeline event not found" });
+      }
+      
+      if (timelineEvent.userId !== userId && req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERVISOR) {
+        return res.status(403).json({ message: "Not authorized to delete this timeline event" });
+      }
+      
+      await storage.deleteTimelineEvent(eventId);
+      res.json({ message: "Timeline event deleted successfully" });
+    } catch (error) {
+      console.error("Delete timeline event error:", error);
+      res.status(500).json({ message: "Failed to delete timeline event" });
+    }
+  });
+
+  app.post("/api/timeline-events/reorder", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user.id;
+      const { eventIds } = req.body;
+      
+      if (!Array.isArray(eventIds)) {
+        return res.status(400).json({ message: "Event IDs must be an array" });
+      }
+      
+      const reorderedEvents = await storage.reorderTimelineEvents(userId, eventIds);
+      res.json(reorderedEvents);
+    } catch (error) {
+      console.error("Reorder timeline events error:", error);
+      res.status(500).json({ message: "Failed to reorder timeline events" });
     }
   });
 

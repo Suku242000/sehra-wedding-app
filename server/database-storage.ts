@@ -11,12 +11,24 @@ import {
   InsertBudgetItem,
   VendorBooking,
   InsertVendorBooking,
+  Achievement,
+  InsertAchievement,
+  UserAchievement,
+  InsertUserAchievement,
+  UserProgress,
+  InsertUserProgress,
+  TimelineEvent,
+  InsertTimelineEvent,
   users,
   vendorProfiles,
   tasks,
   guests,
   budgetItems,
-  vendorBookings
+  vendorBookings,
+  achievements,
+  userAchievements,
+  userProgress,
+  timelineEvents
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";

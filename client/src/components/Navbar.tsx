@@ -127,13 +127,28 @@ const Navbar: React.FC = () => {
                 </div>
               ))}
               <div className="pt-2">
-                <Link href="/auth">
-                  <div className="block">
-                    <Button className="w-full bg-[#800000] hover:bg-[#800000]/90 text-white">
-                      Login / Sign Up
+                {isAuthenticated ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 px-3 py-2 text-[#800000] font-medium">
+                      <User className="h-4 w-4" />
+                      <span>{user?.name || 'User'}</span>
+                    </div>
+                    <Button 
+                      onClick={() => goToDashboard()}
+                      className="w-full bg-[#800000] hover:bg-[#800000]/90 text-white"
+                    >
+                      Go to Dashboard
                     </Button>
                   </div>
-                </Link>
+                ) : (
+                  <Link href="/auth">
+                    <div className="block">
+                      <Button className="w-full bg-[#800000] hover:bg-[#800000]/90 text-white">
+                        Login / Sign Up
+                      </Button>
+                    </div>
+                  </Link>
+                )}
               </div>
             </div>
           </motion.div>

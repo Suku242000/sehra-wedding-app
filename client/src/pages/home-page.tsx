@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Navbar from '@/components/Navbar';
+import { useAuth } from '@/context/AuthContext';
+import { goToDashboard } from '@/lib/navigation';
 import { 
   Heart, 
   Star, 
@@ -86,6 +88,7 @@ const AnimatedSection = ({ children, className }: { children: React.ReactNode, c
 };
 
 const HomePage: React.FC = () => {
+  const { isAuthenticated, user } = useAuth();
   const features = [
     {
       icon: <Calendar className="h-10 w-10 text-[#800000]" />,
@@ -232,16 +235,34 @@ const HomePage: React.FC = () => {
               comprehensive wedding planning platform
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Button asChild size="lg" className="bg-[#FFD700] text-[#800000] hover:bg-[#FFD700]/90 px-8 font-semibold">
-                <Link href="/auth">Get Started</Link>
-              </Button>
-              <Button 
-                asChild 
-                size="lg" 
-                className="bg-white text-[#800000] hover:bg-white/90 border-2 border-white px-8 font-semibold"
-              >
-                <Link href="#packages">View Packages</Link>
-              </Button>
+              {isAuthenticated ? (
+                <>
+                  <Button 
+                    onClick={() => goToDashboard()} 
+                    size="lg" 
+                    className="bg-[#FFD700] text-[#800000] hover:bg-[#FFD700]/90 px-8 font-semibold"
+                  >
+                    Go to Dashboard
+                  </Button>
+                  <div className="bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-md border border-white/30 flex items-center">
+                    <span className="mr-2">Welcome back,</span>
+                    <span className="font-bold">{user?.name || 'User'}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Button asChild size="lg" className="bg-[#FFD700] text-[#800000] hover:bg-[#FFD700]/90 px-8 font-semibold">
+                    <Link href="/auth">Get Started</Link>
+                  </Button>
+                  <Button 
+                    asChild 
+                    size="lg" 
+                    className="bg-white text-[#800000] hover:bg-white/90 border-2 border-white px-8 font-semibold"
+                  >
+                    <Link href="#packages">View Packages</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </motion.div>
         </div>
@@ -407,13 +428,26 @@ const HomePage: React.FC = () => {
                         </li>
                       ))}
                     </ul>
-                    <Button asChild className={`w-full ${
-                      pkg.popular 
-                        ? 'bg-[#800000] hover:bg-[#800000]/90 text-white' 
-                        : 'bg-white border-2 border-[#800000] text-[#800000] hover:bg-[#800000]/10'
-                    }`}>
-                      <Link href="/auth">Get Started</Link>
-                    </Button>
+                    {isAuthenticated ? (
+                      <Button 
+                        onClick={() => goToDashboard()}
+                        className={`w-full ${
+                          pkg.popular 
+                            ? 'bg-[#800000] hover:bg-[#800000]/90 text-white' 
+                            : 'bg-white border-2 border-[#800000] text-[#800000] hover:bg-[#800000]/10'
+                        }`}
+                      >
+                        Go to Dashboard
+                      </Button>
+                    ) : (
+                      <Button asChild className={`w-full ${
+                        pkg.popular 
+                          ? 'bg-[#800000] hover:bg-[#800000]/90 text-white' 
+                          : 'bg-white border-2 border-[#800000] text-[#800000] hover:bg-[#800000]/10'
+                      }`}>
+                        <Link href="/auth">Get Started</Link>
+                      </Button>
+                    )}
                   </div>
                 </motion.div>
               ))}

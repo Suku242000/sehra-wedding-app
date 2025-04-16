@@ -122,6 +122,13 @@ export const vendorBookings = pgTable("vendor_bookings", {
   eventDate: text("event_date").notNull(),
   status: text("status").notNull(), // pending, confirmed, cancelled
   details: text("details"),
+  location: text("location"),
+  eventType: text("event_type"), // Type of event (wedding ceremony, reception, etc.)
+  budget: integer("budget"), // Budget allocated for this vendor
+  approvedBySupervisor: boolean("approved_by_supervisor").default(false),
+  supervisorNotes: text("supervisor_notes"),
+  vendorNotes: text("vendor_notes"),
+  clientNotes: text("client_notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

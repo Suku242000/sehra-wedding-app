@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Link } from 'wouter';
 import Layout from '@/components/Layout';
@@ -7,7 +7,7 @@ import { fadeIn, staggerContainer } from '@/lib/motion';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { VendorBooking, VendorProfile, User } from '@shared/schema';
+import { VendorBooking, VendorProfile, User, UserRole } from '@shared/schema';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { LogoutButton } from '@/components/LogoutButton';
@@ -18,9 +18,11 @@ import {
   CalendarIcon, CheckIcon, ClockIcon, UserIcon, 
   ImageIcon, PlusIcon, StarIcon, TrashIcon, 
   ThumbsUpIcon, UploadIcon, XIcon, MoreHorizontalIcon,
-  MapPinIcon, DollarSignIcon, BriefcaseIcon, MessageSquareIcon
+  MapPinIcon, DollarSignIcon, BriefcaseIcon, MessageSquareIcon,
+  ShieldIcon, UserCheckIcon, AlertTriangleIcon, BellIcon
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { apiRequest } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -32,7 +34,8 @@ import {
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog';
-import { format, differenceInDays, isPast, isFuture } from 'date-fns';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { format, differenceInDays, isPast as isDatePast, isFuture } from 'date-fns';
 
 // Portfolio Item Component
 interface PortfolioItemProps {
@@ -226,6 +229,22 @@ const VendorDashboard: React.FC = () => {
 
   // Dates with bookings for the calendar
   const bookedDates = bookings.map(booking => new Date(booking.eventDate));
+  
+  // Get assigned supervisor, if any
+  const { data: assignedSupervisor } = useQuery<User>({
+    queryKey: ['/api/vendors/assigned-supervisor'],
+    enabled: !!user,
+  });
+  
+  // Categorize bookings
+  const pendingBookings = bookings.filter(b => b.status === 'pending');
+  const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
+  const cancelledBookings = bookings.filter(b => b.status === 'cancelled');
+  
+  // Check if a booking is in the past
+  const isPastBooking = (eventDate: string): boolean => {
+    return isDatePast(new Date(eventDate));
+  };
 
   // Handler for file upload
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

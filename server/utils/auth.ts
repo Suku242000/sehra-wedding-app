@@ -62,6 +62,17 @@ export const hashPassword = async (password: string): Promise<string> => {
   return await bcrypt.hash(password, salt);
 };
 
+// Verify token - returns decoded token or undefined
+export const verifyToken = async (token: string): Promise<{ id: number; email: string; role: string; name: string } | undefined> => {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: number; email: string; role: string; name: string };
+    return decoded;
+  } catch (error) {
+    console.error('Token verification error:', error);
+    return undefined;
+  }
+};
+
 // Auth middleware
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];

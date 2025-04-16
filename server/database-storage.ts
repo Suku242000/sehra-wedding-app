@@ -418,6 +418,19 @@ export class DatabaseStorage implements IStorage {
         )
       );
   }
+  
+  async getUnreadMessagesCount(userId: number): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.toUserId, userId),
+          eq(messages.read, false)
+        )
+      );
+    return result[0]?.count || 0;
+  }
 
   async createMessage(message: InsertMessage): Promise<Message> {
     const [newMessage] = await db.insert(messages).values(message).returning();

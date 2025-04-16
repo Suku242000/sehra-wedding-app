@@ -40,6 +40,7 @@ import {
 initializeEmailTransport();
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Create HTTP and Socket.IO servers
   const httpServer = createServer(app);
   
   // Initialize Socket.IO with CORS settings
@@ -1359,6 +1360,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
+  // Client gets supervisor information
+  app.get("/api/client/supervisors", authenticateToken, authorizeRoles([UserRole.BRIDE, UserRole.GROOM, UserRole.FAMILY]), async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      
+      // If user has an assigned supervisor, return just that supervisor
+      if (user.supervisorId) {
+        const supervisor = await storage.getUser(user.supervisorId);
+        if (supervisor) {
+          const { password, ...supervisorData } = supervisor;
+          return res.json([supervisorData]);
+        }
+      }
+      
+      // Otherwise, return all supervisors (usually there would just be one assigned)
+      const supervisors = await storage.getUsersByRole(UserRole.SUPERVISOR);
+      const sanitizedSupervisors = supervisors.map(s => {
+        const { password, ...supervisorData } = s;
+        return supervisorData;
+      });
+      
+      res.json(sanitizedSupervisors);
+    } catch (error) {
+      console.error("Error fetching supervisors:", error);
+      res.status(500).json({ message: "Failed to fetch supervisors" });
+    }
+  });
+  
+  // Supervisor gets assigned clients
+  app.get("/api/supervisor/clients", authenticateToken, authorizeRoles([UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
+    try {
+      const supervisorId = req.user.id;
+      
+      // Get all clients that have this supervisor assigned
+      const clients = await storage.getUsersBySupervisorId(supervisorId);
+      
+      // Remove sensitive information
+      const sanitizedClients = clients.map(client => {
+        const { password, ...clientData } = client;
+        return clientData;
+      });
+      
+      res.json(sanitizedClients);
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+      res.status(500).json({ message: "Failed to fetch clients" });
+    }
+  });
+  
+  // API endpoint for getting messages between two users
+  app.get("/api/messages/:userId", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const currentUserId = req.user.id;
+      const otherUserId = parseInt(req.params.userId);
+      
+      const messages = await storage.getMessagesBetweenUsers(currentUserId, otherUserId);
+      
+      // Mark messages as read
+      await storage.markAllMessagesAsRead(otherUserId, currentUserId);
+      
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+  
   // Helper function to update contact status after messaging
   async function updateContactStatusAfterMessage(fromUserId: number, toUserId: number) {
     try {
@@ -1399,6 +1467,182 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Failed to update contact status:", error);
     }
   }
+  
+  // WebSocket Handling for real-time communication
+  const authenticatedSockets = new Map();
+  
+  io.on('connection', (socket) => {
+    console.log('New connection established:', socket.id);
+    
+    // Authentication
+    socket.on('authenticate', async (token) => {
+      try {
+        // Verify token
+        const decoded = await verifyToken(token);
+        if (!decoded || !decoded.id) {
+          socket.emit('authentication_error', 'Invalid token');
+          return;
+        }
+        
+        const user = await storage.getUser(decoded.id);
+        if (!user) {
+          socket.emit('authentication_error', 'User not found');
+          return;
+        }
+        
+        // Store authenticated socket
+        authenticatedSockets.set(socket.id, {
+          userId: user.id,
+          role: user.role,
+          name: user.name
+        });
+        
+        console.log(`User authenticated: ${user.name} (${user.id})`);
+        socket.emit('authenticated', { userId: user.id, role: user.role });
+        
+        // Get unread messages count for this user
+        const unreadCount = await storage.getUnreadMessagesCount(user.id);
+        socket.emit('unread_count', unreadCount);
+      } catch (error) {
+        console.error("Socket authentication error:", error);
+        socket.emit('authentication_error', 'Authentication failed');
+      }
+    });
+    
+    // Send message
+    socket.on('send_message', async (data) => {
+      try {
+        const socketData = authenticatedSockets.get(socket.id);
+        if (!socketData) {
+          socket.emit('error', 'Not authenticated');
+          return;
+        }
+        
+        const { toUserId, content, messageType = 'text' } = data;
+        
+        // Create the message in database
+        const message = await storage.createMessage({
+          fromUserId: socketData.userId,
+          toUserId,
+          content,
+          messageType,
+          read: false
+        });
+        
+        // Update contact status
+        await updateContactStatusAfterMessage(socketData.userId, toUserId);
+        
+        // Emit to sender with message info
+        socket.emit('message_sent', message);
+        
+        // Send to recipient if they're online
+        const recipientSocketId = Array.from(authenticatedSockets.entries())
+          .find(([_, data]) => data.userId === toUserId)?.[0];
+        
+        if (recipientSocketId) {
+          const recipientSocket = io.sockets.sockets.get(recipientSocketId);
+          if (recipientSocket) {
+            // Add sender name to the message
+            const messageWithSender = { ...message, senderName: socketData.name };
+            recipientSocket.emit('new_message', messageWithSender);
+            
+            // Update unread count for recipient
+            const unreadCount = await storage.getUnreadMessagesCount(toUserId);
+            recipientSocket.emit('unread_count', unreadCount);
+          }
+        }
+        
+        // Supervisor allocation notification
+        if (messageType === 'supervisor_allocation') {
+          socket.emit('supervisor_allocated', { clientId: toUserId, supervisorId: socketData.userId });
+        }
+      } catch (error) {
+        console.error("Error sending message:", error);
+        socket.emit('error', 'Failed to send message');
+      }
+    });
+    
+    // Mark messages as read
+    socket.on('mark_read', async (fromUserId) => {
+      try {
+        const socketData = authenticatedSockets.get(socket.id);
+        if (!socketData) {
+          socket.emit('error', 'Not authenticated');
+          return;
+        }
+        
+        await storage.markAllMessagesAsRead(fromUserId, socketData.userId);
+        
+        // Update unread count
+        const unreadCount = await storage.getUnreadMessagesCount(socketData.userId);
+        socket.emit('unread_count', unreadCount);
+        
+        // If sender is online, notify them their messages have been read
+        const senderSocketId = Array.from(authenticatedSockets.entries())
+          .find(([_, data]) => data.userId === fromUserId)?.[0];
+        
+        if (senderSocketId) {
+          const senderSocket = io.sockets.sockets.get(senderSocketId);
+          if (senderSocket) {
+            senderSocket.emit('messages_read', { byUserId: socketData.userId });
+          }
+        }
+      } catch (error) {
+        console.error("Error marking messages as read:", error);
+        socket.emit('error', 'Failed to mark messages as read');
+      }
+    });
+    
+    // Notify supervisor allocation
+    socket.on('notify_supervisor_allocation', async (data) => {
+      try {
+        const socketData = authenticatedSockets.get(socket.id);
+        if (!socketData) {
+          socket.emit('error', 'Not authenticated');
+          return;
+        }
+        
+        const { clientId, supervisorId } = data;
+        
+        // If supervisor is online, notify them
+        const supervisorSocketId = Array.from(authenticatedSockets.entries())
+          .find(([_, data]) => data.userId === supervisorId)?.[0];
+        
+        if (supervisorSocketId) {
+          const supervisorSocket = io.sockets.sockets.get(supervisorSocketId);
+          if (supervisorSocket) {
+            supervisorSocket.emit('supervisor_allocation_notification', { 
+              clientId, 
+              message: 'You have been assigned a new client' 
+            });
+          }
+        }
+        
+        // If client is online, notify them
+        const clientSocketId = Array.from(authenticatedSockets.entries())
+          .find(([_, data]) => data.userId === clientId)?.[0];
+        
+        if (clientSocketId) {
+          const clientSocket = io.sockets.sockets.get(clientSocketId);
+          if (clientSocket) {
+            clientSocket.emit('supervisor_allocation_notification', { 
+              supervisorId, 
+              message: 'A supervisor has been assigned to you' 
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error notifying supervisor allocation:", error);
+        socket.emit('error', 'Failed to notify supervisor allocation');
+      }
+    });
+    
+    // Disconnect handling
+    socket.on('disconnect', () => {
+      console.log('Connection closed:', socket.id);
+      authenticatedSockets.delete(socket.id);
+    });
+  });
 
   return httpServer;
 }

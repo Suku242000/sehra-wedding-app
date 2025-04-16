@@ -1,10 +1,15 @@
 import { AuthProvider } from '@/context/AuthContext';
+import { SocketProvider } from '@/context/SocketContext';
 import AppWithAuth from './AppWithAuth';
+import { Toaster } from '@/components/ui/toaster';
 
 function App() {
   return (
     <AuthProvider>
-      <AppWithAuth />
+      <SocketProvider>
+        <AppWithAuth />
+        <Toaster />
+      </SocketProvider>
     </AuthProvider>
   );
 }

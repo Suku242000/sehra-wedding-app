@@ -189,7 +189,8 @@ export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
   fromUserId: integer("from_user_id").notNull(),
   toUserId: integer("to_user_id").notNull(),
-  message: text("message").notNull(),
+  content: text("content").notNull(),
+  messageType: text("message_type").default("text"),
   read: boolean("read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });

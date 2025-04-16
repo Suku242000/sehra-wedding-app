@@ -31,21 +31,24 @@ const DashboardHero: React.FC = () => {
     vendorsBooked: 0
   });
   
-  // Fetch tasks
-  const { data: tasks } = useQuery({
+  // Fetch tasks with auth
+  const { data: tasks = [] } = useQuery<Task[]>({
     queryKey: ['/api/tasks'],
+    queryFn: () => fetchWithAuth('/api/tasks'),
     enabled: !!user
   });
   
-  // Fetch guests
-  const { data: guests } = useQuery({
+  // Fetch guests with auth
+  const { data: guests = [] } = useQuery<any[]>({
     queryKey: ['/api/guests'],
+    queryFn: () => fetchWithAuth('/api/guests'),
     enabled: !!user
   });
   
-  // Fetch bookings
-  const { data: bookings } = useQuery({
+  // Fetch bookings with auth
+  const { data: bookings = [] } = useQuery<any[]>({
     queryKey: ['/api/bookings'],
+    queryFn: () => fetchWithAuth('/api/bookings'),
     enabled: !!user
   });
   

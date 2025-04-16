@@ -73,9 +73,11 @@ const TaskManager: React.FC = () => {
   const [progressPercent, setProgressPercent] = useState(0);
   const [showCelebration, setShowCelebration] = useState(false);
   
-  // Fetch tasks
+  // Fetch tasks with auth
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ['/api/tasks'],
+    queryFn: () => fetchWithAuth('/api/tasks'),
+    enabled: true,
   });
   
   // Form

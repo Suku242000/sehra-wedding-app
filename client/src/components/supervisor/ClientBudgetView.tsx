@@ -88,8 +88,13 @@ export default function ClientBudgetView({ clientId, clientName }: ClientBudgetV
   // Fetch client budget items
   const { data: budgetItems = [], isLoading: isBudgetLoading } = useQuery<BudgetItem[]>({
     queryKey: ['/api/supervisor/client-budget', clientId],
-    queryFn: () => fetchWithAuth(`/api/supervisor/client-budget/${clientId}`),
+    queryFn: () => {
+      console.log('Fetching budget items for client ID:', clientId);
+      return fetchWithAuth(`/api/supervisor/client-budget/${clientId}`);
+    },
     enabled: !!clientId,
+    onSuccess: (data) => console.log('Budget items fetched successfully:', data.length),
+    onError: (error) => console.error('Error fetching budget items:', error),
   });
   
   // Fetch client information

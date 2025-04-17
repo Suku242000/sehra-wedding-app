@@ -76,8 +76,10 @@ export default function SupervisorClients() {
   };
 
   const handleViewBudget = (client: Client) => {
+    console.log('View budget clicked for client:', client);
     setSelectedClient(client);
     setActiveTab('budget');
+    console.log('Active tab set to:', 'budget');
   };
 
   // Show loading indicator

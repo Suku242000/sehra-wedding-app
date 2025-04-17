@@ -1,24 +1,10 @@
-// Re-export shared schemas
-export * from './schema';
+// Export components, hooks and utilities from shared directory
 
-// Re-export shared types explicitly to avoid conflicts
-export type {
-  // Type definitions from shared/types
-  ApiResponse,
-  AuthState,
-  LoginResponse,
-  RegisterResponse,
-  NotificationEvent,
-  MessageEvent,
-  BookingEvent,
-  SocketEvents
-} from './types';
-
-// Re-export shared components
+// Export all components
 export * from './components';
 
-// Re-export shared hooks
+// Export all hooks
 export * from './hooks';
 
-// Re-export shared utilities
+// Export all utility functions
 export * from './utils';

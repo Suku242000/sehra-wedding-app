@@ -1,83 +1,82 @@
 import { QueryClient } from "@tanstack/react-query";
 
-// Configuration options for the default fetcher
-interface FetcherConfig {
-  on401?: "throw" | "returnNull";
-}
-
-// Create a query client with default options
+// Create a client
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: false,
-      refetchOnWindowFocus: false,
+      retry: 1,
     },
   },
 });
 
-// Standard API request function for mutations
+/**
+ * Helper function for making standardized API requests
+ * @param method The HTTP method to use
+ * @param endpoint The API endpoint to request
+ * @param body The request body (for POST, PUT, PATCH)
+ * @param options Additional fetch options
+ * @returns The fetch response
+ */
 export async function apiRequest(
-  method: string,
-  url: string,
-  data?: any
-): Promise<Response> {
-  const options: RequestInit = {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "include", // Include cookies for session authentication
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
+  endpoint: string,
+  body?: any,
+  options?: RequestInit
+) {
+  // Set up headers with content type
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
   };
 
-  if (data) {
-    options.body = JSON.stringify(data);
+  // Configure the fetch request
+  const config: RequestInit = {
+    method,
+    headers,
+    credentials: "include", // Include cookies for session-based auth
+    ...options,
+  };
+
+  // Add body for methods that support it
+  if (body && ["POST", "PUT", "PATCH"].includes(method)) {
+    config.body = JSON.stringify(body);
   }
 
-  return fetch(url, options);
+  return fetch(endpoint, config);
 }
 
-// Default query function for React Query that handles common patterns
-export function getQueryFn(config: FetcherConfig = {}) {
-  return async ({ queryKey }: { queryKey: (string | number)[] }) => {
-    const [endpoint] = queryKey;
+/**
+ * Configurable query function factory for TanStack Query
+ * 
+ * @param options.on401 - how to handle 401 errors, "throw" or "returnNull"
+ * @returns A fetch function for TanStack Query
+ */
+export function getQueryFn({
+  on401 = "throw",
+}: {
+  on401?: "throw" | "returnNull";
+} = {}) {
+  return async ({ queryKey }: { queryKey: string[] }) => {
+    const endpoint = queryKey[0];
+    const res = await apiRequest("GET", endpoint);
 
-    if (typeof endpoint !== "string") {
-      throw new Error("Query key must be a string endpoint");
-    }
-
-    // Build the URL from the query key
-    let url = endpoint;
-    if (queryKey.length > 1) {
-      // Add additional path segments from the query key
-      const pathParams = queryKey.slice(1).map(String);
-      url = `${endpoint}/${pathParams.join("/")}`;
-    }
-
-    const response = await fetch(url, {
-      credentials: "include", // Include cookies for session authentication
-    });
-
-    // Handle unauthorized errors
-    if (response.status === 401) {
-      if (config.on401 === "returnNull") {
+    // Handle unauthorized (not logged in)
+    if (res.status === 401) {
+      if (on401 === "returnNull") {
         return null;
+      } else {
+        throw new Error("Not authenticated");
       }
-      throw new Error("Unauthorized");
     }
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || `API error: ${response.statusText}`
-      );
+    // Handle other errors
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || "API request failed");
     }
 
-    // Only attempt to parse JSON if there's content
-    if (response.status !== 204) {
-      return response.json();
-    }
-
-    return null;
+    // Return the data
+    const data = await res.json();
+    return data;
   };
 }

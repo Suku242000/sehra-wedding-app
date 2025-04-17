@@ -152,12 +152,20 @@ const VendorDashboard: React.FC = () => {
     enabled: !!user && !!vendorProfile,
     refetchOnWindowFocus: false
   });
+  
+  // Fetch SQS data
+  const { data: sqsData, isLoading: isSqsLoading } = useQuery<{ sqsScore: number, category: string }>({
+    queryKey: [`/api/vendors/${user?.id}/sqs`],
+    enabled: !!user,
+    refetchOnWindowFocus: false
+  });
 
   // Calculate analytics refresh
   const refreshAnalyticsMutation = useMutation({
     mutationFn: () => apiRequest('POST', '/api/vendors/analytics/calculate'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/vendors/analytics'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/vendors/${user?.id}/sqs`] });
       toast({
         title: 'Analytics updated',
         description: 'Your vendor analytics data has been recalculated',
@@ -534,6 +542,48 @@ const VendorDashboard: React.FC = () => {
                       }).length}
                     </div>
                     <div className="text-gray-600">Upcoming</div>
+                  </div>
+                  
+                  {/* SQS Score Display */}
+                  <div className="bg-gray-50 p-4 rounded-lg col-span-2 mt-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="text-lg font-semibold">Sehra Quality Score (SQS)</div>
+                      {isSqsLoading ? (
+                        <Badge variant="outline">Calculating...</Badge>
+                      ) : (
+                        <Badge 
+                          variant={
+                            sqsData?.category === 'Gold' ? 'secondary' :
+                            sqsData?.category === 'Platinum' ? 'destructive' : 'outline'
+                          }
+                        >
+                          {sqsData?.category || 'Standard'} Vendor
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="relative pt-1">
+                      <div className="overflow-hidden h-4 mb-1 text-xs flex rounded-full bg-gray-200">
+                        <div 
+                          style={{ width: `${sqsData?.sqsScore || 0}%` }} 
+                          className={
+                            sqsData?.category === 'Platinum' ? 'shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-[#B91C1C]' :
+                            sqsData?.category === 'Gold' ? 'shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-[#D97706]' :
+                            'shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-[#0369A1]'
+                          }
+                        ></div>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>0</span>
+                        <span className="text-center">50</span>
+                        <span>100</span>
+                      </div>
+                      <div className="text-center mt-1 font-medium">
+                        {sqsData?.sqsScore || 0}/100
+                      </div>
+                      <div className="text-xs text-gray-500 text-center mt-1">
+                        Based on reviews, bookings, response time, experience and other factors
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

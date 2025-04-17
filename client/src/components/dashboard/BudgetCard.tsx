@@ -99,6 +99,7 @@ const BudgetCard: React.FC = () => {
   const [totalBudget, setTotalBudget] = useState(1500000); // ₹15,00,000
   const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [spentAmount, setSpentAmount] = useState(0);
+  const [paidAmount, setPaidAmount] = useState(0);
   const [budgetPercentage, setBudgetPercentage] = useState(0);
   const [categoryTotals, setCategoryTotals] = useState<Record<string, number>>({});
   const [budgetMood, setBudgetMood] = useState<BudgetMoodType>('fair');
@@ -201,34 +202,50 @@ const BudgetCard: React.FC = () => {
   useEffect(() => {
     if (budgetItems && budgetItems.length > 0) {
       const totals: Record<string, number> = {};
-      let total = 0;
+      let estimatedTotal = 0;
+      let actualTotal = 0;
+      let paidTotal = 0;
       
       budgetItems.forEach((item) => {
-        const cost = item.actualCost || item.estimatedCost;
-        total += cost;
+        const estimatedCost = item.estimatedCost || 0;
+        const actualCost = item.actualCost || estimatedCost;
         
+        estimatedTotal += estimatedCost;
+        
+        // Only count actual costs in the total if the item has an actual cost or is marked as paid
+        if (item.actualCost || item.paid) {
+          actualTotal += actualCost;
+        }
+        
+        // For paid items, add to paid total
+        if (item.paid) {
+          paidTotal += actualCost;
+        }
+        
+        // Track by category
         if (totals[item.category]) {
-          totals[item.category] += cost;
+          totals[item.category] += actualCost;
         } else {
-          totals[item.category] = cost;
+          totals[item.category] = actualCost;
         }
       });
       
       setCategoryTotals(totals);
       
-      // Set spending trend
-      if (total > previousSpentAmount) {
+      // Set spending trend based on actual expenses
+      if (actualTotal > previousSpentAmount) {
         setSpendingTrend('increasing');
-      } else if (total < previousSpentAmount) {
+      } else if (actualTotal < previousSpentAmount) {
         setSpendingTrend('decreasing');
       } else {
         setSpendingTrend('stable');
       }
       
       setPreviousSpentAmount(spentAmount);
-      setSpentAmount(total);
+      setSpentAmount(actualTotal);
+      setPaidAmount(paidTotal);
       
-      const percentage = Math.round((total / totalBudget) * 100);
+      const percentage = Math.round((actualTotal / totalBudget) * 100);
       setBudgetPercentage(percentage);
       
       // Calculate budget mood based on percentage of budget used
@@ -384,6 +401,27 @@ const BudgetCard: React.FC = () => {
         <div className="flex justify-between items-center mb-4 text-xs text-gray-500">
           <span>{formatCurrency(spentAmount)} spent of {formatCurrency(totalBudget)}</span>
           <span>{budgetMoodConfig[budgetMood].description}</span>
+        </div>
+        
+        {/* Paid vs Remaining */}
+        <div className="bg-gray-50 p-3 rounded-md mb-4 border border-gray-100">
+          <div className="flex justify-between items-center mb-2">
+            <h4 className="text-sm font-medium">Payment Status</h4>
+            <Badge variant="outline" className="text-xs">
+              {Math.round((paidAmount / spentAmount) * 100) || 0}% Paid
+            </Badge>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-white p-2 rounded border border-green-100">
+              <div className="text-xs text-gray-500">Paid</div>
+              <div className="font-medium text-green-600">{formatCurrency(paidAmount)}</div>
+            </div>
+            <div className="bg-white p-2 rounded border border-amber-100">
+              <div className="text-xs text-gray-500">Remaining</div>
+              <div className="font-medium text-amber-600">{formatCurrency(spentAmount - paidAmount)}</div>
+            </div>
+          </div>
         </div>
         
         {/* Categories */}

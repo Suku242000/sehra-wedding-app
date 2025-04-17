@@ -312,6 +312,34 @@ export const vendorCalendar = pgTable("vendor_calendar", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Vendor analytics table for tracking metrics
+export const vendorAnalytics = pgTable("vendor_analytics", {
+  id: serial("id").primaryKey(),
+  vendorId: integer("vendor_id").notNull(), // References vendor_profiles.id
+  profileViews: integer("profile_views").default(0),
+  inquiryCount: integer("inquiry_count").default(0),
+  bookingCount: integer("booking_count").default(0),
+  quoteRequestCount: integer("quote_request_count").default(0),
+  conversionRate: real("conversion_rate"), // calculated field: bookings/profile views
+  averageResponseTime: integer("average_response_time"), // in minutes
+  // Daily metrics tracking
+  dailyStats: json("daily_stats").$type<{
+    date: string; // format: "YYYY-MM-DD"
+    views: number;
+    inquiries: number;
+    bookings: number;
+  }[]>(),
+  // Monthly metrics tracking
+  monthlyStats: json("monthly_stats").$type<{
+    month: string; // format: "YYYY-MM"
+    views: number;
+    inquiries: number;
+    bookings: number;
+    revenue: number;
+  }[]>(),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users)
   .omit({ id: true, createdAt: true });
@@ -361,6 +389,9 @@ export const insertVendorCalendarSchema = createInsertSchema(vendorCalendar)
   .extend({
     date: z.date()
   });
+  
+export const insertVendorAnalyticsSchema = createInsertSchema(vendorAnalytics)
+  .omit({ id: true, lastUpdated: true });
 
 // Custom auth schemas
 export const loginSchema = z.object({

@@ -28,12 +28,21 @@ interface LoginCredentials {
 // Internal roles
 export type InternalRole = "vendor" | "supervisor" | "admin";
 
+// Registration data type
+interface RegisterData {
+  name: string;
+  email: string;
+  password: string;
+  role: string;
+}
+
 // Internal auth context with role-specific methods
 interface InternalAuthContextType {
   user: InternalUser | null;
   isLoading: boolean;
   error: Error | null;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, role: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<InternalUser>) => Promise<void>;
 }
@@ -80,6 +89,45 @@ export function InternalAuthProvider({ children }: { children: ReactNode }) {
       });
     },
   });
+  
+  // Register mutation
+  const registerMutation = useMutation({
+    mutationFn: async (data: RegisterData) => {
+      const res = await apiRequest("POST", "/api/staff/register", data);
+      return await res.json();
+    },
+    onSuccess: (user: InternalUser) => {
+      queryClient.setQueryData(["/api/user"], user);
+      
+      toast({
+        title: "Registration successful",
+        description: `Welcome to Sehra, ${user.name}!`,
+        variant: "success",
+      });
+
+      // Redirect based on role
+      switch (user.role) {
+        case "vendor":
+          setLocation("/vendor-dashboard");
+          break;
+        case "supervisor":
+          setLocation("/supervisor-dashboard");
+          break;
+        case "admin":
+          setLocation("/admin-dashboard");
+          break;
+        default:
+          setLocation("/");
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Registration failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   // Profile update mutation
   const updateProfileMutation = useMutation({
@@ -106,8 +154,13 @@ export function InternalAuthProvider({ children }: { children: ReactNode }) {
   });
 
   // Login function
-  const login = async (credentials: LoginCredentials) => {
-    await loginMutation.mutateAsync(credentials);
+  const login = async (email: string, password: string) => {
+    await loginMutation.mutateAsync({ email, password });
+  };
+  
+  // Register function
+  const register = async (name: string, email: string, password: string, role: string) => {
+    await registerMutation.mutateAsync({ name, email, password, role });
   };
 
   // Update profile function
@@ -123,6 +176,7 @@ export function InternalAuthProvider({ children }: { children: ReactNode }) {
   // Extra context values specific to internal app
   const extraContextValues = {
     login,
+    register,
     updateProfile,
   };
 

@@ -3,59 +3,73 @@ import {
   BaseAuthProvider, 
   User, 
   LoginCredentials, 
-  RegisterCredentials, 
+  RegisterCredentials,
   useAuth as useBaseAuth
 } from "../../../shared/src/hooks/useAuth";
 import { useToast } from "../../../shared/src/hooks/useToast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "../../../shared/src/lib/queryClient";
 
-// Extended user type for vendor users in the internal application
-export interface VendorUser extends User {
-  vendorType?: string;
-  businessName?: string;
-  sqsScore?: number;
-  tier?: 'regular' | 'gold' | 'premium';
-  contactInfo?: {
+// Extended user type for internal applications (vendor, supervisor, admin)
+export interface InternalUser extends User {
+  // Common fields for all internal users
+  joinDate?: string;
+  lastActive?: string;
+  contactDetails?: {
     phone?: string;
     address?: string;
-    website?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
   };
-  services?: string[];
-}
-
-// Extended user type for supervisor users in the internal application
-export interface SupervisorUser extends User {
+  
+  // Vendor-specific fields
+  vendorId?: number;
+  businessName?: string;
+  vendorType?: string;
+  rating?: number;
+  sqsScore?: number;
+  sqsCategory?: 'standard' | 'gold' | 'premium';
+  
+  // Supervisor-specific fields
   assignedClients?: number[];
-  specialization?: string;
-  region?: string;
-  contactInfo?: {
+  supervisorStats?: {
+    totalClients: number;
+    activeWeddings: number;
+    completedWeddings: number;
+    clientSatisfaction: number;
+  };
+  
+  // Admin-specific fields
+  adminPrivileges?: string[];
+  adminStats?: {
+    totalUsers: number;
+    totalVendors: number;
+    totalSupervisors: number;
+    totalWeddings: number;
+    revenueGenerated: number;
+  };
+}
+
+// Interface for profile updates
+export interface ProfileUpdate {
+  name?: string;
+  contactDetails?: {
     phone?: string;
-    workEmail?: string;
-  };
-  performanceMetrics?: {
-    clientSatisfaction?: number;
-    responseTime?: number;
-    successfulEvents?: number;
+    address?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
   };
 }
 
-// Extended user type for admin users in the internal application
-export interface AdminUser extends User {
-  department?: string;
-  accessLevel?: string;
-  permissions?: string[];
-}
-
-// Union type for all internal user types
-export type InternalUser = VendorUser | SupervisorUser | AdminUser;
-
+// Main auth provider for internal application
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Use the base auth provider but with internal-specific endpoints
+  // Use the base auth provider with internal-specific endpoints
   return (
     <BaseAuthProvider
       loginEndpoint="/api/internal/login"
-      logoutEndpoint="/api/internal/logout"
+      logoutEndpoint="/api/internal/logout" 
       registerEndpoint="/api/internal/register"
       userEndpoint="/api/internal/user"
     >
@@ -68,8 +82,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 function InternalAuthExtension({ children }: { children: ReactNode }) {
   const baseAuth = useBaseAuth();
   const { toast } = useToast();
+  
+  // Fetch notifications for the logged-in user
+  const { data: notifications } = useQuery({
+    queryKey: ["/api/internal/notifications"],
+    queryFn: async () => {
+      try {
+        if (!baseAuth.user) return null;
+        
+        const res = await apiRequest("GET", "/api/internal/notifications");
+        if (!res.ok) {
+          throw new Error("Failed to fetch notifications");
+        }
+        return await res.json();
+      } catch (err) {
+        return null;
+      }
+    },
+    enabled: !!baseAuth.user,
+  });
 
-  // Fetch vendor profile data if the user is a vendor
+  // Fetch messages for the logged-in user
+  const { data: unreadMessages } = useQuery({
+    queryKey: ["/api/internal/unread-messages"],
+    queryFn: async () => {
+      try {
+        if (!baseAuth.user) return null;
+        
+        const res = await apiRequest("GET", "/api/internal/unread-messages");
+        if (!res.ok) {
+          throw new Error("Failed to fetch unread messages");
+        }
+        return await res.json();
+      } catch (err) {
+        return null;
+      }
+    },
+    enabled: !!baseAuth.user,
+  });
+
+  // For vendors - Fetch vendor profile with SQS score
   const { data: vendorProfile } = useQuery({
     queryKey: ["/api/internal/vendor-profile"],
     queryFn: async () => {
@@ -88,16 +140,16 @@ function InternalAuthExtension({ children }: { children: ReactNode }) {
     enabled: !!baseAuth.user && baseAuth.user.role === "vendor",
   });
 
-  // Fetch supervisor dashboard data if the user is a supervisor
-  const { data: supervisorDashboard } = useQuery({
-    queryKey: ["/api/internal/supervisor-dashboard"],
+  // For supervisors - Fetch assigned clients
+  const { data: assignedClients } = useQuery({
+    queryKey: ["/api/internal/assigned-clients"],
     queryFn: async () => {
       try {
         if (!baseAuth.user || baseAuth.user.role !== "supervisor") return null;
         
-        const res = await apiRequest("GET", "/api/internal/supervisor-dashboard");
+        const res = await apiRequest("GET", "/api/internal/assigned-clients");
         if (!res.ok) {
-          throw new Error("Failed to fetch supervisor dashboard data");
+          throw new Error("Failed to fetch assigned clients");
         }
         return await res.json();
       } catch (err) {
@@ -107,40 +159,21 @@ function InternalAuthExtension({ children }: { children: ReactNode }) {
     enabled: !!baseAuth.user && baseAuth.user.role === "supervisor",
   });
 
-  // Fetch admin stats if the user is an admin
-  const { data: adminStats } = useQuery({
-    queryKey: ["/api/internal/admin-stats"],
-    queryFn: async () => {
-      try {
-        if (!baseAuth.user || baseAuth.user.role !== "admin") return null;
-        
-        const res = await apiRequest("GET", "/api/internal/admin-stats");
-        if (!res.ok) {
-          throw new Error("Failed to fetch admin statistics");
-        }
-        return await res.json();
-      } catch (err) {
-        return null;
-      }
-    },
-    enabled: !!baseAuth.user && baseAuth.user.role === "admin",
-  });
-
-  // Mutation for updating vendor profile
-  const updateVendorProfileMutation = useMutation({
-    mutationFn: async (profileData: Partial<VendorUser>) => {
-      const res = await apiRequest("PATCH", "/api/internal/vendor-profile", profileData);
+  // Mutation for updating profile information
+  const updateProfileMutation = useMutation({
+    mutationFn: async (profileData: ProfileUpdate) => {
+      const res = await apiRequest("PATCH", "/api/internal/update-profile", profileData);
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update vendor profile");
+        throw new Error(errorData.message || "Failed to update profile information");
       }
       return await res.json();
     },
-    onSuccess: (userData: VendorUser) => {
-      queryClient.setQueryData(["/api/internal/vendor-profile"], userData);
+    onSuccess: (userData: InternalUser) => {
+      queryClient.setQueryData(["/api/internal/user"], userData);
       toast({
         title: "Profile Updated",
-        description: "Your vendor profile has been updated successfully.",
+        description: "Your profile has been successfully updated.",
       });
     },
     onError: (error: Error) => {
@@ -151,17 +184,50 @@ function InternalAuthExtension({ children }: { children: ReactNode }) {
       });
     },
   });
-
-  // Mutation for updating supervisor profile
-  const updateSupervisorProfileMutation = useMutation({
-    mutationFn: async (profileData: Partial<SupervisorUser>) => {
-      const res = await apiRequest("PATCH", "/api/internal/supervisor-profile", profileData);
+  
+  // For vendors - Mutation for updating vendor details
+  const updateVendorProfileMutation = useMutation({
+    mutationFn: async (vendorData: any) => {
+      const res = await apiRequest("PATCH", "/api/internal/update-vendor-profile", vendorData);
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update supervisor profile");
+        throw new Error(errorData.message || "Failed to update vendor information");
       }
       return await res.json();
     },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/internal/vendor-profile"], data);
+      toast({
+        title: "Vendor Profile Updated",
+        description: "Your vendor profile has been successfully updated.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // For supervisors - Mutation for updating client contact status
+  const updateClientContactMutation = useMutation({
+    mutationFn: async (data: { clientId: number, status: string, notes?: string }) => {
+      const res = await apiRequest("PATCH", "/api/internal/update-client-contact", data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update client contact status");
+      }
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/internal/assigned-clients"] });
+      toast({
+        title: "Contact Status Updated",
+        description: "The client contact status has been successfully updated.",
+      });
+    },
     onError: (error: Error) => {
       toast({
         title: "Update Failed",
@@ -171,19 +237,17 @@ function InternalAuthExtension({ children }: { children: ReactNode }) {
     },
   });
 
-  // Extended auth context that includes internal-specific functionality
+  // Extended auth context with internal-specific functionality
   const extendedAuth = {
     ...baseAuth,
     user: baseAuth.user as InternalUser | null,
-    vendorProfile: baseAuth.user?.role === "vendor" ? vendorProfile : null,
-    supervisorDashboard: baseAuth.user?.role === "supervisor" ? supervisorDashboard : null,
-    adminStats: baseAuth.user?.role === "admin" ? adminStats : null,
+    notifications,
+    unreadMessages,
+    vendorProfile,
+    assignedClients,
+    updateProfileMutation,
     updateVendorProfileMutation,
-    updateSupervisorProfileMutation,
-    // Helper functions for type checking
-    isVendor: !!baseAuth.user && baseAuth.user.role === "vendor",
-    isSupervisor: !!baseAuth.user && baseAuth.user.role === "supervisor",
-    isAdmin: !!baseAuth.user && baseAuth.user.role === "admin",
+    updateClientContactMutation
   };
 
   return (
@@ -197,13 +261,19 @@ function InternalAuthExtension({ children }: { children: ReactNode }) {
 export function useAuth() {
   const baseAuth = useBaseAuth();
   
-  // Cast the user to InternalUser type
+  // Cast the user to InternalUser type and add role-specific helper functions
   return {
     ...baseAuth,
     user: baseAuth.user as InternalUser | null,
-    // Helper functions for type checking
+    // Role helper functions
     isVendor: !!baseAuth.user && baseAuth.user.role === "vendor",
     isSupervisor: !!baseAuth.user && baseAuth.user.role === "supervisor",
     isAdmin: !!baseAuth.user && baseAuth.user.role === "admin",
+    // SQS tier helper function for vendors
+    getVendorTier: () => {
+      const user = baseAuth.user as InternalUser | null;
+      if (!user || user.role !== "vendor") return null;
+      return user.sqsCategory || "standard";
+    }
   };
 }

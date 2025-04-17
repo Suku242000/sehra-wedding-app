@@ -3,37 +3,64 @@ import {
   BaseAuthProvider, 
   User, 
   LoginCredentials, 
-  RegisterCredentials, 
+  RegisterCredentials,
   useAuth as useBaseAuth
 } from "../../../shared/src/hooks/useAuth";
 import { useToast } from "../../../shared/src/hooks/useToast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "../../../shared/src/lib/queryClient";
 
-// Extended user type for client application (bride, groom, and family)
+// Extended user type for client applications (bride, groom, family)
 export interface ClientUser extends User {
-  package?: string | null;
-  weddingDate?: string | null;
-  budget?: number | null;
-  location?: string | null;
-  progress?: number | null;
-  supervisorId?: number | null;
-}
-
-// Extended registration credentials for client application
-export interface ClientRegisterCredentials extends RegisterCredentials {
-  package?: string;
   weddingDate?: string;
-  budget?: number;
+  package?: 'silver' | 'gold' | 'platinum';
+  budget?: {
+    total: number;
+    spent: number;
+    remaining: number;
+  };
   location?: string;
+  weddingInfo?: {
+    venueType?: string;
+    guestCount?: number;
+    ceremonies?: string[];
+    theme?: string;
+  };
+  progress?: {
+    tasksCompleted: number;
+    tasksTotal: number;
+    percentage: number;
+  };
+  relationshipToCouple?: string; // For family members
 }
 
+// Interface for wedding info updates
+export interface WeddingInfoUpdate {
+  weddingDate?: string;
+  package?: 'silver' | 'gold' | 'platinum';
+  location?: string;
+  weddingInfo?: {
+    venueType?: string;
+    guestCount?: number;
+    ceremonies?: string[];
+    theme?: string;
+  };
+}
+
+// Calculated budget tiers
+export const PACKAGE_BUDGET_RANGES = {
+  silver: { min: 1000000, max: 3000000, serviceFeePercentage: 2 }, // ₹10L-₹30L, 2% service fee
+  gold: { min: 3100000, max: 6000000, serviceFeePercentage: 5 },   // ₹31L-₹60L, 5% service fee
+  platinum: { min: 6100000, max: 10000000, serviceFeePercentage: 8 } // ₹61L-₹1Cr+, 8% service fee
+};
+
+// Main auth provider for client application
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Use the base auth provider but with client-specific endpoints
+  // Use the base auth provider with client-specific endpoints
   return (
     <BaseAuthProvider
       loginEndpoint="/api/client/login"
-      logoutEndpoint="/api/client/logout"
+      logoutEndpoint="/api/client/logout" 
       registerEndpoint="/api/client/register"
       userEndpoint="/api/client/user"
     >
@@ -47,16 +74,16 @@ function ClientAuthExtension({ children }: { children: ReactNode }) {
   const baseAuth = useBaseAuth();
   const { toast } = useToast();
 
-  // Get wedding information if the user is logged in
-  const { data: weddingInfo } = useQuery({
-    queryKey: ["/api/client/wedding-info"],
+  // Fetch achievements for the logged-in user
+  const { data: achievements } = useQuery({
+    queryKey: ["/api/client/achievements"],
     queryFn: async () => {
       try {
         if (!baseAuth.user) return null;
         
-        const res = await apiRequest("GET", "/api/client/wedding-info");
+        const res = await apiRequest("GET", "/api/client/achievements");
         if (!res.ok) {
-          throw new Error("Failed to fetch wedding information");
+          throw new Error("Failed to fetch achievements");
         }
         return await res.json();
       } catch (err) {
@@ -66,16 +93,35 @@ function ClientAuthExtension({ children }: { children: ReactNode }) {
     enabled: !!baseAuth.user,
   });
 
-  // Get budget information if the user is logged in
-  const { data: budgetInfo } = useQuery({
-    queryKey: ["/api/client/budget-info"],
+  // Fetch tasks for the logged-in user
+  const { data: tasks } = useQuery({
+    queryKey: ["/api/client/tasks"],
     queryFn: async () => {
       try {
         if (!baseAuth.user) return null;
         
-        const res = await apiRequest("GET", "/api/client/budget-info");
+        const res = await apiRequest("GET", "/api/client/tasks");
         if (!res.ok) {
-          throw new Error("Failed to fetch budget information");
+          throw new Error("Failed to fetch tasks");
+        }
+        return await res.json();
+      } catch (err) {
+        return null;
+      }
+    },
+    enabled: !!baseAuth.user,
+  });
+
+  // Fetch budget overview for the logged-in user
+  const { data: budgetOverview } = useQuery({
+    queryKey: ["/api/client/budget-overview"],
+    queryFn: async () => {
+      try {
+        if (!baseAuth.user) return null;
+        
+        const res = await apiRequest("GET", "/api/client/budget-overview");
+        if (!res.ok) {
+          throw new Error("Failed to fetch budget overview");
         }
         return await res.json();
       } catch (err) {
@@ -87,8 +133,8 @@ function ClientAuthExtension({ children }: { children: ReactNode }) {
 
   // Mutation for updating wedding information
   const updateWeddingInfoMutation = useMutation({
-    mutationFn: async (weddingData: Partial<ClientUser>) => {
-      const res = await apiRequest("PATCH", "/api/client/wedding-info", weddingData);
+    mutationFn: async (weddingInfo: WeddingInfoUpdate) => {
+      const res = await apiRequest("PATCH", "/api/client/update-wedding-info", weddingInfo);
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Failed to update wedding information");
@@ -96,10 +142,10 @@ function ClientAuthExtension({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (userData: ClientUser) => {
-      queryClient.setQueryData(["/api/client/wedding-info"], userData);
+      queryClient.setQueryData(["/api/client/user"], userData);
       toast({
-        title: "Wedding Info Updated",
-        description: "Your wedding information has been updated successfully.",
+        title: "Wedding Information Updated",
+        description: "Your wedding details have been successfully updated.",
       });
     },
     onError: (error: Error) => {
@@ -111,41 +157,57 @@ function ClientAuthExtension({ children }: { children: ReactNode }) {
     },
   });
 
-  // Mutation for package upgrade/downgrade
+  // Mutation for updating package selection
   const updatePackageMutation = useMutation({
-    mutationFn: async ({ packageType }: { packageType: string }) => {
-      const res = await apiRequest("POST", "/api/client/update-package", { packageType });
+    mutationFn: async (packageData: { package: 'silver' | 'gold' | 'platinum', budget: number }) => {
+      const res = await apiRequest("PATCH", "/api/client/update-package", packageData);
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update package");
+        throw new Error(errorData.message || "Failed to update package selection");
       }
       return await res.json();
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(["/api/client/user"], data);
-      queryClient.setQueryData(["/api/client/wedding-info"], data);
+    onSuccess: (userData: ClientUser) => {
+      queryClient.setQueryData(["/api/client/user"], userData);
+      queryClient.invalidateQueries({ queryKey: ["/api/client/budget-overview"] });
       toast({
         title: "Package Updated",
-        description: "Your wedding package has been updated successfully.",
+        description: "Your package and budget have been successfully updated.",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Package Update Failed",
+        title: "Update Failed",
         description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  // Extended auth context that includes client-specific functionality
+  // Extended auth context with client-specific functionality
   const extendedAuth = {
     ...baseAuth,
     user: baseAuth.user as ClientUser | null,
-    weddingInfo: baseAuth.user ? weddingInfo : null,
-    budgetInfo: baseAuth.user ? budgetInfo : null,
+    achievements,
+    tasks,
+    budgetOverview,
     updateWeddingInfoMutation,
     updatePackageMutation,
+    // Helper functions
+    isWeddingInfoComplete: () => {
+      const user = baseAuth.user as ClientUser | null;
+      if (!user) return false;
+      
+      return !!(user.weddingDate && user.package && user.location && 
+               user.weddingInfo?.venueType && user.weddingInfo?.guestCount);
+    },
+    getServiceFee: () => {
+      const user = baseAuth.user as ClientUser | null;
+      if (!user || !user.package || !user.budget?.total) return 0;
+      
+      const packageInfo = PACKAGE_BUDGET_RANGES[user.package];
+      return user.budget.total * (packageInfo.serviceFeePercentage / 100);
+    }
   };
 
   return (
@@ -159,9 +221,13 @@ function ClientAuthExtension({ children }: { children: ReactNode }) {
 export function useAuth() {
   const baseAuth = useBaseAuth();
   
-  // Cast the user to ClientUser type
+  // Cast the user to ClientUser type 
   return {
     ...baseAuth,
-    user: baseAuth.user as ClientUser | null
+    user: baseAuth.user as ClientUser | null,
+    // Role helper functions
+    isBride: !!baseAuth.user && baseAuth.user.role === "bride",
+    isGroom: !!baseAuth.user && baseAuth.user.role === "groom",
+    isFamily: !!baseAuth.user && baseAuth.user.role === "family",
   };
 }

@@ -182,15 +182,15 @@ export default function ClientBudgetView({ clientId, clientName }: ClientBudgetV
   const getPaymentStatusBadge = (status: string) => {
     switch (status) {
       case 'fully_paid':
-        return <Badge variant="success" className="flex items-center gap-1">
+        return <Badge variant="outline" className="flex items-center gap-1 bg-green-50 text-green-700 border-green-300">
           <CheckCircle2 className="h-3 w-3" /> Fully Paid
         </Badge>;
       case 'advance_paid':
-        return <Badge variant="warning" className="flex items-center gap-1">
+        return <Badge variant="outline" className="flex items-center gap-1 bg-amber-50 text-amber-700 border-amber-300">
           <Clock className="h-3 w-3" /> Advance Paid
         </Badge>;
       case 'partially_paid':
-        return <Badge variant="warning" className="flex items-center gap-1">
+        return <Badge variant="outline" className="flex items-center gap-1 bg-amber-50 text-amber-700 border-amber-300">
           <AlertTriangle className="h-3 w-3" /> Partially Paid
         </Badge>;
       default:
@@ -211,7 +211,7 @@ export default function ClientBudgetView({ clientId, clientName }: ClientBudgetV
   
   return (
     <motion.div
-      variants={fadeIn('up', 0.2)}
+      variants={fadeIn('up', 'tween')}
       initial="hidden"
       animate="show"
       className="w-full space-y-6"
@@ -220,7 +220,7 @@ export default function ClientBudgetView({ clientId, clientName }: ClientBudgetV
         <CardHeader>
           <CardTitle className="flex justify-between">
             <span>{clientName || clientInfo?.name || 'Client'}'s Budget</span>
-            <Badge variant={clientPackage === 'platinum' ? 'purple' : clientPackage === 'gold' ? 'warning' : 'secondary'}>
+            <Badge variant="secondary" className={`${clientPackage === 'platinum' ? 'bg-purple-100 text-purple-800 hover:bg-purple-200' : clientPackage === 'gold' ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : ''}`}>
               {clientPackage.charAt(0).toUpperCase() + clientPackage.slice(1)} Package
             </Badge>
           </CardTitle>

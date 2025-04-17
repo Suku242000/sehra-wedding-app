@@ -5,10 +5,10 @@ import SupervisorClients from '@/components/supervisor/SupervisorClients';
 import { UserRole } from '@shared/schema';
 
 function SupervisorDashboard() {
-  const { user, isLoading } = useAuth();
+  const { user, loading } = useAuth();
 
   // Handle loading state
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>

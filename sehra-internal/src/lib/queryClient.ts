@@ -1,12 +1,10 @@
 import { QueryClient } from '@tanstack/react-query';
 
-// Define API error response type
 type ApiErrorResponse = {
   message: string;
   errors?: Record<string, string[]>;
 };
 
-// Define options for getQueryFn helper
 type QueryFnOptions = {
   on401?: 'returnNull' | 'throw';
 };
@@ -14,74 +12,80 @@ type QueryFnOptions = {
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60, // 1 minute
-      retry: false,
+      staleTime: 1000 * 30, // 30 seconds
+      retry: 1,
       refetchOnWindowFocus: false,
     },
   },
 });
 
-// Helper function to create API requests
 export async function apiRequest(
   method: string,
-  endpoint: string | number,
-  data?: unknown,
+  endpoint: string,
+  data?: any,
   options: RequestInit = {}
-): Promise<Response> {
-  const response = await fetch(endpoint.toString(), {
+) {
+  const url = endpoint.startsWith('http') ? endpoint : endpoint;
+  
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  const config: RequestInit = {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    body: data ? JSON.stringify(data) : undefined,
+    headers,
     credentials: 'include',
     ...options,
-  });
+  };
+
+  if (data) {
+    config.body = JSON.stringify(data);
+  }
+
+  const response = await fetch(url, config);
 
   if (!response.ok) {
     const errorData: ApiErrorResponse = await response.json().catch(() => ({
-      message: `HTTP error ${response.status}`,
+      message: `HTTP error: ${response.status} ${response.statusText}`,
     }));
 
     const error = new Error(
-      errorData.message || `HTTP error ${response.status}`
+      errorData.errors
+        ? `${errorData.message}: ${JSON.stringify(errorData.errors)}`
+        : errorData.message
     );
-    (error as any).status = response.status;
-    (error as any).errors = errorData.errors;
+
     throw error;
+  }
+
+  // Don't try to parse empty responses
+  const contentType = response.headers.get('Content-Type') || '';
+  if (contentType.includes('application/json') && response.status !== 204) {
+    return response;
   }
 
   return response;
 }
 
-// Default query function for React Query
+// Default query function that assumes the queryKey starts with the endpoint
 export function getQueryFn(options: QueryFnOptions = {}) {
   return async ({ queryKey }: { queryKey: [string, ...unknown[]] }) => {
-    const [endpoint, ...params] = queryKey;
+    const endpoint = queryKey[0];
     
     try {
-      const response = await apiRequest(
-        'GET',
-        params.length ? `${endpoint}/${params.join('/')}` : endpoint
-      );
+      const response = await apiRequest('GET', endpoint);
+      
+      if (response.status === 204) {
+        return null;
+      }
       
       return await response.json();
     } catch (error: any) {
-      // Handle 401 errors based on options
-      if (error.status === 401 && options.on401 === 'returnNull') {
+      if (error.message?.includes('HTTP error: 401') && options.on401 === 'returnNull') {
         return null;
       }
       throw error;
     }
   };
 }
-
-// Configure the global fetch for react-query
-queryClient.setDefaultOptions({
-  queries: {
-    queryFn: getQueryFn(),
-  },
-});
-
-export default queryClient;

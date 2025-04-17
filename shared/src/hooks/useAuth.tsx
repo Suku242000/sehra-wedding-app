@@ -1,175 +1,179 @@
 import { createContext, ReactNode, useContext } from "react";
-import {
-  useQuery,
-  useMutation,
-  UseMutationResult,
-} from "@tanstack/react-query";
-import { queryClient, apiRequest } from "../lib/queryClient";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient, getQueryFn } from "../lib/queryClient";
 import { useToast } from "./useToast";
 
-// Common types used for both applications
-export type User = {
+// Basic user interface that both client and internal applications share
+export interface User {
   id: number;
-  name: string;
   email: string;
+  name: string;
   role: string;
-  // Add other common user properties here
-  // Application-specific properties will be handled in the respective app's auth module
-};
+}
 
-export type LoginCredentials = {
+// Login credentials interface
+export interface LoginCredentials {
   email: string;
   password: string;
-};
+}
 
-export type RegisterCredentials = {
+// Registration credentials interface
+export interface RegisterCredentials {
   name: string;
   email: string;
   password: string;
   role: string;
-  // Other common registration fields
-};
+}
 
-export type AuthContextType = {
+// Auth context interface shared between applications
+export interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   error: Error | null;
-  loginMutation: UseMutationResult<User, Error, LoginCredentials>;
-  logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<User, Error, RegisterCredentials>;
-};
+  loginMutation: ReturnType<typeof useLoginMutation>;
+  logoutMutation: ReturnType<typeof useLogoutMutation>;
+  registerMutation: ReturnType<typeof useRegisterMutation>;
+}
 
-const AuthContext = createContext<AuthContextType | null>(null);
-
-// This is the shared provider that both applications will extend with their own
-// specific functionality
-export function BaseAuthProvider({ 
-  children,
-  loginEndpoint = "/api/login",
-  logoutEndpoint = "/api/logout",
-  registerEndpoint = "/api/register",
-  userEndpoint = "/api/user",
-}: { 
+// Props for the base auth provider
+interface BaseAuthProviderProps {
   children: ReactNode;
-  loginEndpoint?: string;
-  logoutEndpoint?: string;
-  registerEndpoint?: string;
-  userEndpoint?: string;
-}) {
+  loginEndpoint: string;
+  logoutEndpoint: string;
+  registerEndpoint: string;
+  userEndpoint: string;
+}
+
+// Custom hooks for auth operations
+function useLoginMutation(loginEndpoint: string) {
   const { toast } = useToast();
-
-  const {
-    data: user,
-    error,
-    isLoading,
-  } = useQuery<User | null, Error>({
-    queryKey: [userEndpoint],
-    queryFn: async () => {
-      try {
-        const res = await apiRequest("GET", userEndpoint);
-        if (!res.ok) {
-          if (res.status === 401) {
-            return null;
-          }
-          throw new Error("Failed to fetch user");
-        }
-        return await res.json();
-      } catch (err) {
-        return null;
-      }
-    },
-  });
-
-  const loginMutation = useMutation({
+  
+  return useMutation({
     mutationFn: async (credentials: LoginCredentials) => {
       const res = await apiRequest("POST", loginEndpoint, credentials);
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Login failed");
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Login failed. Please check your credentials.");
       }
       return await res.json();
     },
-    onSuccess: (userData: User) => {
-      queryClient.setQueryData([userEndpoint], userData);
+    onSuccess: (userData) => {
+      queryClient.setQueryData([loginEndpoint.replace("/login", "/user")], userData);
       toast({
-        title: "Login successful",
-        description: `Welcome back, ${userData.name}!`,
+        title: "Login Successful",
+        description: "Welcome back!",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Login failed",
+        title: "Login Failed",
         description: error.message,
         variant: "destructive",
       });
     },
   });
+}
 
-  const registerMutation = useMutation({
+function useRegisterMutation(registerEndpoint: string) {
+  const { toast } = useToast();
+  
+  return useMutation({
     mutationFn: async (credentials: RegisterCredentials) => {
       const res = await apiRequest("POST", registerEndpoint, credentials);
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Registration failed");
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Registration failed. Please try again.");
       }
       return await res.json();
     },
-    onSuccess: (userData: User) => {
-      queryClient.setQueryData([userEndpoint], userData);
+    onSuccess: (userData) => {
+      queryClient.setQueryData([registerEndpoint.replace("/register", "/user")], userData);
       toast({
-        title: "Registration successful",
-        description: `Welcome to Sehra, ${userData.name}!`,
+        title: "Registration Successful",
+        description: "Your account has been created.",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Registration failed",
+        title: "Registration Failed",
         description: error.message,
         variant: "destructive",
       });
     },
   });
+}
 
-  const logoutMutation = useMutation({
+function useLogoutMutation(logoutEndpoint: string) {
+  const { toast } = useToast();
+  
+  return useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", logoutEndpoint);
       if (!res.ok) {
-        throw new Error("Logout failed");
+        throw new Error("Logout failed.");
       }
     },
     onSuccess: () => {
-      queryClient.setQueryData([userEndpoint], null);
+      queryClient.setQueryData([logoutEndpoint.replace("/logout", "/user")], null);
       toast({
-        title: "Logged out",
+        title: "Logged Out",
         description: "You have been successfully logged out.",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Logout failed",
+        title: "Logout Failed",
         description: error.message,
         variant: "destructive",
       });
     },
   });
+}
 
-  const contextValue: AuthContextType = {
+// Create auth context
+const AuthContext = createContext<AuthContextType | null>(null);
+
+// Base auth provider component that can be used by both apps
+export function BaseAuthProvider({ 
+  children,
+  loginEndpoint,
+  logoutEndpoint,
+  registerEndpoint,
+  userEndpoint
+}: BaseAuthProviderProps) {
+  // Fetch user data
+  const {
+    data: user,
+    error,
+    isLoading,
+  } = useQuery({
+    queryKey: [userEndpoint],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+  });
+
+  // Initialize mutations
+  const loginMutation = useLoginMutation(loginEndpoint);
+  const registerMutation = useRegisterMutation(registerEndpoint);
+  const logoutMutation = useLogoutMutation(logoutEndpoint);
+
+  // Create auth context value
+  const authContext: AuthContextType = {
     user: user || null,
     isLoading,
     error,
     loginMutation,
-    logoutMutation,
     registerMutation,
+    logoutMutation,
   };
 
   return (
-    <AuthContext.Provider value={contextValue}>
+    <AuthContext.Provider value={authContext}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-// This hook will be used by both applications to access auth context
+// Hook to use auth context
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {

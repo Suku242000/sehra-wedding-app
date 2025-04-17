@@ -1,59 +1,71 @@
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient } from '@tanstack/react-query';
 
 // Create a client
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      staleTime: 1000 * 60, // 1 minute
       retry: 1,
-      refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      refetchOnWindowFocus: true,
     },
   },
 });
 
-type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+type ApiRequestOptions = {
+  on401?: 'returnNull' | 'throw';
+};
 
-interface ApiOptions {
-  on401?: "throw" | "returnNull";
-}
+export function createQueryFn(baseOptions: ApiRequestOptions = {}) {
+  return async function queryFn<T>({ queryKey }: { queryKey: [string, ...unknown[]] }): Promise<T> {
+    try {
+      const [path] = queryKey;
+      const response = await fetch(path as string, {
+        credentials: 'include',
+      });
 
-/**
- * Generic API request function that handles common error cases
- */
-export async function apiRequest(method: Method, url: string, body?: any) {
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-  };
-
-  const options: RequestInit = {
-    method,
-    headers,
-    credentials: "include",
-  };
-
-  if (body && method !== "GET") {
-    options.body = JSON.stringify(body);
-  }
-
-  return fetch(url, options);
-}
-
-/**
- * Creates a query function that handles common API patterns
- */
-export function getQueryFn(options: ApiOptions = {}) {
-  return async ({ queryKey }: { queryKey: string[] }) => {
-    const [endpoint] = queryKey;
-    const res = await apiRequest("GET", endpoint);
-
-    if (!res.ok) {
-      if (res.status === 401 && options.on401 === "returnNull") {
-        return null;
+      if (!response.ok) {
+        if (response.status === 401) {
+          if (baseOptions.on401 === 'returnNull') {
+            return null as T;
+          }
+          throw new Error('Unauthorized - please login');
+        }
+        throw new Error(`API Error: ${response.statusText}`);
       }
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.message || `API error: ${res.status}`);
+
+      return await response.json();
+    } catch (error) {
+      console.error('API Request Error:', error);
+      throw error;
+    }
+  };
+}
+
+export const getQueryFn = createQueryFn();
+
+export async function apiRequest(
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+  url: string,
+  body?: unknown,
+  headers?: HeadersInit,
+) {
+  try {
+    const options: RequestInit = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers,
+      },
+      credentials: 'include',
+    };
+
+    if (body && method !== 'GET') {
+      options.body = JSON.stringify(body);
     }
 
-    return res.json();
-  };
+    return await fetch(url, options);
+  } catch (error) {
+    console.error('API Request Error:', error);
+    throw error;
+  }
 }

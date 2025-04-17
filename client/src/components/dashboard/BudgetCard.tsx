@@ -182,6 +182,15 @@ const BudgetCard: React.FC = () => {
   const deleteBudgetItemMutation = useMutation({
     mutationFn: (id: number) => deleteWithAuth(`/api/budget/${id}`),
     onSuccess: () => {
+      // First reset all amount values to ensure UI shows zero when no items
+      if (budgetItems.length === 1) {
+        setSpentAmount(0);
+        setPaidAmount(0);
+        setCategoryTotals({});
+        setBudgetPercentage(0);
+        setBudgetMood('excellent');
+      }
+      // Then invalidate the cache to refresh data
       queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
       refetch(); // Immediate refetch to update UI
       toast({ 

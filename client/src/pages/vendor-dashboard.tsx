@@ -29,6 +29,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { apiRequest } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { 
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
+  Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell
+} from 'recharts';
+import { 
   Dialog, 
   DialogContent, 
   DialogDescription, 
@@ -39,21 +44,6 @@ import {
 } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format, differenceInDays, isPast as isDatePast, isFuture, parseISO, subDays } from 'date-fns';
-import {
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip as RechartsTooltip, 
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  Legend,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
 
 // Portfolio Item Component
 interface PortfolioItemProps {

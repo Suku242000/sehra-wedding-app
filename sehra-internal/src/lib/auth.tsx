@@ -1,129 +1,98 @@
-import { ReactNode, createContext, useContext } from "react";
+import { ReactNode } from "react";
+import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@shared/lib/queryClient";
+import { useToast } from "@shared/hooks/useToast";
 import { 
   BaseAuthProvider, 
-  User, 
-  useAuth as useBaseAuth 
+  User,
+  useBaseAuth 
 } from "@shared/hooks/useAuth";
-import { useToast } from "@shared/hooks/useToast";
-import { apiRequest, queryClient } from "@shared/lib/queryClient";
 
-// Internal-specific user interface extending the base user
+// Extended user type with internal-specific properties
 export interface InternalUser extends User {
-  // Vendor-specific fields
-  vendorProfile?: {
-    id: number;
-    businessName: string;
-    vendorType: string;
-    sqsScore?: number;
-    tier?: "standard" | "gold" | "premium";
-    approvalStatus?: "pending" | "approved" | "rejected";
-    joinedDate?: string;
-  };
-  
-  // Supervisor-specific fields
-  supervisorProfile?: {
-    id: number;
-    departmentId: number;
-    departmentName: string;
-    assignedCustomerCount: number;
-    assignedVendorCount: number;
-    performanceMetrics?: {
-      responseTime: number;
-      customerSatisfaction: number;
-      taskCompletionRate: number;
-    };
-  };
-  
-  // Admin-specific fields
-  adminProfile?: {
-    id: number;
-    accessLevel: number;
-    permissions: string[];
-    lastLogin: string;
-  };
+  vendorType?: string;   // For vendors
+  specialization?: string; // For vendors
+  ratings?: number;      // For vendors
+  assignedClients?: number[]; // For supervisors
+  adminLevel?: string;   // For admins
+  lastActive?: string;
 }
 
-// Internal-specific auth context interface
+// Login credentials type
+interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+// Internal roles
+export type InternalRole = "vendor" | "supervisor" | "admin";
+
+// Internal auth context with role-specific methods
 interface InternalAuthContextType {
   user: InternalUser | null;
   isLoading: boolean;
   error: Error | null;
-  isVendor: boolean;
-  isSupervisor: boolean;
-  isAdmin: boolean;
-  loginMutation: any;
-  logoutMutation: any;
-  registerMutation: any;
-  updateVendorProfileMutation: any;
+  login: (credentials: LoginCredentials) => Promise<void>;
+  logout: () => Promise<void>;
+  updateProfile: (data: Partial<InternalUser>) => Promise<void>;
 }
 
-// Create context
-const InternalAuthContext = createContext<InternalAuthContextType | null>(null);
-
-/**
- * Internal-specific AuthProvider
- * - Extends the BaseAuthProvider
- * - Adds role-specific authentication features for staff roles
- */
 export function InternalAuthProvider({ children }: { children: ReactNode }) {
-  // API endpoints
-  const LOGIN_ENDPOINT = "/api/internal/login";
-  const LOGOUT_ENDPOINT = "/api/internal/logout";
-  const REGISTER_ENDPOINT = "/api/internal/register";
-  const USER_ENDPOINT = "/api/internal/user";
-  const VENDOR_PROFILE_ENDPOINT = "/api/internal/vendor-profile";
-
-  return (
-    <BaseAuthProvider
-      loginEndpoint={LOGIN_ENDPOINT}
-      logoutEndpoint={LOGOUT_ENDPOINT}
-      registerEndpoint={REGISTER_ENDPOINT}
-      userEndpoint={USER_ENDPOINT}
-    >
-      <InternalAuthExtension
-        vendorProfileEndpoint={VENDOR_PROFILE_ENDPOINT}
-      >
-        {children}
-      </InternalAuthExtension>
-    </BaseAuthProvider>
-  );
-}
-
-// Extension component to add internal-specific auth context
-function InternalAuthExtension({ 
-  children,
-  vendorProfileEndpoint,
-}: { 
-  children: ReactNode; 
-  vendorProfileEndpoint: string;
-}) {
-  const baseAuth = useBaseAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
-  // Cast user to InternalUser
-  const user = baseAuth.user as InternalUser | null;
-  
-  // Role-based helper properties
-  const isVendor = !!(user?.role === "vendor");
-  const isSupervisor = !!(user?.role === "supervisor");
-  const isAdmin = !!(user?.role === "admin");
-
-  // Update vendor profile mutation
-  const updateVendorProfileMutation = useMutation({
-    mutationFn: async (profileData: Partial<InternalUser["vendorProfile"]>) => {
-      const res = await apiRequest("PATCH", vendorProfileEndpoint, profileData);
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update vendor profile");
-      }
+  // Login mutation
+  const loginMutation = useMutation({
+    mutationFn: async (credentials: LoginCredentials) => {
+      const res = await apiRequest("POST", "/api/staff/login", credentials);
       return await res.json();
     },
-    onSuccess: (userData: InternalUser) => {
-      queryClient.setQueryData(["/api/internal/user"], userData);
+    onSuccess: (user: InternalUser) => {
+      queryClient.setQueryData(["/api/user"], user);
+      
+      toast({
+        title: "Login successful",
+        description: `Welcome back, ${user.name}!`,
+        variant: "success",
+      });
+
+      // Redirect based on role
+      switch (user.role) {
+        case "vendor":
+          setLocation("/vendor-dashboard");
+          break;
+        case "supervisor":
+          setLocation("/supervisor-dashboard");
+          break;
+        case "admin":
+          setLocation("/admin-dashboard");
+          break;
+        default:
+          setLocation("/");
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Login failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Profile update mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: Partial<InternalUser>) => {
+      const res = await apiRequest("PATCH", "/api/staff/profile", data);
+      return await res.json();
+    },
+    onSuccess: (user: InternalUser) => {
+      queryClient.setQueryData(["/api/user"], user);
+      
       toast({
         title: "Profile updated",
-        description: "Your vendor profile has been updated successfully.",
+        description: "Your profile has been updated successfully!",
         variant: "success",
       });
     },
@@ -136,28 +105,39 @@ function InternalAuthExtension({
     },
   });
 
-  // Enhanced context value
-  const contextValue: InternalAuthContextType = {
-    ...baseAuth,
-    user,
-    isVendor,
-    isSupervisor,
-    isAdmin,
-    updateVendorProfileMutation,
+  // Login function
+  const login = async (credentials: LoginCredentials) => {
+    await loginMutation.mutateAsync(credentials);
+  };
+
+  // Update profile function
+  const updateProfile = async (data: Partial<InternalUser>) => {
+    await updateProfileMutation.mutateAsync(data);
+  };
+
+  // Custom on logout success handler
+  const handleLogoutSuccess = () => {
+    setLocation("/login");
+  };
+
+  // Extra context values specific to internal app
+  const extraContextValues = {
+    login,
+    updateProfile,
   };
 
   return (
-    <InternalAuthContext.Provider value={contextValue}>
+    <BaseAuthProvider
+      authApiEndpoint="/api/staff/user"
+      onLogoutSuccess={handleLogoutSuccess}
+      extraContextValues={extraContextValues}
+    >
       {children}
-    </InternalAuthContext.Provider>
+    </BaseAuthProvider>
   );
 }
 
-// Hook for accessing internal auth context
-export function useAuth() {
-  const context = useContext(InternalAuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an InternalAuthProvider");
-  }
-  return context;
+export function useAuth(): InternalAuthContextType {
+  const baseAuth = useBaseAuth();
+  return baseAuth as InternalAuthContextType;
 }

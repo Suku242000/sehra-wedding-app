@@ -1,218 +1,215 @@
-import { ReactNode, createContext, useContext } from "react";
+import { createContext, useContext, ReactNode } from "react";
+import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@shared/lib/queryClient";
+import { useToast } from "@shared/hooks/useToast";
 import { 
   BaseAuthProvider, 
-  User, 
-  useAuth as useBaseAuth 
+  BaseAuthProviderProps, 
+  User,
+  useBaseAuth 
 } from "@shared/hooks/useAuth";
-import { useToast } from "@shared/hooks/useToast";
-import { apiRequest, queryClient } from "@shared/lib/queryClient";
 
-// Client-specific user interface extending the base user
+// Extended user type with client-specific properties
 export interface ClientUser extends User {
-  // Wedding-specific fields
   weddingDate?: string;
-  package?: "silver" | "gold" | "platinum";
+  package?: string;
+  budget?: number;
   location?: string;
-  budget?: {
-    total: number;
-    allocated: number;
-    spent: number;
-  };
-  progress?: {
-    tasks: {
-      total: number;
-      completed: number;
-    };
-    timeline: {
-      total: number;
-      completed: number;
-    };
-  };
-  customerId?: string; // For Stripe integration
-  familyMembers?: {
-    id: number;
-    name: string;
-    relation: string;
-    email?: string;
-  }[];
-  supervisorId?: number;
+  partnerName?: string;
+  progress?: number;
 }
 
-// Package information interface
-export interface PackageInfo {
-  name: "silver" | "gold" | "platinum";
-  budgetRange: {
-    min: number;
-    max: number;
-  };
-  serviceCharge: number;
-  features: string[];
+// Login credentials type
+interface LoginCredentials {
+  email: string;
+  password: string;
 }
 
-// Wedding information interface
-export interface WeddingInfo {
-  date: string;
+// Registration data type
+interface RegisterData extends LoginCredentials {
+  name: string;
+  role: "bride" | "groom" | "family";
+}
+
+// Package selection data
+interface PackageData {
+  package: string;
+  budget: number;
+  weddingDate: string;
   location: string;
-  budgetEstimate: number;
-  package: PackageInfo["name"];
+  partnerName: string;
 }
 
-// Client-specific auth context interface
+// Extended auth context with client-specific methods
 interface ClientAuthContextType {
   user: ClientUser | null;
   isLoading: boolean;
   error: Error | null;
-  isBride: boolean;
-  isGroom: boolean;
-  isFamily: boolean;
-  loginMutation: any;
-  logoutMutation: any;
-  registerMutation: any;
-  updateWeddingInfoMutation: any;
-  updatePackageMutation: any;
-  hasSelectedPackage: boolean;
-  hasSetWeddingInfo: boolean;
+  login: (credentials: LoginCredentials) => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
+  logout: () => Promise<void>;
+  selectPackage: (data: PackageData) => Promise<void>;
+  updateWeddingInfo: (data: Partial<PackageData>) => Promise<void>;
 }
 
-// Create the context
 const ClientAuthContext = createContext<ClientAuthContextType | null>(null);
 
-/**
- * Client-specific AuthProvider
- * - Extends the BaseAuthProvider
- * - Adds wedding-related authentication features
- */
 export function ClientAuthProvider({ children }: { children: ReactNode }) {
-  // API endpoints
-  const LOGIN_ENDPOINT = "/api/client/login";
-  const LOGOUT_ENDPOINT = "/api/client/logout";
-  const REGISTER_ENDPOINT = "/api/client/register";
-  const USER_ENDPOINT = "/api/client/user";
-  const WEDDING_INFO_ENDPOINT = "/api/client/wedding-info";
-  const PACKAGE_ENDPOINT = "/api/client/package";
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+
+  // Login mutation
+  const loginMutation = useMutation({
+    mutationFn: async (credentials: LoginCredentials) => {
+      const res = await apiRequest("POST", "/api/login", credentials);
+      return await res.json();
+    },
+    onSuccess: (user: ClientUser) => {
+      queryClient.setQueryData(["/api/user"], user);
+      
+      toast({
+        title: "Login successful",
+        description: `Welcome back, ${user.name}!`,
+        variant: "success",
+      });
+
+      // Redirect based on package selection
+      if (user.package) {
+        setLocation("/dashboard");
+      } else {
+        setLocation("/select-package");
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Login failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Register mutation
+  const registerMutation = useMutation({
+    mutationFn: async (data: RegisterData) => {
+      const res = await apiRequest("POST", "/api/register", data);
+      return await res.json();
+    },
+    onSuccess: (user: ClientUser) => {
+      queryClient.setQueryData(["/api/user"], user);
+      
+      toast({
+        title: "Registration successful",
+        description: "Your account has been created successfully!",
+        variant: "success",
+      });
+      
+      setLocation("/select-package");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Registration failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Package selection mutation
+  const packageMutation = useMutation({
+    mutationFn: async (data: PackageData) => {
+      const res = await apiRequest("POST", "/api/select-package", data);
+      return await res.json();
+    },
+    onSuccess: (user: ClientUser) => {
+      queryClient.setQueryData(["/api/user"], user);
+      
+      toast({
+        title: "Package selected",
+        description: `You've selected the ${user.package} package!`,
+        variant: "success",
+      });
+      
+      setLocation("/dashboard");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Package selection failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Wedding info update mutation
+  const updateWeddingInfoMutation = useMutation({
+    mutationFn: async (data: Partial<PackageData>) => {
+      const res = await apiRequest("PATCH", "/api/update-wedding-info", data);
+      return await res.json();
+    },
+    onSuccess: (user: ClientUser) => {
+      queryClient.setQueryData(["/api/user"], user);
+      
+      toast({
+        title: "Wedding information updated",
+        description: "Your wedding details have been updated successfully!",
+        variant: "success",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Login function
+  const login = async (credentials: LoginCredentials) => {
+    await loginMutation.mutateAsync(credentials);
+  };
+
+  // Register function
+  const register = async (data: RegisterData) => {
+    await registerMutation.mutateAsync(data);
+  };
+
+  // Package selection function
+  const selectPackage = async (data: PackageData) => {
+    await packageMutation.mutateAsync(data);
+  };
+
+  // Update wedding info function
+  const updateWeddingInfo = async (data: Partial<PackageData>) => {
+    await updateWeddingInfoMutation.mutateAsync(data);
+  };
+
+  // Custom on logout success handler
+  const handleLogoutSuccess = () => {
+    setLocation("/");
+  };
+
+  // Extra context values specific to client app
+  const extraContextValues = {
+    login,
+    register,
+    selectPackage,
+    updateWeddingInfo,
+  };
 
   return (
     <BaseAuthProvider
-      loginEndpoint={LOGIN_ENDPOINT}
-      logoutEndpoint={LOGOUT_ENDPOINT}
-      registerEndpoint={REGISTER_ENDPOINT}
-      userEndpoint={USER_ENDPOINT}
+      onLogoutSuccess={handleLogoutSuccess}
+      extraContextValues={extraContextValues}
     >
-      <ClientAuthExtension
-        weddingInfoEndpoint={WEDDING_INFO_ENDPOINT}
-        packageEndpoint={PACKAGE_ENDPOINT}
-      >
-        {children}
-      </ClientAuthExtension>
+      {children}
     </BaseAuthProvider>
   );
 }
 
-// Extension component to add client-specific auth context
-function ClientAuthExtension({ 
-  children,
-  weddingInfoEndpoint,
-  packageEndpoint,
-}: { 
-  children: ReactNode; 
-  weddingInfoEndpoint: string;
-  packageEndpoint: string;
-}) {
+export function useAuth(): ClientAuthContextType {
   const baseAuth = useBaseAuth();
-  const { toast } = useToast();
-
-  // Cast user to ClientUser
-  const user = baseAuth.user as ClientUser | null;
-  
-  // Role-based helper properties
-  const isBride = !!(user?.role === "bride");
-  const isGroom = !!(user?.role === "groom");
-  const isFamily = !!(user?.role === "family");
-  
-  // Helper properties for registration flow
-  const hasSelectedPackage = !!(user?.package);
-  const hasSetWeddingInfo = !!(user?.weddingDate && user?.location);
-
-  // Update wedding information mutation
-  const updateWeddingInfoMutation = useMutation({
-    mutationFn: async (weddingInfo: WeddingInfo) => {
-      const res = await apiRequest("PATCH", weddingInfoEndpoint, weddingInfo);
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update wedding information");
-      }
-      return await res.json();
-    },
-    onSuccess: (userData: ClientUser) => {
-      queryClient.setQueryData(["/api/client/user"], userData);
-      toast({
-        title: "Wedding info updated",
-        description: "Your wedding information has been updated successfully.",
-        variant: "success",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Update failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Update package mutation
-  const updatePackageMutation = useMutation({
-    mutationFn: async (packageData: { package: PackageInfo["name"] }) => {
-      const res = await apiRequest("PATCH", packageEndpoint, packageData);
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update package");
-      }
-      return await res.json();
-    },
-    onSuccess: (userData: ClientUser) => {
-      queryClient.setQueryData(["/api/client/user"], userData);
-      toast({
-        title: "Package updated",
-        description: `Your wedding package has been updated to ${userData.package}.`,
-        variant: "success",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Update failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Enhanced context value
-  const contextValue: ClientAuthContextType = {
-    ...baseAuth,
-    user,
-    isBride,
-    isGroom,
-    isFamily,
-    updateWeddingInfoMutation,
-    updatePackageMutation,
-    hasSelectedPackage,
-    hasSetWeddingInfo,
-  };
-
-  return (
-    <ClientAuthContext.Provider value={contextValue}>
-      {children}
-    </ClientAuthContext.Provider>
-  );
-}
-
-// Hook for accessing client auth context
-export function useAuth() {
-  const context = useContext(ClientAuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within a ClientAuthProvider");
-  }
-  return context;
+  return baseAuth as ClientAuthContextType;
 }

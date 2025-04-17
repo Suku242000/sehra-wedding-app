@@ -44,7 +44,13 @@ export function BaseAuthProvider({
     isLoading,
   } = useQuery<User | null, Error>({
     queryKey: [authApiEndpoint],
-    queryFn: getQueryFn({ on401: "returnNull" }),
+    queryFn: async ({ queryKey }: { queryKey: readonly unknown[] }) => {
+      const endpoint = queryKey[0] as string;
+      const response = await apiRequest("GET", endpoint, undefined, { on401: "returnNull" });
+      if (response.status === 204) return null;
+      const data = await response.json();
+      return data as User | null;
+    },
     retry: false,
   });
 

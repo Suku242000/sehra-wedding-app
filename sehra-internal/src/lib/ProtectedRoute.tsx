@@ -1,73 +1,56 @@
-import { ReactNode } from "react";
-import { Route, Redirect, useLocation } from "wouter";
+import { ReactNode, FC } from "react";
+import { Redirect } from "wouter";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "./auth";
+import { useAuth, InternalRole } from "./auth";
 
-type InternalRole = "vendor" | "supervisor" | "admin";
+interface ProtectedRouteProps {
+  children: ReactNode;
+  allowedRoles?: InternalRole[];
+  redirectTo?: string;
+}
 
 /**
- * ProtectedRoute Component for Internal App
- * 
- * Restricts access to routes based on authentication status and internal staff roles.
- * 
- * @param path The route path to protect
- * @param component The component to render if access is granted
- * @param allowedRoles Optional array of roles allowed to access this route
+ * ProtectedRoute component for internal application
+ * - Requires authentication
+ * - Optionally restricts access based on staff role
  */
-export function ProtectedRoute({
-  path,
-  component: Component,
+export const ProtectedRoute: FC<ProtectedRouteProps> = ({
+  children,
   allowedRoles,
-  children
-}: {
-  path: string;
-  component?: () => JSX.Element;
-  allowedRoles?: InternalRole[];
-  children?: ReactNode;
-}) {
+  redirectTo = "/login",
+}) => {
   const { user, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
 
+  // Show loading state while auth state is being determined
   if (isLoading) {
     return (
-      <Route path={path}>
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </Route>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
     );
   }
 
-  // Redirect to login if not authenticated
+  // Redirect to login page if not logged in
   if (!user) {
-    return (
-      <Route path={path}>
-        <Redirect to="/login" />
-      </Route>
-    );
+    return <Redirect to={redirectTo} />;
   }
 
-  // Check role permissions if allowedRoles are specified
-  if (allowedRoles && !hasRole(user.role as InternalRole, allowedRoles)) {
-    return (
-      <Route path={path}>
-        <Redirect to="/" />
-      </Route>
-    );
+  // Check if user has the required role
+  if (allowedRoles && allowedRoles.length > 0) {
+    if (!allowedRoles.includes(user.role as InternalRole)) {
+      // Redirect to appropriate dashboard based on role
+      switch (user.role) {
+        case "vendor":
+          return <Redirect to="/vendor-dashboard" />;
+        case "supervisor":
+          return <Redirect to="/supervisor-dashboard" />;
+        case "admin":
+          return <Redirect to="/admin-dashboard" />;
+        default:
+          return <Redirect to="/" />;
+      }
+    }
   }
 
-  // Render the protected component
-  if (Component) {
-    return <Route path={path} component={Component} />;
-  }
-
-  // Or render children
-  return <Route path={path}>{children}</Route>;
-}
-
-/**
- * Helper function to check if a user has one of the allowed roles
- */
-function hasRole(userRole: InternalRole, allowedRoles: InternalRole[]): boolean {
-  return allowedRoles.includes(userRole);
-}
+  return <>{children}</>;
+};

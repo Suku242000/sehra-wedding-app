@@ -41,7 +41,7 @@ import {
   userProgress,
   timelineEvents,
   messages,
-  contactStatus,
+  contactStatuses,
   notifications,
   vendorReviews,
   vendorCalendar,
@@ -478,32 +478,32 @@ export class DatabaseStorage implements IStorage {
 
   // Contact status methods
   async getContactStatus(id: number): Promise<ContactStatus | undefined> {
-    const [status] = await db.select().from(contactStatus).where(eq(contactStatus.id, id));
+    const [status] = await db.select().from(contactStatuses).where(eq(contactStatuses.id, id));
     return status;
   }
 
   async getContactStatusByUserId(userId: number): Promise<ContactStatus | undefined> {
-    const [status] = await db.select().from(contactStatus).where(eq(contactStatus.userId, userId));
+    const [status] = await db.select().from(contactStatuses).where(eq(contactStatuses.userId, userId));
     return status;
   }
 
   async getContactStatusesBySupervisorId(supervisorId: number): Promise<ContactStatus[]> {
     return await db
       .select()
-      .from(contactStatus)
-      .where(eq(contactStatus.supervisorId, supervisorId));
+      .from(contactStatuses)
+      .where(eq(contactStatuses.supervisorId, supervisorId));
   }
 
   async createContactStatus(status: InsertContactStatus): Promise<ContactStatus> {
-    const [newStatus] = await db.insert(contactStatus).values(status).returning();
+    const [newStatus] = await db.insert(contactStatuses).values(status).returning();
     return newStatus;
   }
 
   async updateContactStatus(id: number, statusData: Partial<ContactStatus>): Promise<ContactStatus | undefined> {
     const [updatedStatus] = await db
-      .update(contactStatus)
+      .update(contactStatuses)
       .set({ ...statusData, lastUpdated: new Date() })
-      .where(eq(contactStatus.id, id))
+      .where(eq(contactStatuses.id, id))
       .returning();
     return updatedStatus;
   }

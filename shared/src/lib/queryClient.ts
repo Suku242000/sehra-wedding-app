@@ -1,16 +1,15 @@
 import { QueryClient } from "@tanstack/react-query";
 
-// Initialize react-query client with default settings
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      staleTime: 60 * 1000, // 1 minute
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
     },
   },
 });
 
-// Types for API requests
 type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 type RequestOptions = {
   on401?: "returnNull" | "throw";
@@ -34,13 +33,11 @@ export async function apiRequest(
   data?: unknown,
   options: RequestOptions = {}
 ): Promise<Response> {
-  const { on401 = "throw", headers = {} } = options;
-
   const requestOptions: RequestInit = {
     method,
     headers: {
-      ...headers,
       "Content-Type": "application/json",
+      ...options.headers,
     },
     credentials: "include",
   };
@@ -51,8 +48,30 @@ export async function apiRequest(
 
   const response = await fetch(endpoint, requestOptions);
 
-  if (response.status === 401 && on401 === "throw") {
-    throw new Error("Unauthorized");
+  if (response.status === 401 && options.on401 === "returnNull") {
+    return new Response(JSON.stringify(null), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = `API request failed: ${response.statusText}`;
+    
+    try {
+      const errorJson = JSON.parse(errorText);
+      if (errorJson?.message) {
+        errorMessage = errorJson.message;
+      }
+    } catch (e) {
+      // If the error response is not valid JSON, use the error text as is
+      if (errorText) {
+        errorMessage = errorText;
+      }
+    }
+    
+    throw new Error(errorMessage);
   }
 
   return response;
@@ -68,29 +87,38 @@ export async function apiRequest(
  * @returns Query function for React Query
  */
 export function getQueryFn<T = unknown>(options: RequestOptions = {}) {
-  return async ({ queryKey }: { queryKey: (string | Record<string, unknown>)[] }) => {
+  return async ({ queryKey }: { queryKey: (string | Record<string, unknown>)[] }): Promise<T | null> => {
     const endpoint = queryKey[0] as string;
     
-    try {
-      const response = await apiRequest("GET", endpoint, undefined, options);
+    // Extract params from queryKey if present
+    const params = queryKey.length > 1 && typeof queryKey[1] === 'object' 
+      ? queryKey[1] as Record<string, unknown>
+      : undefined;
+    
+    let finalEndpoint = endpoint;
+    
+    // If params are available, add them as query parameters
+    if (params) {
+      const searchParams = new URLSearchParams();
       
-      if (!response.ok) {
-        if (response.status === 401 && options.on401 === "returnNull") {
-          return null as unknown as T;
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value));
         }
-        
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || `Failed to fetch data from ${endpoint}`
-        );
-      }
+      });
       
-      return response.json() as Promise<T>;
-    } catch (error) {
-      if (error instanceof Error && error.message === "Unauthorized" && options.on401 === "returnNull") {
-        return null as unknown as T;
+      const queryString = searchParams.toString();
+      if (queryString) {
+        finalEndpoint = `${endpoint}?${queryString}`;
       }
-      throw error;
     }
+    
+    const response = await apiRequest("GET", finalEndpoint, undefined, options);
+    
+    if (response.status === 204) {
+      return null;
+    }
+    
+    return response.json();
   };
 }

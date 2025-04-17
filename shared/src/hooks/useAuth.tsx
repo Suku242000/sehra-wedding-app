@@ -1,172 +1,216 @@
-import { createContext, ReactNode, useContext, useState, useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { z } from "zod";
+import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-// Define user schema
-const userSchema = z.object({
-  id: z.number(),
-  email: z.string().email(),
-  name: z.string(),
-  role: z.string(),
-  // Add more fields as needed
-});
-
-type User = z.infer<typeof userSchema>;
-
-interface LoginCredentials {
-  email: string;
-  password: string;
-  role?: string;
-}
-
-interface RegisterCredentials extends LoginCredentials {
+// Define the User type
+export interface User {
+  id: number;
   name: string;
-  // Add more fields as needed for registration
+  email: string;
+  role: string;
 }
 
+// Define context type
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  error: Error | null;
-  loginMutation: ReturnType<typeof useMutation<User, Error, LoginCredentials>>;
-  logoutMutation: ReturnType<typeof useMutation<void, Error, void>>;
-  registerMutation: ReturnType<typeof useMutation<User, Error, RegisterCredentials>>;
+  isError: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  register: (userData: RegisterData) => Promise<void>;
+  checkAuth: () => Promise<User | null>;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+// Define input data types
+interface LoginData {
+  email: string;
+  password: string;
+}
 
+export interface RegisterData extends LoginData {
+  name: string;
+  role: 'bride' | 'groom' | 'family' | 'vendor' | 'admin' | 'supervisor';
+  // Additional fields for different roles can be added
+  vendorType?: string;
+  businessName?: string;
+  package?: string;
+  weddingDate?: string;
+}
+
+// Create the context
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// The provider component
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const [error, setError] = useState<Error | null>(null);
+  const [redirectPath, setRedirectPath] = useState<string | null>(null);
 
-  // Get the currently logged in user
+  // Use React Query to fetch the current user
   const {
     data: user,
     isLoading,
+    isError,
+    refetch
   } = useQuery<User | null>({
-    queryKey: ['/api/user'],
-    refetchOnWindowFocus: false,
-    retry: false,
-    throwOnError: false,
+    queryKey: ['/api/auth/me'],
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            return null;
+          }
+          throw new Error('Failed to fetch user');
+        }
+        
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching authenticated user:', error);
+        return null;
+      }
+    },
+    staleTime: 300000, // 5 minutes
+    refetchOnWindowFocus: false
   });
 
   // Login mutation
-  const loginMutation = useMutation<User, Error, LoginCredentials>({
-    mutationFn: async (credentials) => {
-      try {
-        const res = await fetch('/api/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify(credentials),
-        });
+  const loginMutation = useMutation({
+    mutationFn: async (credentials: LoginData) => {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+        credentials: 'include',
+      });
 
-        if (!res.ok) {
-          const errorData = await res.json().catch(() => ({}));
-          throw new Error(errorData.message || 'Login failed');
-        }
-
-        return res.json();
-      } catch (err) {
-        if (err instanceof Error) {
-          setError(err);
-          throw err;
-        }
-        const error = new Error('An unexpected error occurred during login');
-        setError(error);
-        throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Login failed');
       }
+
+      return await response.json();
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(['/api/user'], data);
-      setError(null);
+    onSuccess: () => {
+      refetch();
     },
   });
 
   // Register mutation
-  const registerMutation = useMutation<User, Error, RegisterCredentials>({
-    mutationFn: async (userData) => {
-      try {
-        const res = await fetch('/api/register', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify(userData),
-        });
+  const registerMutation = useMutation({
+    mutationFn: async (userData: RegisterData) => {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+        credentials: 'include',
+      });
 
-        if (!res.ok) {
-          const errorData = await res.json().catch(() => ({}));
-          throw new Error(errorData.message || 'Registration failed');
-        }
-
-        return res.json();
-      } catch (err) {
-        if (err instanceof Error) {
-          setError(err);
-          throw err;
-        }
-        const error = new Error('An unexpected error occurred during registration');
-        setError(error);
-        throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Registration failed');
       }
+
+      return await response.json();
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(['/api/user'], data);
-      setError(null);
+    onSuccess: () => {
+      refetch();
     },
   });
 
   // Logout mutation
-  const logoutMutation = useMutation<void, Error, void>({
+  const logoutMutation = useMutation({
     mutationFn: async () => {
-      try {
-        const res = await fetch('/api/logout', {
-          method: 'POST',
-          credentials: 'include',
-        });
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
 
-        if (!res.ok) {
-          throw new Error('Logout failed');
-        }
-      } catch (err) {
-        if (err instanceof Error) {
-          setError(err);
-          throw err;
-        }
-        const error = new Error('An unexpected error occurred during logout');
-        setError(error);
-        throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Logout failed');
       }
+
+      return await response.json();
     },
     onSuccess: () => {
-      queryClient.setQueryData(['/api/user'], null);
-      setError(null);
+      queryClient.setQueryData(['/api/auth/me'], null);
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
     },
   });
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        error,
-        loginMutation,
-        logoutMutation,
-        registerMutation,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  // Login function
+  const login = async (email: string, password: string) => {
+    await loginMutation.mutateAsync({ email, password });
+  };
+
+  // Logout function
+  const logout = async () => {
+    await logoutMutation.mutateAsync();
+  };
+
+  // Register function
+  const register = async (userData: RegisterData) => {
+    await registerMutation.mutateAsync(userData);
+  };
+
+  // Check auth function
+  const checkAuth = async (): Promise<User | null> => {
+    const result = await refetch();
+    return result.data || null;
+  };
+
+  // Handle role-based redirection after login
+  useEffect(() => {
+    if (user && redirectPath) {
+      window.location.href = redirectPath;
+      setRedirectPath(null);
+    } else if (user) {
+      // Determine redirect path based on role if not set explicitly
+      let path = '/';
+      
+      if (user.role === 'vendor') {
+        path = '/vendor-dashboard';
+      } else if (user.role === 'supervisor') {
+        path = '/supervisor-dashboard';
+      } else if (user.role === 'admin') {
+        path = '/admin-dashboard';
+      } else if (['bride', 'groom', 'family'].includes(user.role)) {
+        path = '/dashboard';
+      }
+      
+      // Only redirect if we're not already on the correct path
+      if (window.location.pathname !== path && 
+          window.location.pathname !== '/auth' && 
+          window.location.pathname !== '/') {
+        window.location.href = path;
+      }
+    }
+  }, [user, redirectPath]);
+
+  // Context value
+  const value = {
+    user,
+    isLoading,
+    isError,
+    login,
+    logout,
+    register,
+    checkAuth
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// Custom hook to use the auth context
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;

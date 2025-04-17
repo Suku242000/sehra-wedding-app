@@ -22,18 +22,25 @@ const LoadingFallback = () => (
   </div>
 );
 
+// Protected route component
+const ProtectedRoute = ({ component: Component, ...rest }: { component: React.ComponentType, path?: string }) => {
+  // We'll implement the full authentication check when we build the useAuth hook
+  // For now, this is a placeholder
+  return <Component />;
+};
+
 function AppRoutes() {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Switch>
-        <Route path="/" component={HomePage} />
         <Route path="/auth" component={AuthPage} />
-        <Route path="/dashboard" component={DashboardPage} />
-        <Route path="/budget" component={BudgetPage} />
-        <Route path="/vendors" component={VendorsPage} />
-        <Route path="/guests" component={GuestsPage} />
-        <Route path="/timeline" component={TimelinePage} />
-        <Route path="/achievements" component={AchievementsPage} />
+        <ProtectedRoute path="/dashboard" component={DashboardPage} />
+        <ProtectedRoute path="/budget" component={BudgetPage} />
+        <ProtectedRoute path="/vendors" component={VendorsPage} />
+        <ProtectedRoute path="/guests" component={GuestsPage} />
+        <ProtectedRoute path="/timeline" component={TimelinePage} />
+        <ProtectedRoute path="/achievements" component={AchievementsPage} />
+        <Route path="/" component={HomePage} />
         <Route component={NotFoundPage} />
       </Switch>
     </Suspense>

@@ -18,14 +18,14 @@ const LoadingFallback = () => (
   </div>
 );
 
-// Protected route component
+// Protected route component for internal app
 const ProtectedRoute = ({ 
   component: Component, 
-  requiredRole, 
+  roles = [], 
   ...rest 
 }: { 
   component: React.ComponentType, 
-  requiredRole: string | string[],
+  roles?: string[],
   path?: string 
 }) => {
   // We'll implement the full role-based authentication check when we build the useAuth hook
@@ -37,34 +37,27 @@ function AppRoutes() {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Switch>
+        {/* Public routes */}
         <Route path="/login" component={LoginPage} />
         
-        {/* Role-specific routes */}
+        {/* Protected routes for internal staff */}
         <ProtectedRoute 
-          path="/vendor-dashboard" 
+          path="/dashboard/vendor" 
           component={VendorDashboardPage} 
-          requiredRole="vendor" 
+          roles={['vendor']}
         />
         
         <ProtectedRoute 
-          path="/supervisor-dashboard" 
+          path="/dashboard/supervisor" 
           component={SupervisorDashboardPage} 
-          requiredRole="supervisor" 
+          roles={['supervisor']}
         />
         
         <ProtectedRoute 
-          path="/admin-dashboard" 
+          path="/dashboard/admin" 
           component={AdminDashboardPage} 
-          requiredRole="admin" 
+          roles={['admin']}
         />
-        
-        {/* Redirect to login for root path */}
-        <Route path="/">
-          {() => {
-            window.location.href = '/login';
-            return null;
-          }}
-        </Route>
         
         <Route component={NotFoundPage} />
       </Switch>

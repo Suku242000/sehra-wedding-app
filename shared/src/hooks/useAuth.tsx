@@ -1,108 +1,116 @@
-import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useLocation } from 'wouter';
 
-// Define the User type
-export interface User {
+// Define user type
+export type User = {
   id: number;
-  name: string;
   email: string;
-  role: string;
-}
+  name: string;
+  role: string;  // 'bride', 'groom', 'family', 'vendor', 'supervisor', 'admin'
+  [key: string]: any;
+};
 
-// Define context type
-interface AuthContextType {
+type RegisterData = {
+  email: string;
+  password: string;
+  name: string;
+  role: string;
+  [key: string]: any;
+};
+
+type AuthContextType = {
   user: User | null;
   isLoading: boolean;
   isError: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  register: (userData: RegisterData) => Promise<void>;
+  register: (userData: RegisterData) => Promise<User>;
   checkAuth: () => Promise<User | null>;
-}
+};
 
-// Define input data types
-interface LoginData {
-  email: string;
-  password: string;
-}
+const AuthContext = createContext<AuthContextType | null>(null);
 
-export interface RegisterData extends LoginData {
-  name: string;
-  role: 'bride' | 'groom' | 'family' | 'vendor' | 'admin' | 'supervisor';
-  // Additional fields for different roles can be added
-  vendorType?: string;
-  businessName?: string;
-  package?: string;
-  weddingDate?: string;
-}
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isError, setIsError] = useState<boolean>(false);
+  const [, setLocation] = useLocation();
 
-// Create the context
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+  // Check if user is authenticated on initial load
+  useEffect(() => {
+    checkAuth()
+      .then((user) => {
+        setUser(user);
+        setIsLoading(false);
+      })
+      .catch(() => {
+        setUser(null);
+        setIsLoading(false);
+        setIsError(true);
+      });
+  }, []);
 
-// The provider component
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const queryClient = useQueryClient();
-  const [redirectPath, setRedirectPath] = useState<string | null>(null);
-
-  // Use React Query to fetch the current user
-  const {
-    data: user,
-    isLoading,
-    isError,
-    refetch
-  } = useQuery<User | null>({
-    queryKey: ['/api/auth/me'],
-    queryFn: async () => {
-      try {
-        const response = await fetch('/api/auth/me', {
-          credentials: 'include'
-        });
-        
-        if (!response.ok) {
-          if (response.status === 401) {
-            return null;
-          }
-          throw new Error('Failed to fetch user');
-        }
-        
-        return await response.json();
-      } catch (error) {
-        console.error('Error fetching authenticated user:', error);
-        return null;
-      }
-    },
-    staleTime: 300000, // 5 minutes
-    refetchOnWindowFocus: false
-  });
-
-  // Login mutation
-  const loginMutation = useMutation({
-    mutationFn: async (credentials: LoginData) => {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
+  const checkAuth = async (): Promise<User | null> => {
+    try {
+      const response = await fetch('/api/user', {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(credentials),
         credentials: 'include',
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Login failed');
+        if (response.status === 401) {
+          return null;
+        }
+        throw new Error('Failed to check authentication status');
       }
 
-      return await response.json();
-    },
-    onSuccess: () => {
-      refetch();
-    },
-  });
+      const userData = await response.json();
+      return userData;
+    } catch (error) {
+      console.error('Auth check error:', error);
+      return null;
+    }
+  };
 
-  // Register mutation
-  const registerMutation = useMutation({
-    mutationFn: async (userData: RegisterData) => {
-      const response = await fetch('/api/auth/register', {
+  const login = async (email: string, password: string): Promise<void> => {
+    setIsLoading(true);
+    setIsError(false);
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Invalid credentials');
+      }
+
+      const userData = await response.json();
+      setUser(userData);
+
+      // Redirect based on user role
+      redirectBasedOnRole(userData.role);
+    } catch (error) {
+      console.error('Login error:', error);
+      setIsError(true);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const register = async (userData: RegisterData): Promise<User> => {
+    setIsLoading(true);
+    setIsError(false);
+    try {
+      const response = await fetch('/api/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -116,102 +124,111 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(errorData.message || 'Registration failed');
       }
 
-      return await response.json();
-    },
-    onSuccess: () => {
-      refetch();
-    },
-  });
+      const user = await response.json();
+      setUser(user);
 
-  // Logout mutation
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch('/api/auth/logout', {
+      // Redirect based on user role
+      redirectBasedOnRole(user.role);
+      
+      return user;
+    } catch (error) {
+      console.error('Registration error:', error);
+      setIsError(true);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/logout', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         credentials: 'include',
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Logout failed');
+        throw new Error('Logout failed');
       }
 
-      return await response.json();
-    },
-    onSuccess: () => {
-      queryClient.setQueryData(['/api/auth/me'], null);
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
-    },
-  });
-
-  // Login function
-  const login = async (email: string, password: string) => {
-    await loginMutation.mutateAsync({ email, password });
-  };
-
-  // Logout function
-  const logout = async () => {
-    await logoutMutation.mutateAsync();
-  };
-
-  // Register function
-  const register = async (userData: RegisterData) => {
-    await registerMutation.mutateAsync(userData);
-  };
-
-  // Check auth function
-  const checkAuth = async (): Promise<User | null> => {
-    const result = await refetch();
-    return result.data || null;
-  };
-
-  // Handle role-based redirection after login
-  useEffect(() => {
-    if (user && redirectPath) {
-      window.location.href = redirectPath;
-      setRedirectPath(null);
-    } else if (user) {
-      // Determine redirect path based on role if not set explicitly
-      let path = '/';
+      setUser(null);
       
-      if (user.role === 'vendor') {
-        path = '/vendor-dashboard';
-      } else if (user.role === 'supervisor') {
-        path = '/supervisor-dashboard';
-      } else if (user.role === 'admin') {
-        path = '/admin-dashboard';
-      } else if (['bride', 'groom', 'family'].includes(user.role)) {
-        path = '/dashboard';
-      }
+      // Determine which app the user is in and redirect to the appropriate home page
+      const isInternalApp = window.location.pathname.includes('/dashboard/vendor') || 
+                           window.location.pathname.includes('/dashboard/supervisor') || 
+                           window.location.pathname.includes('/dashboard/admin');
       
-      // Only redirect if we're not already on the correct path
-      if (window.location.pathname !== path && 
-          window.location.pathname !== '/auth' && 
-          window.location.pathname !== '/') {
-        window.location.href = path;
+      if (isInternalApp) {
+        // If in internal app, redirect to internal login
+        setLocation('/login');
+      } else {
+        // If in client app, redirect to client home page
+        setLocation('/');
       }
+    } catch (error) {
+      console.error('Logout error:', error);
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
     }
-  }, [user, redirectPath]);
+  };
 
-  // Context value
-  const value = {
+  // Helper function to redirect based on user role
+  const redirectBasedOnRole = (role: string): void => {
+    switch (role) {
+      case 'bride':
+      case 'groom':
+      case 'family':
+        // Client app roles
+        setLocation('/dashboard');
+        break;
+      case 'vendor':
+        // Vendor in internal app
+        setLocation('/dashboard/vendor');
+        break;
+      case 'supervisor':
+        // Supervisor in internal app
+        setLocation('/dashboard/supervisor');
+        break;
+      case 'admin':
+        // Admin in internal app
+        setLocation('/dashboard/admin');
+        break;
+      default:
+        // Default redirect to client app home
+        setLocation('/');
+        break;
+    }
+  };
+
+  // Export context value
+  const contextValue: AuthContextType = {
     user,
     isLoading,
     isError,
     login,
     logout,
     register,
-    checkAuth
+    checkAuth,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
-// Custom hook to use the auth context
-export function useAuth() {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
+};
+
+export default useAuth;

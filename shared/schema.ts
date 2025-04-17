@@ -68,8 +68,26 @@ export const vendorProfiles = pgTable("vendor_profiles", {
   location: text("location"),
   portfolio: json("portfolio").$type<string[]>(),
   priceRange: text("price_range"),
-  availability: json("availability").$type<string[]>(),
+  availability: json("availability").$type<string[]>(), // Array of dates vendor is available
+  bookedDates: json("booked_dates").$type<string[]>(), // Array of dates vendor is booked
+  profileComplete: boolean("profile_complete").default(false),
+  contactPhone: text("contact_phone"),
+  contactEmail: text("contact_email"),
+  socialMedia: json("social_media").$type<{
+    instagram?: string;
+    facebook?: string;
+    website?: string;
+  }>(),
+  services: json("services").$type<{
+    name: string;
+    description: string;
+    price: string;
+  }[]>(),
+  logoUrl: text("logo_url"), // URL or base64 of business logo
+  featured: boolean("featured").default(false), // For highlighting top vendors
+  verificationStatus: text("verification_status").default("pending"), // pending, verified, rejected
   rating: integer("rating"),
+  reviewCount: integer("review_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -151,6 +169,13 @@ export const vendorBookings = pgTable("vendor_bookings", {
   eventType: text("event_type"), // Type of event (wedding ceremony, reception, etc.)
   budget: integer("budget"), // Budget allocated for this vendor
   approvedBySupervisor: boolean("approved_by_supervisor").default(false),
+  approvedByVendor: boolean("approved_by_vendor").default(false), // Whether vendor has approved the booking
+  synchronizedToBudget: boolean("synchronized_to_budget").default(false), // Whether booking has been added to budget
+  budgetItemId: integer("budget_item_id"), // Link to the budget item if created
+  startTime: text("start_time"), // Start time of the event
+  endTime: text("end_time"), // End time of the event
+  services: json("selected_services").$type<string[]>(), // Array of service IDs/names selected from vendor
+  notificationSent: boolean("notification_sent").default(false), // Whether notification has been sent
   supervisorNotes: text("supervisor_notes"),
   vendorNotes: text("vendor_notes"),
   clientNotes: text("client_notes"),
@@ -233,6 +258,27 @@ export const contactStatus = pgTable("contact_status", {
   state: text("state"),
 });
 
+// Vendor reviews table
+export const vendorReviews = pgTable("vendor_reviews", {
+  id: serial("id").primaryKey(),
+  vendorId: integer("vendor_id").notNull(),
+  userId: integer("user_id").notNull(),
+  rating: integer("rating").notNull(),
+  comment: text("comment"),
+  status: text("status").default("pending"), // pending, approved, rejected
+  bookingId: integer("booking_id"), // Link to the booking if applicable
+  attributes: json("attributes").$type<{
+    reliability?: number;
+    qualityOfService?: number;
+    valueForMoney?: number;
+    communication?: number;
+    professionalism?: number;
+  }>(),
+  helpful: integer("helpful").default(0), // Number of helpful votes
+  verified: boolean("verified").default(false), // Whether review is from verified booking
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Notifications table
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
@@ -283,6 +329,9 @@ export const insertMessageSchema = createInsertSchema(messages)
 
 export const insertContactStatusSchema = createInsertSchema(contactStatus)
   .omit({ id: true, lastUpdated: true });
+
+export const insertVendorReviewSchema = createInsertSchema(vendorReviews)
+  .omit({ id: true, createdAt: true });
   
 export const insertNotificationSchema = createInsertSchema(notifications)
   .omit({ id: true, createdAt: true });

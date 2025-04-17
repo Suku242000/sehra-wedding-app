@@ -1,0 +1,76 @@
+Create a fully functional and user-friendly **Vendor Page** for the Sehra Wedding Planning App. This page must be reactive, dynamic, and seamlessly integrated with both Supervisor and Client Dashboards.
+
+🎯 MAIN OBJECTIVE:
+Design an interactive Vendor Dashboard and Directory that:
+- Allows vendors to manage their profile and services
+- Enables clients to view, request, and book vendors
+- Gives supervisors real-time access to vendor info and booking status
+- Automatically refreshes across all roles on updates
+
+🔧 FUNCTIONALITY TO IMPLEMENT:
+
+1. 👨‍💼 VENDOR PROFILE CREATION:
+   - On first login, vendors should be prompted to:
+     - Upload a business logo/photo
+     - Fill in business details: Name, Category (Photographer, Makeup, Venue, etc.), Pricing, Description, Contact Info
+     - Add their availability calendar (dates they’re already booked)
+   - Save all data to MongoDB under a `vendors` collection with a unique vendor ID `SV#0001`, `SV#0002`, etc.
+
+2. 📆 REAL-TIME BOOKING VISIBILITY:
+   - When a client selects a vendor and a wedding date:
+     - Show whether the vendor is **Available or Booked**
+     - Prevent double booking of vendors
+   - Automatically update the vendor’s availability calendar
+   - Display an "Already Booked" badge if the selected date overlaps with any entry in the vendor's availability
+
+3. 🔁 LIVE INTEGRATION & REFRESH:
+   - When a vendor updates their profile:
+     - Reflect changes instantly on the Client and Supervisor Dashboards
+   - Use WebSockets or polling every 5 seconds to auto-refresh the vendor list without reloading the page
+   - Ensure seamless data flow using API:
+     - `GET /api/vendors` → Get all vendors
+     - `POST /api/vendors/:id/book` → Book a vendor for a date
+     - `PUT /api/vendors/:id/update` → Update vendor profile or availability
+     - Use user token and vendor ID to restrict unauthorized access
+
+4. 🔗 CLIENT INTEGRATION:
+   - On the Client Dashboard → Vendors tab:
+     - List vendors by category with filter and sort
+     - Allow clients to:
+       - View vendor profile
+       - Add to their plan (automatically links in BudgetBar)
+       - View booked/unavailable dates
+       - Submit booking request
+   - When a vendor is added to the client’s plan:
+     - Notify the vendor via real-time update or visual indicator
+     - Automatically insert the vendor service and cost into the client’s budget section
+
+5. 🔎 SUPERVISOR INTEGRATION:
+   - Supervisor dashboard should have a "Vendors" tab:
+     - View all vendor profiles, bookings, and availability
+     - Search vendors by name/category
+     - Edit vendor info if needed (admin rights)
+     - Assign vendors to clients and manage availability conflicts
+
+6. 🎨 UI & EXPERIENCE:
+   - Use Tailwind CSS for elegant layout:
+     - Animated cards for vendor profile previews
+     - Calendar picker showing availability (booked dates in red)
+     - Vendor availability badge: “Available”, “Booked”, “Pending”
+   - Add toast alerts for success/error (e.g., booking confirmed, unavailable)
+   - Smooth page transitions between viewing and editing modes
+
+7. 🧪 TEST SCENARIOS:
+   - Vendor updates profile → Reflects on Supervisor and Client sides
+   - Client books vendor for a date → Vendor calendar updates instantly
+   - Booking conflict → Prevents overlap and shows alert
+   - Supervisor assigns vendor manually → Reflects in all dashboards
+   - Adding vendor adds budget entry automatically
+
+8. 🆔 ID SYSTEM:
+   - Vendor IDs: Start from SV#0001
+   - Store in backend and ensure uniqueness
+   - Cannot be regenerated after creation
+   - Use consistent naming and mapping for linking with clients and supervisors
+
+✅ Make the entire system reactive, real-time synced, smooth, and fully integrated. Use proper error handling, JWT auth checks, and a clean design. All updates should happen seamlessly without page reload, ensuring a top-tier experience for vendors and users.

@@ -24,7 +24,6 @@ import {
   ContactStatus,
   InsertContactStatus,
   Notification,
-  InsertNotification,
   VendorReview,
   InsertVendorReview,
   users,
@@ -141,7 +140,7 @@ export interface IStorage {
   // Notification methods
   getNotification(id: number): Promise<Notification | undefined>;
   getNotificationsByUserId(userId: number): Promise<Notification[]>;
-  createNotification(notification: InsertNotification): Promise<Notification>;
+  createNotification(notification: Notification): Promise<Notification>;
   updateNotification(id: number, notification: Partial<Notification>): Promise<Notification | undefined>;
   markNotificationsAsRead(userId: number): Promise<boolean>;
   

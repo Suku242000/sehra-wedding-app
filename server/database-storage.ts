@@ -501,4 +501,176 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updatedStatus;
   }
+
+  // Notification methods
+  async getNotification(id: number): Promise<Notification | undefined> {
+    const [notification] = await db.select().from(notifications).where(eq(notifications.id, id));
+    return notification;
+  }
+
+  async getNotificationsByUserId(userId: number): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(notifications.createdAt);
+  }
+
+  async createNotification(notification: Notification): Promise<Notification> {
+    const [newNotification] = await db.insert(notifications).values(notification).returning();
+    return newNotification;
+  }
+
+  async updateNotification(id: number, notificationData: Partial<Notification>): Promise<Notification | undefined> {
+    const [updatedNotification] = await db
+      .update(notifications)
+      .set(notificationData)
+      .where(eq(notifications.id, id))
+      .returning();
+    return updatedNotification;
+  }
+
+  async markNotificationsAsRead(userId: number): Promise<boolean> {
+    await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.isRead, false)
+        )
+      );
+    return true;
+  }
+
+  // Vendor Review methods
+  async getVendorReview(id: number): Promise<VendorReview | undefined> {
+    const [review] = await db.select().from(vendorReviews).where(eq(vendorReviews.id, id));
+    return review;
+  }
+
+  async getVendorReviewsByVendorId(vendorId: number): Promise<VendorReview[]> {
+    return await db
+      .select()
+      .from(vendorReviews)
+      .where(eq(vendorReviews.vendorId, vendorId))
+      .orderBy(vendorReviews.createdAt);
+  }
+
+  async getVendorReviewsByUserId(userId: number): Promise<VendorReview[]> {
+    return await db
+      .select()
+      .from(vendorReviews)
+      .where(eq(vendorReviews.userId, userId))
+      .orderBy(vendorReviews.createdAt);
+  }
+
+  async createVendorReview(review: InsertVendorReview): Promise<VendorReview> {
+    const [newReview] = await db.insert(vendorReviews).values(review).returning();
+    
+    // Update vendor's average rating
+    const vendorId = review.vendorId;
+    const reviews = await this.getVendorReviewsByVendorId(vendorId);
+    
+    if (reviews.length > 0) {
+      const averageRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+      
+      // Get the vendor profile by userId
+      const vendorProfile = await this.getVendorProfileByUserId(vendorId);
+      if (vendorProfile) {
+        await this.updateVendorProfile(vendorProfile.id, { rating: averageRating });
+      }
+    }
+    
+    return newReview;
+  }
+
+  async updateVendorReview(id: number, reviewData: Partial<VendorReview>): Promise<VendorReview | undefined> {
+    const [updatedReview] = await db
+      .update(vendorReviews)
+      .set(reviewData)
+      .where(eq(vendorReviews.id, id))
+      .returning();
+    
+    // Update vendor's average rating if the rating changed
+    if (reviewData.rating && updatedReview) {
+      const vendorId = updatedReview.vendorId;
+      const reviews = await this.getVendorReviewsByVendorId(vendorId);
+      
+      if (reviews.length > 0) {
+        const averageRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+        
+        // Get the vendor profile by userId
+        const vendorProfile = await this.getVendorProfileByUserId(vendorId);
+        if (vendorProfile) {
+          await this.updateVendorProfile(vendorProfile.id, { rating: averageRating });
+        }
+      }
+    }
+    
+    return updatedReview;
+  }
+
+  // Implementation of required IStorage message methods
+  async getMessagesByUserId(userId: number): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(
+        or(
+          eq(messages.fromUserId, userId),
+          eq(messages.toUserId, userId)
+        )
+      )
+      .orderBy(messages.createdAt);
+  }
+
+  async markMessagesAsRead(fromUserId: number, toUserId: number): Promise<boolean> {
+    await this.markAllMessagesAsRead(fromUserId, toUserId);
+    return true;
+  }
+
+  async getUnreadMessageCount(userId: number): Promise<number> {
+    return await this.getUnreadMessagesCount(userId);
+  }
+
+  async getLastMessages(userId: number): Promise<any[]> {
+    // Get all conversations for this user
+    const userMessages = await this.getMessagesByUserId(userId);
+    
+    // Extract all unique user IDs that this user has conversations with
+    const contactUserIds = new Set<number>();
+    userMessages.forEach(message => {
+      const otherUserId = message.fromUserId === userId ? message.toUserId : message.fromUserId;
+      contactUserIds.add(otherUserId);
+    });
+    
+    const results = [];
+    
+    // For each contact, get their latest message and unread count
+    for (const contactId of contactUserIds) {
+      // Get messages between these users, sorted by time (newest first)
+      const messagesBetween = userMessages
+        .filter(m => m.fromUserId === contactId || m.toUserId === contactId)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      if (messagesBetween.length > 0) {
+        // Get the latest message
+        const lastMessage = messagesBetween[0];
+        
+        // Count unread messages from this contact
+        const unreadCount = messagesBetween.filter(m => 
+          m.fromUserId === contactId && !m.read
+        ).length;
+        
+        results.push({
+          userId: contactId,
+          message: lastMessage,
+          unreadCount
+        });
+      }
+    }
+    
+    return results;
+  }
 }

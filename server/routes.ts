@@ -716,6 +716,187 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Vendor Calendar routes
+  // Get vendor calendar entries
+  app.get("/api/vendors/:id/calendar", async (req: Request, res: Response) => {
+    try {
+      const vendorId = parseInt(req.params.id);
+      const calendar = await storage.getVendorCalendarByVendorId(vendorId);
+      res.json(calendar);
+    } catch (error) {
+      console.error("Get vendor calendar error:", error);
+      res.status(500).json({ message: "Failed to retrieve vendor calendar" });
+    }
+  });
+
+  // Get vendor calendar by date range
+  app.get("/api/vendors/:id/calendar/range", async (req: Request, res: Response) => {
+    try {
+      const vendorId = parseInt(req.params.id);
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start date and end date are required" });
+      }
+      
+      const calendar = await storage.getVendorCalendarByDateRange(
+        vendorId, 
+        new Date(startDate as string), 
+        new Date(endDate as string)
+      );
+      res.json(calendar);
+    } catch (error) {
+      console.error("Get vendor calendar by date range error:", error);
+      res.status(500).json({ message: "Failed to retrieve vendor calendar" });
+    }
+  });
+
+  // Get calendar entry by ID
+  app.get("/api/vendor-calendar/:id", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const calendarId = parseInt(req.params.id);
+      const calendar = await storage.getVendorCalendarById(calendarId);
+      
+      if (!calendar) {
+        return res.status(404).json({ message: "Calendar entry not found" });
+      }
+      
+      // Check if the user is the vendor who owns this calendar or an admin
+      if (req.user.id !== calendar.vendorId && req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERVISOR) {
+        return res.status(403).json({ message: "Not authorized to view this calendar entry" });
+      }
+      
+      res.json(calendar);
+    } catch (error) {
+      console.error("Get vendor calendar entry error:", error);
+      res.status(500).json({ message: "Failed to retrieve vendor calendar entry" });
+    }
+  });
+
+  // Create calendar entry
+  app.post("/api/vendor-calendar", authenticateToken, authorizeRoles([UserRole.VENDOR]), async (req: Request, res: Response) => {
+    try {
+      const vendorId = req.user.id;
+      
+      // Validate request data
+      const validatedData = insertVendorCalendarSchema.parse({
+        ...req.body,
+        vendorId: vendorId,
+      });
+      
+      // Check if calendar entry already exists for this date
+      const existingEntry = await storage.getVendorCalendarByDate(vendorId, new Date(validatedData.date));
+      
+      if (existingEntry) {
+        return res.status(400).json({ message: "Calendar entry already exists for this date" });
+      }
+      
+      const calendar = await storage.createVendorCalendar(validatedData);
+      res.status(201).json(calendar);
+    } catch (error) {
+      console.error("Create vendor calendar error:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create vendor calendar entry" });
+    }
+  });
+
+  // Update calendar entry
+  app.patch("/api/vendor-calendar/:id", authenticateToken, authorizeRoles([UserRole.VENDOR, UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const calendarId = parseInt(req.params.id);
+      
+      // Check if calendar entry exists
+      const calendar = await storage.getVendorCalendarById(calendarId);
+      if (!calendar) {
+        return res.status(404).json({ message: "Calendar entry not found" });
+      }
+      
+      // Check if the user is the vendor who owns this calendar or an admin
+      if (req.user.id !== calendar.vendorId && req.user.role !== UserRole.ADMIN) {
+        return res.status(403).json({ message: "Not authorized to update this calendar entry" });
+      }
+      
+      const updatedCalendar = await storage.updateVendorCalendar(calendarId, req.body);
+      res.json(updatedCalendar);
+    } catch (error) {
+      console.error("Update vendor calendar error:", error);
+      res.status(500).json({ message: "Failed to update vendor calendar entry" });
+    }
+  });
+
+  // Delete calendar entry
+  app.delete("/api/vendor-calendar/:id", authenticateToken, authorizeRoles([UserRole.VENDOR, UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const calendarId = parseInt(req.params.id);
+      
+      // Check if calendar entry exists
+      const calendar = await storage.getVendorCalendarById(calendarId);
+      if (!calendar) {
+        return res.status(404).json({ message: "Calendar entry not found" });
+      }
+      
+      // Check if the user is the vendor who owns this calendar or an admin
+      if (req.user.id !== calendar.vendorId && req.user.role !== UserRole.ADMIN) {
+        return res.status(403).json({ message: "Not authorized to delete this calendar entry" });
+      }
+      
+      await storage.deleteVendorCalendar(calendarId);
+      res.json({ message: "Calendar entry deleted successfully" });
+    } catch (error) {
+      console.error("Delete vendor calendar error:", error);
+      res.status(500).json({ message: "Failed to delete vendor calendar entry" });
+    }
+  });
+
+  // Update calendar availability for a specific date
+  app.patch("/api/vendors/:id/calendar/availability", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const vendorId = parseInt(req.params.id);
+      const { date, status, timeSlots } = req.body;
+      
+      if (!date) {
+        return res.status(400).json({ message: "Date is required" });
+      }
+      
+      if (!status && !timeSlots) {
+        return res.status(400).json({ message: "Either status or timeSlots must be provided" });
+      }
+      
+      // Check if the user is the vendor or an admin
+      if (req.user.id !== vendorId && req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERVISOR) {
+        return res.status(403).json({ message: "Not authorized to update this vendor's calendar" });
+      }
+      
+      // Check if calendar entry exists for this date
+      let calendar = await storage.getVendorCalendarByDate(vendorId, new Date(date));
+      
+      // If not exists, create a new one
+      if (!calendar) {
+        calendar = await storage.createVendorCalendar({
+          vendorId,
+          date,
+          timeSlots: timeSlots || null,
+          isFullDayEvent: !!status,
+          fullDayStatus: status || null,
+        });
+      } else {
+        // Update existing calendar entry
+        calendar = await storage.updateVendorCalendar(calendar.id, {
+          timeSlots: timeSlots || calendar.timeSlots,
+          isFullDayEvent: status ? true : calendar.isFullDayEvent,
+          fullDayStatus: status || calendar.fullDayStatus,
+        });
+      }
+      
+      res.json(calendar);
+    } catch (error) {
+      console.error("Update vendor calendar availability error:", error);
+      res.status(500).json({ message: "Failed to update vendor calendar availability" });
+    }
+  });
+
   // Vendor booking routes
   app.get("/api/bookings", authenticateToken, async (req: Request, res: Response) => {
     try {

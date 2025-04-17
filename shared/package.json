@@ -1,0 +1,23 @@
+{
+  "name": "sehra-shared",
+  "version": "1.0.0",
+  "type": "module",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.39.1",
+    "drizzle-zod": "^0.7.0",
+    "zod": "^3.23.8"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

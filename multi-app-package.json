@@ -1,0 +1,28 @@
+{
+  "name": "sehra-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "sehra-client",
+    "sehra-internal",
+    "shared",
+    "server"
+  ],
+  "scripts": {
+    "dev:client": "cd sehra-client && npm run dev",
+    "dev:internal": "cd sehra-internal && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:internal\" \"npm run dev:server\"",
+    "build:client": "cd sehra-client && npm run build",
+    "build:internal": "cd sehra-internal && npm run build",
+    "build:shared": "cd shared && npm run build",
+    "build:server": "cd server && npm run build",
+    "build": "npm run build:shared && npm run build:client && npm run build:internal && npm run build:server",
+    "db:push": "drizzle-kit push"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "drizzle-kit": "^0.30.4",
+    "typescript": "5.6.3"
+  }
+}

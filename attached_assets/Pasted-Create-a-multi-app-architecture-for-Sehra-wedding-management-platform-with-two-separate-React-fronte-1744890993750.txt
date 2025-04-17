@@ -1,0 +1,45 @@
+Create a multi-app architecture for Sehra wedding management platform with two separate React frontends and one shared Express backend using MongoDB Atlas.
+
+1. Backend (Express.js):
+   - Setup Role-based JWT authentication (Admin, Supervisor, Vendor, Client)
+   - API routes:
+     - /auth/login, /auth/register
+     - /vendors (create, update, get by ID, check availability by date)
+     - /clients (register, view tasks, budget, assigned supervisor)
+     - /supervisors (create, assign to client, edit vendor/client profiles)
+     - /admin (create supervisors, manage system-wide analytics)
+     - /notifications, /chat, /tasks, /budget
+   - MongoDB Models: Users, Vendors, Supervisors, Clients, Tasks, Budgets, Messages
+   - Use environment variables for secure configs (Mongo URI, JWT secret)
+
+2. Frontend App 1: Client App (/sehra-client)
+   - React with Tailwind UI, react-router-dom
+   - Pages:
+     - Home (showcase Sehra features)
+     - Dashboard (Wedding Progress Bar, Assigned Supervisor)
+     - My Wedding (tasks, checklist, timeline)
+     - Vendors (browse, book, live chat, see availability)
+     - Budget Planner (auto-update with vendor bookings)
+     - Guest Management
+   - Real-time notifications and chat using Socket.io or similar
+
+3. Frontend App 2: Admin + Supervisor + Vendor App (/sehra-internal)
+   - React with Tailwind UI, react-router-dom
+   - Role-based routing:
+     - Admin: Dashboard, Create Supervisor, Analytics, Manage Users
+     - Supervisor: View Assigned Clients/Vendors, Edit Profiles, Assign Vendors
+     - Vendor: Edit Profile, Update Availability, Chat with Clients, View Bookings
+   - Vendor Tier System (Silver/Gold/Platinum) with auto-assignment
+   - Show real-time updates from client bookings
+
+4. Shared Features:
+   - JWT token-based session handling
+   - Supervisor gets auto-notified with client info once assigned
+   - Vendor booking reflects on availability across apps
+   - MongoDB Atlas for production-ready data sync
+   - Loading animations, page transitions, smooth routing between sections
+
+5. Testing:
+   - Test all role logins (client, vendor, supervisor, admin)
+   - Check that vendor bookings reflect across all dashboards
+   - Confirm supervisor receives client info and can interact live

@@ -18,6 +18,7 @@ import {
   insertUserProgressSchema,
   insertTimelineEventSchema,
   insertMessageSchema,
+  insertVendorCalendarSchema,
   insertContactStatusSchema,
   UserRole
 } from "@shared/schema";

@@ -18,6 +18,7 @@ import {
   AlertTriangle, 
   Trash2, 
   Plus,
+  RefreshCw,
   Filter,
   CheckCheck,
   Clock8,
@@ -76,10 +77,12 @@ const TaskManager: React.FC = () => {
   const [showCelebration, setShowCelebration] = useState(false);
   
   // Fetch tasks with auth
-  const { data: tasks = [], isLoading } = useQuery<Task[]>({
+  const { data: tasks = [], isLoading, refetch } = useQuery<Task[]>({
     queryKey: ['/api/tasks'],
     queryFn: () => fetchWithAuth('/api/tasks'),
     enabled: true,
+    refetchInterval: 3000, // Auto-refresh every 3 seconds
+    refetchOnWindowFocus: true, // Also refresh when window gets focus
   });
   
   // Form
@@ -202,7 +205,9 @@ const TaskManager: React.FC = () => {
   
   // Handle status toggle from checkbox
   const handleStatusToggle = (task: Task) => {
-    const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+    // If already completed, set to in_progress
+    // If not completed, set to completed
+    const newStatus = task.status === 'completed' ? 'in_progress' : 'completed';
     handleStatusChange(task, newStatus);
   };
   
@@ -365,7 +370,7 @@ const TaskManager: React.FC = () => {
         </div>
         
         {/* Filter Controls */}
-        <div className="flex mb-4 gap-2">
+        <div className="flex mb-4 gap-2 flex-wrap">
           <div className="flex flex-wrap items-center bg-white border rounded-md">
             <Button 
               size="sm" 
@@ -400,6 +405,22 @@ const TaskManager: React.FC = () => {
               <CheckCheck className="w-3.5 h-3.5 mr-1.5" /> Completed
             </Button>
           </div>
+          
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => {
+              refetch();
+              toast({
+                title: "Refreshed",
+                description: "Task list has been refreshed",
+                duration: 2000
+              });
+            }}
+            className="ml-auto px-3 py-1 text-gray-600 hover:text-[#800000]"
+          >
+            <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Refresh
+          </Button>
         </div>
 
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
@@ -599,10 +620,9 @@ const TaskManager: React.FC = () => {
                     >
                       <Checkbox 
                         checked={task.status === 'completed'} 
-                        onCheckedChange={(checked) => {
-                          // If checkbox is checked, mark as completed, otherwise mark as "in_progress"
-                          const newStatus = checked ? 'completed' : 'in_progress';
-                          handleStatusChange(task, newStatus);
+                        onCheckedChange={() => {
+                          // Toggle between completed and in_progress
+                          handleStatusToggle(task);
                         }}
                         className="mr-2 data-[state=checked]:bg-[#800000] data-[state=checked]:text-white border-2 h-5 w-5 rounded transition-all duration-300 hover:border-[#800000] cursor-pointer"
                       />

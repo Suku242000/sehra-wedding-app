@@ -1,75 +1,103 @@
-import { ReactNode } from "react";
-import { Route, Redirect } from "wouter";
+import { useEffect } from "react";
+import { Route, useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
-import { useAuth, ClientUser } from "./auth";
-
-interface ProtectedRouteProps {
-  path: string;
-  component: React.ComponentType;
-  roles?: Array<"bride" | "groom" | "family">;
-}
+import { useAuth } from "./auth";
 
 /**
- * ProtectedRoute component for the client application
- * - Redirects to /auth if user is not authenticated
- * - Handles loading state during authentication check
- * - Supports role-based access restriction for client roles
+ * ProtectedRoute Component
+ * 
+ * Restricts access to routes based on authentication status and user role.
+ * Additionally redirects users in the onboarding flow to the appropriate step.
+ * 
+ * @param path The route path to protect
+ * @param component The component to render if access is granted
+ * @param allowedRoles Optional array of roles allowed to access this route (defaults to all)
+ * @param requirePackage Whether this route requires package selection
+ * @param requireWeddingInfo Whether this route requires wedding info to be set
  */
-export function ProtectedRoute({ 
-  path, 
-  component: Component, 
-  roles 
-}: ProtectedRouteProps) {
-  const { user, isLoading } = useAuth();
+export function ProtectedRoute({
+  path,
+  component: Component,
+  allowedRoles = ["bride", "groom", "family"],
+  requirePackage = true,
+  requireWeddingInfo = true,
+}: {
+  path: string;
+  component: React.ComponentType;
+  allowedRoles?: Array<"bride" | "groom" | "family">;
+  requirePackage?: boolean;
+  requireWeddingInfo?: boolean;
+}) {
+  const { 
+    user, 
+    isLoading, 
+    hasSelectedPackage, 
+    hasSetWeddingInfo,
+    isBride,
+    isGroom,
+    isFamily
+  } = useAuth();
+  const [, setLocation] = useLocation();
 
-  // Show loading spinner while authentication is being checked
-  if (isLoading) {
-    return (
-      <Route path={path}>
+  useEffect(() => {
+    // If authenticated but missing required info, redirect to proper onboarding step
+    if (user && !isLoading) {
+      if (requirePackage && !hasSelectedPackage) {
+        setLocation("/package-selection");
+        return;
+      }
+      
+      if (requireWeddingInfo && !hasSetWeddingInfo) {
+        setLocation("/wedding-info");
+        return;
+      }
+    }
+  }, [user, isLoading, hasSelectedPackage, hasSetWeddingInfo, setLocation, requirePackage, requireWeddingInfo]);
+
+  return (
+    <Route path={path}>
+      {isLoading ? (
         <div className="flex items-center justify-center min-h-screen">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </Route>
-    );
-  }
-
-  // Redirect to auth page if not logged in
-  if (!user) {
-    return (
-      <Route path={path}>
-        <Redirect to="/auth" />
-      </Route>
-    );
-  }
-
-  // If roles are specified, check if user has the required role
-  if (roles && roles.length > 0) {
-    const hasRequiredRole = roles.includes(user.role as "bride" | "groom" | "family");
-    
-    if (!hasRequiredRole) {
-      return (
-        <Route path={path}>
-          <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-            <h2 className="text-2xl font-bold text-destructive mb-2">Access Denied</h2>
-            <p className="text-muted-foreground mb-4">
-              You don't have permission to access this page.
+      ) : !user ? (
+        // Not authenticated, redirect to auth page
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-lg font-medium">Redirecting to login...</p>
+          </div>
+          {setTimeout(() => setLocation("/auth"), 1000) && null}
+        </div>
+      ) : !hasRole(user.role, allowedRoles) ? (
+        // Wrong role, show unauthorized
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center max-w-md p-6 bg-background border rounded-lg shadow-md">
+            <h2 className="text-xl font-bold mb-4 text-destructive">Access Restricted</h2>
+            <p className="mb-4">
+              You don't have permission to access this page with your current role.
             </p>
-            <a 
-              href="/" 
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+            <button 
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
+              onClick={() => setLocation("/")}
             >
               Return to Dashboard
-            </a>
+            </button>
           </div>
-        </Route>
-      );
-    }
-  }
-
-  // If all checks pass, render the protected component
-  return (
-    <Route path={path}>
-      <Component />
+        </div>
+      ) : (
+        // Authorized, render the component
+        <Component />
+      )}
     </Route>
   );
+}
+
+// Helper function to check if user's role is in the allowed roles
+function hasRole(
+  userRole: string | undefined, 
+  allowedRoles: Array<"bride" | "groom" | "family">
+): boolean {
+  if (!userRole) return false;
+  return allowedRoles.includes(userRole as "bride" | "groom" | "family");
 }

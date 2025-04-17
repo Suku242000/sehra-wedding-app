@@ -5,6 +5,7 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
       retry: 1,
     },
   },
@@ -19,30 +20,29 @@ export const queryClient = new QueryClient({
  * @returns The fetch response
  */
 export async function apiRequest(
-  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
+  method: string,
   endpoint: string,
   body?: any,
   options?: RequestInit
-) {
-  // Set up headers with content type
+): Promise<Response> {
   const headers: HeadersInit = {
     "Content-Type": "application/json",
+    ...(options?.headers || {}),
   };
 
-  // Configure the fetch request
   const config: RequestInit = {
     method,
     headers,
-    credentials: "include", // Include cookies for session-based auth
+    credentials: "include",
     ...options,
   };
 
-  // Add body for methods that support it
-  if (body && ["POST", "PUT", "PATCH"].includes(method)) {
+  if (body && (method === "POST" || method === "PUT" || method === "PATCH")) {
     config.body = JSON.stringify(body);
   }
 
-  return fetch(endpoint, config);
+  const response = await fetch(endpoint, config);
+  return response;
 }
 
 /**
@@ -51,32 +51,35 @@ export async function apiRequest(
  * @param options.on401 - how to handle 401 errors, "throw" or "returnNull"
  * @returns A fetch function for TanStack Query
  */
-export function getQueryFn({
-  on401 = "throw",
-}: {
-  on401?: "throw" | "returnNull";
+export function getQueryFn({ 
+  on401 = "throw" 
+}: { 
+  on401?: "throw" | "returnNull" 
 } = {}) {
-  return async ({ queryKey }: { queryKey: string[] }) => {
-    const endpoint = queryKey[0];
+  return async ({ queryKey }: { queryKey: (string | number)[] }) => {
+    const endpoint = String(queryKey[0]);
     const res = await apiRequest("GET", endpoint);
 
-    // Handle unauthorized (not logged in)
     if (res.status === 401) {
       if (on401 === "returnNull") {
         return null;
       } else {
-        throw new Error("Not authenticated");
+        throw new Error("Unauthorized");
       }
     }
 
-    // Handle other errors
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.message || "API request failed");
+      throw new Error(
+        errorData.message || 
+        `Failed to fetch data from ${endpoint}: ${res.statusText}`
+      );
     }
 
-    // Return the data
-    const data = await res.json();
-    return data;
+    if (res.status === 204) {
+      return null;
+    }
+
+    return res.json();
   };
 }

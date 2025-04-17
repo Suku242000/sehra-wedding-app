@@ -58,7 +58,7 @@ export interface WeddingInfo {
   package: PackageInfo["name"];
 }
 
-// Client-specific auth context type extending base context
+// Client-specific auth context interface
 interface ClientAuthContextType {
   user: ClientUser | null;
   isLoading: boolean;
@@ -84,8 +84,6 @@ const ClientAuthContext = createContext<ClientAuthContextType | null>(null);
  * - Adds wedding-related authentication features
  */
 export function ClientAuthProvider({ children }: { children: ReactNode }) {
-  const { toast } = useToast();
-  
   // API endpoints
   const LOGIN_ENDPOINT = "/api/client/login";
   const LOGOUT_ENDPOINT = "/api/client/logout";
@@ -132,11 +130,11 @@ function ClientAuthExtension({
   const isGroom = !!(user?.role === "groom");
   const isFamily = !!(user?.role === "family");
   
-  // Helper properties for onboarding flow
+  // Helper properties for registration flow
   const hasSelectedPackage = !!(user?.package);
   const hasSetWeddingInfo = !!(user?.weddingDate && user?.location);
 
-  // Update wedding info mutation
+  // Update wedding information mutation
   const updateWeddingInfoMutation = useMutation({
     mutationFn: async (weddingInfo: WeddingInfo) => {
       const res = await apiRequest("PATCH", weddingInfoEndpoint, weddingInfo);
@@ -149,8 +147,8 @@ function ClientAuthExtension({
     onSuccess: (userData: ClientUser) => {
       queryClient.setQueryData(["/api/client/user"], userData);
       toast({
-        title: "Wedding information updated",
-        description: "Your wedding details have been saved successfully.",
+        title: "Wedding info updated",
+        description: "Your wedding information has been updated successfully.",
         variant: "success",
       });
     },
@@ -165,11 +163,11 @@ function ClientAuthExtension({
 
   // Update package mutation
   const updatePackageMutation = useMutation({
-    mutationFn: async (packageName: PackageInfo["name"]) => {
-      const res = await apiRequest("PATCH", packageEndpoint, { package: packageName });
+    mutationFn: async (packageData: { package: PackageInfo["name"] }) => {
+      const res = await apiRequest("PATCH", packageEndpoint, packageData);
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update package selection");
+        throw new Error(errorData.message || "Failed to update package");
       }
       return await res.json();
     },
@@ -177,7 +175,7 @@ function ClientAuthExtension({
       queryClient.setQueryData(["/api/client/user"], userData);
       toast({
         title: "Package updated",
-        description: `You've selected the ${userData.package?.toUpperCase()} package.`,
+        description: `Your wedding package has been updated to ${userData.package}.`,
         variant: "success",
       });
     },

@@ -44,7 +44,7 @@ export interface InternalUser extends User {
   };
 }
 
-// Internal-specific auth context type
+// Internal-specific auth context interface
 interface InternalAuthContextType {
   user: InternalUser | null;
   isLoading: boolean;
@@ -58,7 +58,7 @@ interface InternalAuthContextType {
   updateVendorProfileMutation: any;
 }
 
-// Create the context
+// Create context
 const InternalAuthContext = createContext<InternalAuthContextType | null>(null);
 
 /**
@@ -111,8 +111,8 @@ function InternalAuthExtension({
 
   // Update vendor profile mutation
   const updateVendorProfileMutation = useMutation({
-    mutationFn: async (vendorProfileData: Partial<InternalUser["vendorProfile"]>) => {
-      const res = await apiRequest("PATCH", vendorProfileEndpoint, vendorProfileData);
+    mutationFn: async (profileData: Partial<InternalUser["vendorProfile"]>) => {
+      const res = await apiRequest("PATCH", vendorProfileEndpoint, profileData);
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Failed to update vendor profile");

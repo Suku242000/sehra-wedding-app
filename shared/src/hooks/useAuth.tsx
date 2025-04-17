@@ -1,9 +1,9 @@
 import { ReactNode, createContext, useContext } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, getQueryFn, queryClient } from "../lib/queryClient";
 import { useToast } from "./useToast";
 
-// Basic user interface that will be extended by each application
+// Base user interface shared across all application roles
 export interface User {
   id: number;
   email: string;
@@ -25,7 +25,7 @@ export interface RegisterCredentials {
   role: string;
 }
 
-// Base authentication context type
+// Base auth context interface with shared functionalities
 interface BaseAuthContextType {
   user: User | null;
   isLoading: boolean;
@@ -35,10 +35,10 @@ interface BaseAuthContextType {
   registerMutation: any;
 }
 
-// Create the context
+// Create context
 const BaseAuthContext = createContext<BaseAuthContextType | null>(null);
 
-// Base auth provider props
+// Props for the base provider
 interface BaseAuthProviderProps {
   children: ReactNode;
   loginEndpoint: string;
@@ -60,12 +60,12 @@ export function BaseAuthProvider({
 }: BaseAuthProviderProps) {
   const { toast } = useToast();
 
-  // Fetch current user data
+  // Fetch user data
   const {
     data: user,
-    error,
     isLoading,
-  } = useQuery<User | null>({
+    error,
+  } = useQuery<User | null, Error>({
     queryKey: [userEndpoint],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
@@ -83,8 +83,8 @@ export function BaseAuthProvider({
     onSuccess: (userData: User) => {
       queryClient.setQueryData([userEndpoint], userData);
       toast({
-        title: "Welcome back!",
-        description: `You've successfully logged in as ${userData.name}.`,
+        title: "Login successful",
+        description: `Welcome back, ${userData.name}!`,
         variant: "success",
       });
     },
@@ -111,7 +111,7 @@ export function BaseAuthProvider({
       queryClient.setQueryData([userEndpoint], userData);
       toast({
         title: "Registration successful",
-        description: `Welcome to Sehra, ${userData.name}!`,
+        description: "Your account has been created successfully.",
         variant: "success",
       });
     },
@@ -137,11 +137,9 @@ export function BaseAuthProvider({
       queryClient.setQueryData([userEndpoint], null);
       toast({
         title: "Logged out",
-        description: "You've been successfully logged out.",
+        description: "You have been logged out successfully.",
         variant: "default",
       });
-      // Invalidate all queries to refresh data
-      queryClient.invalidateQueries();
     },
     onError: (error: Error) => {
       toast({
@@ -152,14 +150,14 @@ export function BaseAuthProvider({
     },
   });
 
-  // Context value
+  // Base context value
   const contextValue: BaseAuthContextType = {
     user: user || null,
     isLoading,
-    error: error as Error | null,
+    error,
     loginMutation,
-    logoutMutation,
     registerMutation,
+    logoutMutation,
   };
 
   return (
@@ -169,11 +167,11 @@ export function BaseAuthProvider({
   );
 }
 
-// Hook for accessing base auth context
+// Base hook for accessing auth context
 export function useAuth() {
   const context = useContext(BaseAuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within a BaseAuthProvider");
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }

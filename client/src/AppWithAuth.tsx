@@ -19,26 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 import InternalLogin from "@/pages/internal/login";
 
 // Create placeholders for internal dashboard pages
-const VendorDashboardPage = () => (
-  <div className="p-8 bg-white shadow-lg rounded-lg">
-    <h1 className="text-2xl font-bold mb-4">Vendor Dashboard</h1>
-    <p>Welcome to the vendor dashboard. This is a placeholder.</p>
-  </div>
-);
-
-const SupervisorDashboardPage = () => (
-  <div className="p-8 bg-white shadow-lg rounded-lg">
-    <h1 className="text-2xl font-bold mb-4">Supervisor Dashboard</h1>
-    <p>Welcome to the supervisor dashboard. This is a placeholder.</p>
-  </div>
-);
-
-const AdminDashboardPage = () => (
-  <div className="p-8 bg-white shadow-lg rounded-lg">
-    <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
-    <p>Welcome to the admin dashboard. This is a placeholder.</p>
-  </div>
-);
+// We'll use our actual dashboard components instead of placeholders
 
 const AppWithAuth: React.FC = () => {
   // Make sure auth is being initialized
@@ -120,19 +101,19 @@ const AppWithAuth: React.FC = () => {
         
         <Route path="/vendor/dashboard">
           <ProtectedRoute requiredRoles={[UserRole.VENDOR]}>
-            <VendorDashboardPage />
+            <VendorDashboard />
           </ProtectedRoute>
         </Route>
         
         <Route path="/supervisor/dashboard">
           <ProtectedRoute requiredRoles={[UserRole.SUPERVISOR]}>
-            <SupervisorDashboardPage />
+            <SupervisorDashboard />
           </ProtectedRoute>
         </Route>
         
         <Route path="/admin/dashboard">
           <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-            <AdminDashboardPage />
+            <AdminDashboard />
           </ProtectedRoute>
         </Route>
         

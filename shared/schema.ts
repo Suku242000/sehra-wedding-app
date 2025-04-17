@@ -204,6 +204,8 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
   }),
 }));
 
+// This is handled in the export types section at the bottom of the file
+
 // Guests table
 export const guests = pgTable("guests", {
   id: serial("id").primaryKey(),

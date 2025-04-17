@@ -5,13 +5,15 @@
     "moduleResolution": "NodeNext",
     "esModuleInterop": true,
     "strict": true,
-    "outDir": "dist",
     "skipLibCheck": true,
+    "outDir": "dist",
+    "sourceMap": true,
+    "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["../shared/src/*"]
     }
   },
-  "include": ["src/**/*"],
-  "references": [{ "path": "../shared" }]
+  "include": ["./**/*"],
+  "exclude": ["node_modules", "dist"]
 }

@@ -26,6 +26,8 @@ import {
   Notification,
   VendorReview,
   InsertVendorReview,
+  VendorCalendar,
+  InsertVendorCalendar,
   users,
   vendorProfiles,
   tasks,
@@ -39,7 +41,8 @@ import {
   messages,
   contactStatus,
   notifications,
-  vendorReviews
+  vendorReviews,
+  vendorCalendar
 } from "@shared/schema";
 
 // Interface for storage methods
@@ -150,6 +153,14 @@ export interface IStorage {
   getVendorReviewsByUserId(userId: number): Promise<VendorReview[]>;
   createVendorReview(review: InsertVendorReview): Promise<VendorReview>;
   updateVendorReview(id: number, review: Partial<VendorReview>): Promise<VendorReview | undefined>;
+  
+  // Vendor Calendar methods
+  getVendorCalendarEntry(id: number): Promise<VendorCalendar | undefined>;
+  getVendorCalendarByVendorId(vendorId: number): Promise<VendorCalendar[]>;
+  getVendorCalendarByDateRange(vendorId: number, startDate: Date, endDate: Date): Promise<VendorCalendar[]>;
+  createVendorCalendarEntry(calendarEntry: InsertVendorCalendar): Promise<VendorCalendar>;
+  updateVendorCalendarEntry(id: number, calendarEntry: Partial<VendorCalendar>): Promise<VendorCalendar | undefined>;
+  deleteVendorCalendarEntry(id: number): Promise<boolean>;
 }
 
 // In-memory storage implementation
@@ -168,6 +179,7 @@ export class MemStorage implements IStorage {
   private notifications: Map<number, Notification>;
   private contactStatuses: Map<string, ContactStatus>;
   private vendorReviews: Map<number, VendorReview>;
+  private vendorCalendars: Map<number, VendorCalendar>;
   
   private userId: number;
   private vendorProfileId: number;
@@ -182,6 +194,7 @@ export class MemStorage implements IStorage {
   private messageId: number;
   private notificationId: number;
   private vendorReviewId: number;
+  private vendorCalendarId: number;
 
   constructor() {
     this.users = new Map();
@@ -198,6 +211,7 @@ export class MemStorage implements IStorage {
     this.notifications = new Map();
     this.contactStatuses = new Map();
     this.vendorReviews = new Map();
+    this.vendorCalendars = new Map();
     
     this.userId = 1;
     this.vendorProfileId = 1;
@@ -212,6 +226,7 @@ export class MemStorage implements IStorage {
     this.messageId = 1;
     this.notificationId = 1;
     this.vendorReviewId = 1;
+    this.vendorCalendarId = 1;
     
     // Initialize with admin user
     this.createUser({
@@ -909,6 +924,64 @@ export class MemStorage implements IStorage {
     }
     
     return updatedReview;
+  }
+  
+  // Vendor Calendar methods
+  async getVendorCalendarEntry(id: number): Promise<VendorCalendar | undefined> {
+    return this.vendorCalendars.get(id);
+  }
+
+  async getVendorCalendarByVendorId(vendorId: number): Promise<VendorCalendar[]> {
+    return Array.from(this.vendorCalendars.values())
+      .filter(entry => entry.vendorId === vendorId)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }
+
+  async getVendorCalendarByDateRange(vendorId: number, startDate: Date, endDate: Date): Promise<VendorCalendar[]> {
+    const startTimestamp = startDate.getTime();
+    const endTimestamp = endDate.getTime();
+    
+    return Array.from(this.vendorCalendars.values())
+      .filter(entry => {
+        const entryTimestamp = new Date(entry.date).getTime();
+        return entry.vendorId === vendorId && 
+               entryTimestamp >= startTimestamp && 
+               entryTimestamp <= endTimestamp;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }
+
+  async createVendorCalendarEntry(calendarEntry: InsertVendorCalendar): Promise<VendorCalendar> {
+    const id = this.vendorCalendarId++;
+    const now = new Date().toISOString();
+    const newCalendarEntry: VendorCalendar = { 
+      ...calendarEntry, 
+      id, 
+      createdAt: now,
+      updatedAt: now,
+      bookingId: calendarEntry.bookingId || null,
+      notes: calendarEntry.notes || null
+    };
+    this.vendorCalendars.set(id, newCalendarEntry);
+    return newCalendarEntry;
+  }
+
+  async updateVendorCalendarEntry(id: number, calendarEntry: Partial<VendorCalendar>): Promise<VendorCalendar | undefined> {
+    const entry = await this.getVendorCalendarEntry(id);
+    if (!entry) return undefined;
+    
+    const now = new Date().toISOString();
+    const updatedEntry = { 
+      ...entry, 
+      ...calendarEntry,
+      updatedAt: now
+    };
+    this.vendorCalendars.set(id, updatedEntry);
+    return updatedEntry;
+  }
+
+  async deleteVendorCalendarEntry(id: number): Promise<boolean> {
+    return this.vendorCalendars.delete(id);
   }
 }
 

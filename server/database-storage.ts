@@ -28,6 +28,8 @@ import {
   InsertVendorReview,
   VendorCalendar,
   InsertVendorCalendar,
+  VendorAnalytics,
+  InsertVendorAnalytics,
   users,
   vendorProfiles,
   tasks,
@@ -42,7 +44,8 @@ import {
   contactStatus,
   notifications,
   vendorReviews,
-  vendorCalendar
+  vendorCalendar,
+  vendorAnalytics
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, count } from "drizzle-orm";
@@ -722,5 +725,91 @@ export class DatabaseStorage implements IStorage {
   async deleteVendorCalendarEntry(id: number): Promise<boolean> {
     const result = await db.delete(vendorCalendar).where(eq(vendorCalendar.id, id));
     return !!result;
+  }
+
+  // Vendor Analytics methods
+  async getVendorAnalytics(id: number): Promise<VendorAnalytics | undefined> {
+    const [analytics] = await db.select().from(vendorAnalytics).where(eq(vendorAnalytics.id, id));
+    return analytics;
+  }
+
+  async getVendorAnalyticsByVendorId(vendorId: number): Promise<VendorAnalytics | undefined> {
+    const [analytics] = await db.select().from(vendorAnalytics).where(eq(vendorAnalytics.vendorId, vendorId));
+    return analytics;
+  }
+
+  async createVendorAnalytics(analytics: InsertVendorAnalytics): Promise<VendorAnalytics> {
+    const [newAnalytics] = await db.insert(vendorAnalytics).values(analytics).returning();
+    return newAnalytics;
+  }
+
+  async updateVendorAnalytics(id: number, analytics: Partial<VendorAnalytics>): Promise<VendorAnalytics | undefined> {
+    const [updatedAnalytics] = await db
+      .update(vendorAnalytics)
+      .set({
+        ...analytics,
+        lastUpdated: new Date()
+      })
+      .where(eq(vendorAnalytics.id, id))
+      .returning();
+    return updatedAnalytics;
+  }
+
+  async calculateVendorAnalytics(vendorId: number): Promise<VendorAnalytics> {
+    // Get vendor profile
+    const vendorProfile = await this.getVendorProfileByUserId(vendorId);
+    
+    if (!vendorProfile) {
+      throw new Error("Vendor profile not found");
+    }
+    
+    // Get existing analytics or create new one
+    let analytics = await this.getVendorAnalyticsByVendorId(vendorProfile.id);
+    
+    // Calculate metrics
+    const bookings = await this.getVendorBookingsByVendorId(vendorProfile.id);
+    const reviews = await this.getVendorReviewsByVendorId(vendorProfile.id);
+    
+    // Calculate booking metrics
+    const totalBookings = bookings.length;
+    const confirmedBookings = bookings.filter(booking => booking.status === "confirmed").length;
+    const pendingBookings = bookings.filter(booking => booking.status === "pending").length;
+    const cancelledBookings = bookings.filter(booking => booking.status === "cancelled").length;
+    
+    // Create a placeholder for response rate (in a real system, this would use actual data)
+    const inquiryCount = vendorProfile.inquiryCount || 0;
+    const bookingCount = totalBookings;
+    const conversionRate = inquiryCount > 0 ? (bookingCount / inquiryCount) * 100 : 0;
+    
+    // Calculate average rating from reviews
+    const avgRating = reviews.length > 0
+      ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+      : 0;
+    
+    // Create or update the monthly stats
+    const currentMonth = new Date().toISOString().slice(0, 7); // Format: YYYY-MM
+    
+    // Create analytics data
+    const analyticsData = {
+      vendorId: vendorProfile.id,
+      profileViews: vendorProfile.viewCount || 0,
+      inquiryCount,
+      bookingCount,
+      quoteRequestCount: vendorProfile.quoteRequestCount || 0,
+      conversionRate,
+      averageResponseTime: 120, // Placeholder: average 2 hours response time
+      dailyStats: analytics?.dailyStats || [],
+      monthlyStats: analytics?.monthlyStats || [],
+      lastUpdated: new Date()
+    };
+    
+    // Update or create analytics
+    if (analytics) {
+      // Update existing analytics
+      return await this.updateVendorAnalytics(analytics.id, analyticsData);
+    } else {
+      // Create new analytics
+      return await this.createVendorAnalytics(analyticsData as InsertVendorAnalytics);
+    }
   }
 }

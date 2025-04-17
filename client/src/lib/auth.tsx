@@ -47,7 +47,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       }
       
       // Redirect to package selection if package is required but not selected
-      if (requirePackage && user && !user.package) {
+      // Skip package requirement for supervisors
+      if (requirePackage && user && !user.package && user.role.toLowerCase() !== 'supervisor') {
         setLocation('/select-package');
         return;
       }

@@ -424,6 +424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Vendor routes
+  // Get all vendors - public access
   app.get("/api/vendors", async (req: Request, res: Response) => {
     try {
       const vendors = await storage.getAllVendorProfiles();
@@ -436,17 +437,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(filteredVendors);
       }
       
-      res.json(vendors);
-    } catch (error) {
-      console.error("Get vendors error:", error);
-      res.status(500).json({ message: "Failed to retrieve vendors" });
-    }
-  });
-
-  // Get all vendors - public access
-  app.get("/api/vendors", async (req: Request, res: Response) => {
-    try {
-      const vendors = await storage.getAllVendorProfiles();
       // Sort featured vendors first
       const sortedVendors = vendors.sort((a, b) => {
         // First sort by featured status

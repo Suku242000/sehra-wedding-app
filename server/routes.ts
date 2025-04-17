@@ -1289,13 +1289,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Mock payment intent creation (would use Stripe in production)
-      const paymentIntent = {
-        clientSecret: 'mock_pi_secret_' + Math.random().toString(36).substring(2, 15),
-        amount
-      };
+      // Create a real payment intent with Stripe
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount * 100, // Convert to cents
+        currency: 'inr',
+        metadata: {
+          userId: userId.toString(),
+          packageType
+        },
+        payment_method_types: ['card']
+      });
 
-      res.json(paymentIntent);
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        amount
+      });
     } catch (error) {
       console.error("Create payment intent error:", error);
       res.status(500).json({ message: "Failed to create payment intent" });

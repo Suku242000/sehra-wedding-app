@@ -1,5 +1,5 @@
-const concurrently = require('concurrently');
-const path = require('path');
+import concurrently from 'concurrently';
+import path from 'path';
 
 // Define colors for different app logs
 const colors = ['blue', 'green', 'magenta', 'cyan'];

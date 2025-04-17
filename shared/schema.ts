@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, real, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -292,6 +292,26 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Vendor Availability Calendar table
+export const vendorCalendar = pgTable("vendor_calendar", {
+  id: serial("id").primaryKey(),
+  vendorId: integer("vendor_id").notNull(), // References users.id
+  date: date("date").notNull(),
+  timeSlots: json("time_slots").$type<{
+    startTime: string; // Format: "HH:MM"
+    endTime: string; // Format: "HH:MM"
+    status: "available" | "unavailable" | "tentative" | "booked";
+    bookingId?: number; // References vendor_bookings.id if status is "booked"
+    note?: string; // Additional notes for this time slot
+  }[]>(),
+  isFullDayEvent: boolean("is_full_day_event").default(false),
+  fullDayStatus: text("full_day_status"), // "available", "unavailable", "booked", "holiday", "maintenance"
+  repeatPattern: text("repeat_pattern"), // "none", "daily", "weekly", "monthly"
+  repeatUntil: date("repeat_until"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users)
   .omit({ id: true, createdAt: true });
@@ -335,6 +355,12 @@ export const insertVendorReviewSchema = createInsertSchema(vendorReviews)
   
 export const insertNotificationSchema = createInsertSchema(notifications)
   .omit({ id: true, createdAt: true });
+  
+export const insertVendorCalendarSchema = createInsertSchema(vendorCalendar)
+  .omit({ id: true, createdAt: true, updatedAt: true, date: true })
+  .extend({
+    date: z.date()
+  });
 
 // Custom auth schemas
 export const loginSchema = z.object({
@@ -378,6 +404,7 @@ export type InsertTimelineEvent = z.infer<typeof insertTimelineEventSchema>;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type InsertContactStatus = z.infer<typeof insertContactStatusSchema>;
 export type InsertVendorReview = z.infer<typeof insertVendorReviewSchema>;
+export type InsertVendorCalendar = z.infer<typeof insertVendorCalendarSchema>;
 
 export type User = typeof users.$inferSelect;
 export type VendorProfile = typeof vendorProfiles.$inferSelect;
@@ -393,6 +420,7 @@ export type Message = typeof messages.$inferSelect;
 export type ContactStatus = typeof contactStatus.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type VendorReview = typeof vendorReviews.$inferSelect;
+export type VendorCalendar = typeof vendorCalendar.$inferSelect;
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;

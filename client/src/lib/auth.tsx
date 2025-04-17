@@ -58,7 +58,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Show nothing while checking authentication or redirecting
   if (loading || !isAuthenticated || 
       (requiredRoles.length > 0 && user && !requiredRoles.includes(user.role as UserRoleType)) ||
-      (requirePackage && user && !user.package)) {
+      (requirePackage && user && !user.package && user.role.toLowerCase() !== 'supervisor')) {
     return null;
   }
   
@@ -70,7 +70,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
  */
 export const PublicRoute: React.FC<{ children: React.ReactNode, noRedirect?: boolean }> = ({ children, noRedirect = false }) => {
   const { isAuthenticated, user, loading } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   
   useEffect(() => {
     // Wait for authentication check to complete
@@ -95,6 +95,10 @@ export const PublicRoute: React.FC<{ children: React.ReactNode, noRedirect?: boo
   // Show nothing while checking authentication or redirecting
   // But if noRedirect is true, always render children regardless of auth state
   if (!noRedirect && (loading || (isAuthenticated && user))) {
+    // Special case: if we're on select-package and user is a supervisor, allow rendering
+    if (location === "/select-package" && user && user.role.toLowerCase() === "supervisor") {
+      return <>{children}</>;
+    }
     return null;
   }
   

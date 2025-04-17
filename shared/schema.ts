@@ -111,6 +111,9 @@ export const budgetItems = pgTable("budget_items", {
   actualCost: integer("actual_cost"),
   paid: boolean("paid").default(false),
   vendorId: integer("vendor_id"),
+  serviceChargePercentage: real("service_charge_percentage"), // Service charge percentage e.g. 2.0, 5.0, 8.0
+  serviceChargeAmount: integer("service_charge_amount"), // Calculated or adjusted service charge amount
+  serviceChargeEdited: boolean("service_charge_edited").default(false), // Whether a supervisor has adjusted the service charge
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });

@@ -65,12 +65,14 @@ const PACKAGES = {
     name: 'Silver',
     range: '₹10L - ₹30L',
     price: 0, // Free tier
+    serviceCharge: 2, // 2% service charge
     features: [
       'Basic task management',
       'Budget tracking',
       'Guest list management',
       'Vendor booking',
-      'Email support'
+      'Email support',
+      '2% service charge on vendor services'
     ],
     icon: <Star className="h-8 w-8 text-gray-400" />
   },
@@ -78,6 +80,7 @@ const PACKAGES = {
     name: 'Gold',
     range: '₹31L - ₹60L',
     price: 999, // ₹999
+    serviceCharge: 5, // 5% service charge
     features: [
       'Advanced task management',
       'Detailed budget analytics',
@@ -85,7 +88,8 @@ const PACKAGES = {
       'Priority vendor booking',
       'Seating arrangements',
       'Chat support',
-      'Timeline planning'
+      'Timeline planning',
+      '5% service charge on vendor services'
     ],
     icon: <Sparkles className="h-8 w-8 text-amber-400" />
   },
@@ -93,6 +97,7 @@ const PACKAGES = {
     name: 'Platinum',
     range: '₹61L - ₹1Cr+',
     price: 2999, // ₹2,999
+    serviceCharge: 8, // 8% service charge
     features: [
       'Premium task management',
       'Real-time budget tracking',
@@ -103,7 +108,8 @@ const PACKAGES = {
       'Comprehensive timeline planning',
       'Custom wedding website',
       'Professional wedding checklist',
-      'Exclusive vendor discounts'
+      'Exclusive vendor discounts',
+      '8% service charge on vendor services'
     ],
     icon: <Diamond className="h-8 w-8 text-purple-400" />
   }

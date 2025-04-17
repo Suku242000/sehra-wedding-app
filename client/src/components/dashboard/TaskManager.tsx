@@ -202,34 +202,44 @@ const TaskManager: React.FC = () => {
   const handleStatusToggle = (task: Task) => {
     const newStatus = task.status === 'completed' ? 'pending' : 'completed';
     
-    // Optimistic update for smoother UI experience
-    const optimisticTasks = [...tasks];
-    const taskIndex = optimisticTasks.findIndex(t => t.id === task.id);
-    if (taskIndex !== -1) {
-      optimisticTasks[taskIndex] = { ...task, status: newStatus };
-      queryClient.setQueryData(['/api/tasks'], optimisticTasks);
-    }
+    // First, update the local state immediately for a smooth UI transition
+    const optimisticTasks = tasks.map(t => 
+      t.id === task.id ? { ...t, status: newStatus } : t
+    );
     
+    // Set the optimistic data to avoid flicker
+    queryClient.setQueryData(['/api/tasks'], optimisticTasks);
+    
+    // Then send the update to the server
     updateTaskMutation.mutate({
       id: task.id,
       data: { status: newStatus }
     }, {
-      onError: () => {
-        // Revert optimistic update if the mutation fails
+      onSuccess: () => {
+        // On success, refresh the task list to ensure consistency
         queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+        
+        // Celebration logic for task completion
+        if (newStatus === 'completed') {
+          const pendingTasksCount = optimisticTasks.filter(t => t.status === 'pending').length;
+          if (pendingTasksCount === 0) {
+            // Slight delay to let the update complete first
+            setTimeout(() => {
+              triggerCelebration();
+            }, 300);
+          }
+        }
+      },
+      onError: () => {
+        // On error, revert the optimistic update and notify user
+        queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+        toast({
+          title: "Error",
+          description: "Failed to update task status. Please try again.",
+          variant: "destructive"
+        });
       }
     });
-    
-    // Check if this completion will complete all tasks, and trigger celebration
-    if (newStatus === 'completed') {
-      const pendingTasksCount = tasks.filter(t => t.status === 'pending' && t.id !== task.id).length;
-      if (pendingTasksCount === 0) {
-        // Slight delay to let the update complete first
-        setTimeout(() => {
-          triggerCelebration();
-        }, 300);
-      }
-    }
   };
   
   // Handle delete
@@ -502,11 +512,26 @@ const TaskManager: React.FC = () => {
                   }`}
                 >
                   <div className="flex items-center flex-1">
-                    <Checkbox 
-                      checked={task.status === 'completed'} 
-                      onCheckedChange={() => handleStatusToggle(task)}
-                      className="mr-2 data-[state=checked]:bg-[#800000] data-[state=checked]:text-white border-2 h-5 w-5 rounded transition-all duration-200 data-[state=checked]:scale-105"
-                    />
+                    <motion.div
+                      whileTap={{ scale: 0.9 }}
+                      className="relative"
+                    >
+                      <Checkbox 
+                        checked={task.status === 'completed'} 
+                        onCheckedChange={() => handleStatusToggle(task)}
+                        className="mr-2 data-[state=checked]:bg-[#800000] data-[state=checked]:text-white border-2 h-5 w-5 rounded transition-all duration-300 data-[state=checked]:scale-105 hover:border-[#800000]"
+                      />
+                      {task.status === 'completed' && (
+                        <motion.span
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ duration: 0.2 }}
+                          className="absolute inset-0 flex items-center justify-center text-white"
+                        >
+                          <Check className="h-3 w-3" />
+                        </motion.span>
+                      )}
+                    </motion.div>
                     <span className={`ml-2 flex-1 ${task.status === 'completed' ? 'line-through text-gray-500' : ''}`}>
                       {task.title}
                     </span>

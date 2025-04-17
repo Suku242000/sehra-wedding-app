@@ -403,26 +403,28 @@ const BudgetCard: React.FC = () => {
           <span>{budgetMoodConfig[budgetMood].description}</span>
         </div>
         
-        {/* Paid vs Remaining */}
-        <div className="bg-gray-50 p-3 rounded-md mb-4 border border-gray-100">
-          <div className="flex justify-between items-center mb-2">
-            <h4 className="text-sm font-medium">Payment Status</h4>
-            <Badge variant="outline" className="text-xs">
-              {Math.round((paidAmount / spentAmount) * 100) || 0}% Paid
-            </Badge>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-white p-2 rounded border border-green-100">
-              <div className="text-xs text-gray-500">Paid</div>
-              <div className="font-medium text-green-600">{formatCurrency(paidAmount)}</div>
+        {/* Paid vs Remaining - Only show when there are budget items */}
+        {budgetItems.length > 0 && (
+          <div className="bg-gray-50 p-3 rounded-md mb-4 border border-gray-100">
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="text-sm font-medium">Payment Status</h4>
+              <Badge variant="outline" className="text-xs">
+                {Math.round((paidAmount / spentAmount) * 100) || 0}% Paid
+              </Badge>
             </div>
-            <div className="bg-white p-2 rounded border border-amber-100">
-              <div className="text-xs text-gray-500">Remaining</div>
-              <div className="font-medium text-amber-600">{formatCurrency(spentAmount - paidAmount)}</div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-white p-2 rounded border border-green-100">
+                <div className="text-xs text-gray-500">Paid</div>
+                <div className="font-medium text-green-600">{formatCurrency(paidAmount)}</div>
+              </div>
+              <div className="bg-white p-2 rounded border border-amber-100">
+                <div className="text-xs text-gray-500">Remaining</div>
+                <div className="font-medium text-amber-600">{formatCurrency(spentAmount - paidAmount)}</div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
         
         {/* Categories */}
         <div className="space-y-3">

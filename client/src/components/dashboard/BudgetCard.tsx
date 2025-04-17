@@ -936,16 +936,139 @@ const BudgetCard: React.FC = () => {
                   
                   <FormField
                     control={form.control}
+                    name="paymentStatus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment Status</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select payment status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="not_paid">Not Paid</SelectItem>
+                            <SelectItem value="advance_paid">Advance Paid</SelectItem>
+                            <SelectItem value="partially_paid">Partially Paid</SelectItem>
+                            <SelectItem value="fully_paid">Fully Paid</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {(form.watch('paymentStatus') === 'advance_paid' || form.watch('paymentStatus') === 'partially_paid') && (
+                    <div className="space-y-4 p-4 rounded-md bg-blue-50 border border-blue-100">
+                      <h4 className="text-sm font-medium text-blue-800">Advance Payment Details</h4>
+                      
+                      <FormField
+                        control={form.control}
+                        name="advanceAmount"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Advance Amount</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                min="0"
+                                {...field}
+                                value={field.value || 0}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="advanceDate"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Advance Payment Date</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {field.value ? (
+                                      format(new Date(field.value), "PPP")
+                                    ) : (
+                                      <span>Pick a date</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value ? new Date(field.value) : undefined}
+                                  onSelect={(date) => field.onChange(date)}
+                                  disabled={(date) => date > new Date()}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="vendorName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Vendor Name (Optional)</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter vendor name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="text-xs text-blue-700">
+                        * Advance payments will be deducted from the final bill and shown in the budget matrix.
+                      </div>
+                    </div>
+                  )}
+                  
+                  <FormField
+                    control={form.control}
                     name="paid"
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                         <div className="space-y-0.5">
-                          <FormLabel>Paid</FormLabel>
+                          <FormLabel>Mark as Paid</FormLabel>
+                          <FormDescription className="text-xs">
+                            Toggle to mark this item as fully paid (Legacy option, use Payment Status instead)
+                          </FormDescription>
                         </div>
                         <FormControl>
                           <Switch
                             checked={field.value}
-                            onCheckedChange={field.onChange}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked);
+                              if (checked) {
+                                form.setValue('paymentStatus', 'fully_paid');
+                              } else if (form.getValues('paymentStatus') === 'fully_paid') {
+                                form.setValue('paymentStatus', 'not_paid');
+                              }
+                            }}
                           />
                         </FormControl>
                       </FormItem>

@@ -1615,6 +1615,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Routes for supervisor to get client budget information
+  app.get("/api/supervisor/client-budget/:clientId", authenticateToken, authorizeRoles([UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
+    try {
+      const clientId = parseInt(req.params.clientId);
+      
+      // Check if client is assigned to this supervisor
+      const supervisorId = req.user.id;
+      const clients = await storage.getUsersBySupervisorId(supervisorId);
+      const client = clients.find(c => c.id === clientId);
+      
+      if (!client) {
+        return res.status(403).json({ message: "You don't have permission to view this client's budget" });
+      }
+      
+      // Get client's budget items
+      const budgetItems = await storage.getBudgetItemsByUserId(clientId);
+      
+      // Enhance budget items with payment status if not already present
+      const enhancedItems = budgetItems.map(item => {
+        // Default status
+        let paymentStatus = item.paymentStatus || 'not_paid';
+        
+        // If legacy item without payment status but with paid flag
+        if (!item.paymentStatus && item.paid) {
+          paymentStatus = 'fully_paid';
+        } 
+        // If has advance payment but not marked as fully paid
+        else if (!item.paymentStatus && item.advanceAmount && item.advanceAmount > 0) {
+          paymentStatus = 'advance_paid';
+        }
+        
+        return {
+          ...item,
+          paymentStatus
+        };
+      });
+      
+      res.json(enhancedItems);
+    } catch (error) {
+      console.error("Error fetching client budget:", error);
+      res.status(500).json({ message: "Failed to retrieve budget information" });
+    }
+  });
+  
+  // Get client information for supervisor
+  app.get("/api/supervisor/client-info/:clientId", authenticateToken, authorizeRoles([UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
+    try {
+      const clientId = parseInt(req.params.clientId);
+      
+      // Check if client is assigned to this supervisor
+      const supervisorId = req.user.id;
+      const clients = await storage.getUsersBySupervisorId(supervisorId);
+      const client = clients.find(c => c.id === clientId);
+      
+      if (!client) {
+        return res.status(403).json({ message: "You don't have permission to view this client's information" });
+      }
+      
+      // Return client info
+      const user = await storage.getUser(clientId);
+      if (!user) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching client info:", error);
+      res.status(500).json({ message: "Failed to retrieve client information" });
+    }
+  });
+  
   // API endpoint for getting messages between two users
   app.get("/api/messages/:userId", authenticateToken, async (req: Request, res: Response) => {
     try {

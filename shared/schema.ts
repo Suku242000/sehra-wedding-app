@@ -101,6 +101,16 @@ export const guests = pgTable("guests", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Payment status options
+export const PaymentStatus = {
+  NOT_PAID: "not_paid",
+  ADVANCE_PAID: "advance_paid", 
+  PARTIALLY_PAID: "partially_paid",
+  FULLY_PAID: "fully_paid"
+} as const;
+
+export type PaymentStatusType = (typeof PaymentStatus)[keyof typeof PaymentStatus];
+
 // Budget items table
 export const budgetItems = pgTable("budget_items", {
   id: serial("id").primaryKey(),
@@ -110,10 +120,21 @@ export const budgetItems = pgTable("budget_items", {
   estimatedCost: integer("estimated_cost").notNull(),
   actualCost: integer("actual_cost"),
   paid: boolean("paid").default(false),
+  paymentStatus: text("payment_status").default("not_paid"), // not_paid, advance_paid, partially_paid, fully_paid
   vendorId: integer("vendor_id"),
-  serviceChargePercentage: real("service_charge_percentage"), // Service charge percentage e.g. 2.0, 5.0, 8.0
+  vendorName: text("vendor_name"), // Store vendor name for non-system vendors
+  serviceChargePercentage: real("service_charge_percentage"), // Service charge percentage e.g. 2.0, 5.0, 8.0 
   serviceChargeAmount: integer("service_charge_amount"), // Calculated or adjusted service charge amount
   serviceChargeEdited: boolean("service_charge_edited").default(false), // Whether a supervisor has adjusted the service charge
+  // New fields for advance payment system
+  advanceAmount: integer("advance_amount"), // Amount paid in advance
+  advanceDate: timestamp("advance_date"), // When the advance was paid
+  // Billing information
+  billingInfo: json("billing_info").$type<{
+    userBillId: string | null; // Client-facing bill ID (e.g., UB-2023-001)
+    vendorBillId: string | null; // Vendor-provided bill ID 
+    billDate: Date | null; // Date of final billing
+  }>(),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });

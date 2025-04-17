@@ -61,7 +61,7 @@ const taskSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters long'),
   description: z.string().optional(),
   dueDate: z.string().optional(),
-  status: z.string().default('pending'),
+  status: z.enum(['pending', 'in_progress', 'completed']).default('pending'),
   priority: z.string().default('medium'),
 });
 
@@ -116,6 +116,7 @@ const TaskManager: React.FC = () => {
     if (filterStatus === "all") return true;
     if (filterStatus === "completed") return task.status === "completed";
     if (filterStatus === "pending") return task.status === "pending";
+    if (filterStatus === "in_progress") return task.status === "in_progress";
     return true;
   });
   
@@ -199,10 +200,14 @@ const TaskManager: React.FC = () => {
     }
   });
   
-  // Handle status toggle
+  // Handle status toggle from checkbox
   const handleStatusToggle = (task: Task) => {
     const newStatus = task.status === 'completed' ? 'pending' : 'completed';
-    
+    handleStatusChange(task, newStatus);
+  };
+  
+  // Handle status change from dropdown
+  const handleStatusChange = (task: Task, newStatus: 'pending' | 'in_progress' | 'completed') => {    
     // First, update the local state immediately for a smooth UI transition
     const optimisticTasks = tasks.map(t => 
       t.id === task.id ? { ...t, status: newStatus } : t
@@ -222,7 +227,7 @@ const TaskManager: React.FC = () => {
         
         // Celebration logic for task completion
         if (newStatus === 'completed') {
-          const pendingTasksCount = optimisticTasks.filter(t => t.status === 'pending').length;
+          const pendingTasksCount = optimisticTasks.filter(t => t.status !== 'completed').length;
           if (pendingTasksCount === 0) {
             // Slight delay to let the update complete first
             setTimeout(() => {
@@ -255,7 +260,7 @@ const TaskManager: React.FC = () => {
       title: task.title,
       description: task.description || '',
       dueDate: task.dueDate || '',
-      status: task.status,
+      status: task.status as 'pending' | 'in_progress' | 'completed',
       priority: task.priority || 'medium',
     });
     setOpenDialog(true);
@@ -279,9 +284,17 @@ const TaskManager: React.FC = () => {
   
   // Get status badge
   const getStatusBadge = (task: Task) => {
+    // Status badges take priority
     if (task.status === 'completed') {
       return <div className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded flex items-center"><CheckCircle2 className="w-3 h-3 mr-1" /> Completed</div>;
-    } else if (task.priority === 'high') {
+    } else if (task.status === 'in_progress') {
+      return <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded flex items-center"><Clock className="w-3 h-3 mr-1" /> In Progress</div>;
+    } else if (task.status === 'pending') {
+      return <div className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded flex items-center"><Clock8 className="w-3 h-3 mr-1" /> Not Started</div>;
+    }
+    
+    // Priority and due date badges are secondary
+    if (task.priority === 'high') {
       return <div className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded flex items-center"><AlertTriangle className="w-3 h-3 mr-1" /> Urgent</div>;
     } else if (task.dueDate) {
       const dueDate = new Date(task.dueDate);
@@ -296,7 +309,8 @@ const TaskManager: React.FC = () => {
       }
     }
     
-    return <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded flex items-center"><Clock className="w-3 h-3 mr-1" /> In progress</div>;
+    // Fallback badge
+    return <div className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded flex items-center"><Clock8 className="w-3 h-3 mr-1" /> Unknown Status</div>;
   };
   
   return (
@@ -336,7 +350,7 @@ const TaskManager: React.FC = () => {
         
         {/* Filter Controls */}
         <div className="flex mb-4 gap-2">
-          <div className="flex items-center bg-white border rounded-md">
+          <div className="flex flex-wrap items-center bg-white border rounded-md">
             <Button 
               size="sm" 
               variant={filterStatus === "all" ? "default" : "ghost"}
@@ -351,7 +365,15 @@ const TaskManager: React.FC = () => {
               onClick={() => setFilterStatus("pending")}
               className={`px-3 py-1 rounded-none ${filterStatus === "pending" ? 'bg-[#800000] text-white' : 'text-gray-600'}`}
             >
-              <Clock8 className="w-3.5 h-3.5 mr-1.5" /> Pending
+              <Clock8 className="w-3.5 h-3.5 mr-1.5" /> Not Started
+            </Button>
+            <Button 
+              size="sm" 
+              variant={filterStatus === "in_progress" ? "default" : "ghost"}
+              onClick={() => setFilterStatus("in_progress")}
+              className={`px-3 py-1 rounded-none ${filterStatus === "in_progress" ? 'bg-[#800000] text-white' : 'text-gray-600'}`}
+            >
+              <Clock className="w-3.5 h-3.5 mr-1.5" /> In Progress
             </Button>
             <Button 
               size="sm" 
@@ -465,6 +487,48 @@ const TaskManager: React.FC = () => {
                   />
                 </div>
                 
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="pending">
+                            <div className="flex items-center">
+                              <Clock8 className="w-4 h-4 mr-2 text-amber-500" />
+                              <span>Not Started</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="in_progress">
+                            <div className="flex items-center">
+                              <Clock className="w-4 h-4 mr-2 text-blue-500" />
+                              <span>In Progress</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="completed">
+                            <div className="flex items-center">
+                              <CheckCircle2 className="w-4 h-4 mr-2 text-green-500" />
+                              <span>Completed</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={handleCloseDialog}>
                     Cancel
@@ -549,7 +613,34 @@ const TaskManager: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {getStatusBadge(task)}
+                    <Select 
+                      defaultValue={task.status as 'pending' | 'in_progress' | 'completed'}
+                      onValueChange={(value) => handleStatusChange(task, value as 'pending' | 'in_progress' | 'completed')}
+                    >
+                      <SelectTrigger className="w-[130px] h-7 text-xs border-dashed">
+                        {getStatusBadge(task)}
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">
+                          <div className="flex items-center">
+                            <Clock8 className="w-4 h-4 mr-2 text-amber-500" />
+                            <span>Not Started</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="in_progress">
+                          <div className="flex items-center">
+                            <Clock className="w-4 h-4 mr-2 text-blue-500" />
+                            <span>In Progress</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="completed">
+                          <div className="flex items-center">
+                            <CheckCircle2 className="w-4 h-4 mr-2 text-green-500" />
+                            <span>Completed</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                     <div className="flex space-x-2">
                       <Button 
                         variant="ghost" 

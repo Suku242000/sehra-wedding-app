@@ -56,6 +56,9 @@ const budgetItemSchema = z.object({
   estimatedCost: z.coerce.number().positive('Cost must be positive'),
   actualCost: z.coerce.number().positive('Cost must be positive').optional(),
   paid: z.boolean().default(false),
+  serviceChargePercentage: z.coerce.number().optional(),
+  serviceChargeAmount: z.coerce.number().optional(),
+  serviceChargeEdited: z.boolean().default(false),
   notes: z.string().optional(),
 });
 
@@ -107,6 +110,8 @@ const BudgetCard: React.FC = () => {
   const [previousSpentAmount, setPreviousSpentAmount] = useState(0);
   const [editingBudgetItem, setEditingBudgetItem] = useState<BudgetItem | null>(null);
   const [showItemsList, setShowItemsList] = useState(false);
+  const [totalServiceCharge, setTotalServiceCharge] = useState(0);
+  const [showBillSummary, setShowBillSummary] = useState(false);
   
   // Fetch budget items with auth
   const { data: budgetItems = [], isLoading, refetch } = useQuery<BudgetItem[]>({
@@ -118,6 +123,23 @@ const BudgetCard: React.FC = () => {
     refetchInterval: 3000, // Auto-refresh every 3 seconds
   });
   
+  // Fetch user information
+  const { user } = useAuth();
+  
+  // Define service charge percentages based on package
+  const getServiceChargePercentage = () => {
+    if (!user?.package) return 2; // Default to Silver (2%)
+    
+    switch(user.package.toUpperCase()) {
+      case 'GOLD':
+        return 5;
+      case 'PLATINUM':
+        return 8;
+      default:
+        return 2; // Silver package
+    }
+  };
+  
   // Form
   const form = useForm<BudgetFormValues>({
     resolver: zodResolver(budgetItemSchema),
@@ -127,6 +149,9 @@ const BudgetCard: React.FC = () => {
       estimatedCost: 0,
       actualCost: undefined,
       paid: false,
+      serviceChargePercentage: getServiceChargePercentage(),
+      serviceChargeAmount: 0,
+      serviceChargeEdited: false,
       notes: '',
     },
   });
@@ -214,6 +239,8 @@ const BudgetCard: React.FC = () => {
       let estimatedTotal = 0;
       let actualTotal = 0;
       let paidTotal = 0;
+      let serviceChargeTotal = 0;
+      const serviceChargeRate = getServiceChargePercentage();
       
       budgetItems.forEach((item) => {
         const estimatedCost = item.estimatedCost || 0;
@@ -238,6 +265,10 @@ const BudgetCard: React.FC = () => {
           totals[item.category] = actualCost;
         }
       });
+      
+      // Calculate service charge (at the end, not for individual items)
+      serviceChargeTotal = Math.round(actualTotal * (serviceChargeRate / 100));
+      setTotalServiceCharge(serviceChargeTotal);
       
       setCategoryTotals(totals);
       
@@ -274,6 +305,7 @@ const BudgetCard: React.FC = () => {
       setCategoryTotals({});
       setSpentAmount(0);
       setPaidAmount(0);
+      setTotalServiceCharge(0);
       setBudgetPercentage(0);
       setBudgetMood('excellent');
       setSpendingTrend('stable');
@@ -283,15 +315,32 @@ const BudgetCard: React.FC = () => {
   // Handle edit budget item
   const handleEdit = (item: BudgetItem) => {
     setEditingBudgetItem(item);
+    
+    // If the item doesn't have a service charge percentage (old items), use the package default
+    const serviceChargePercentage = item.serviceChargePercentage !== null ? 
+      item.serviceChargePercentage : getServiceChargePercentage();
+      
+    // If the item doesn't have a service charge amount, calculate it
+    const serviceChargeAmount = item.serviceChargeAmount !== null ?
+      item.serviceChargeAmount : calculateServiceCharge(item.actualCost || item.estimatedCost, serviceChargePercentage);
+    
     form.reset({
       category: item.category,
       item: item.item,
       estimatedCost: item.estimatedCost,
       actualCost: item.actualCost || undefined,
       paid: item.paid || false,
+      serviceChargePercentage: serviceChargePercentage,
+      serviceChargeAmount: serviceChargeAmount,
+      serviceChargeEdited: item.serviceChargeEdited || false,
       notes: item.notes || '',
     });
     setOpenDialog(true);
+  };
+  
+  // Calculate service charge amount based on cost and percentage
+  const calculateServiceCharge = (cost: number, percentage: number) => {
+    return Math.round(cost * (percentage / 100));
   };
 
   // Handle delete budget item
@@ -440,6 +489,52 @@ const BudgetCard: React.FC = () => {
                 <div className="font-medium text-amber-600">{formatCurrency(spentAmount - paidAmount)}</div>
               </div>
             </div>
+            
+            {/* Bill Summary Button */}
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <Button 
+                onClick={() => setShowBillSummary(!showBillSummary)}
+                variant="outline" 
+                className="w-full text-xs text-[#800000] border-[#800000] hover:bg-[#800000] hover:text-white"
+                size="sm"
+              >
+                {showBillSummary ? 'Hide Bill Summary' : 'View Complete Bill Summary'}
+              </Button>
+            </div>
+            
+            {/* Bill Summary Section */}
+            {showBillSummary && (
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <h5 className="text-sm font-medium mb-2">Complete Bill Summary</h5>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span className="font-medium">{formatCurrency(spentAmount)}</span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="flex items-center gap-1">
+                      Service Charge ({getServiceChargePercentage()}%)
+                      <span className="text-xs text-gray-500">
+                        ({user?.package?.toUpperCase() || 'SILVER'} Package)
+                      </span>
+                    </span>
+                    <span className="font-medium">{formatCurrency(totalServiceCharge)}</span>
+                  </div>
+                  
+                  <div className="flex justify-between pt-2 border-t border-gray-200">
+                    <span className="font-semibold">Total</span>
+                    <span className="font-semibold">{formatCurrency(spentAmount + totalServiceCharge)}</span>
+                  </div>
+                  
+                  <div className="text-xs text-gray-500 mt-2">
+                    <p>* Service charges are applied based on your selected package.</p>
+                    <p>Silver: 2% | Gold: 5% | Platinum: 8%</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
         

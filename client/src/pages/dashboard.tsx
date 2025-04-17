@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import Layout from '@/components/Layout';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import DashboardHero from '@/components/dashboard/DashboardHero';
-import TaskManager from '@/components/dashboard/TaskManager';
+import EnhancedTaskManager from '@/components/dashboard/EnhancedTaskManager';
 import SupervisorCard from '@/components/dashboard/SupervisorCard';
 import BudgetCard from '@/components/dashboard/BudgetCard';
 import GuestManagement from '@/components/dashboard/GuestManagement';
@@ -81,7 +81,7 @@ const Dashboard: React.FC = () => {
             className="grid grid-cols-1 md:grid-cols-3 gap-6"
           >
             {/* First Row */}
-            <TaskManager />
+            <EnhancedTaskManager />
             <SupervisorCard />
             
             {/* Second Row */}

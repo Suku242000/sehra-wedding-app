@@ -9,10 +9,11 @@ type QueryFnOptions = {
   on401?: 'returnNull' | 'throw';
 };
 
+// Create a client
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 30, // 30 seconds
+      staleTime: 1000 * 60 * 5, // 5 minutes
       retry: 1,
       refetchOnWindowFocus: false,
     },
@@ -21,21 +22,16 @@ export const queryClient = new QueryClient({
 
 export async function apiRequest(
   method: string,
-  endpoint: string,
+  url: string,
   data?: any,
   options: RequestInit = {}
 ) {
-  const url = endpoint.startsWith('http') ? endpoint : endpoint;
-  
-  const headers = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  };
-
   const config: RequestInit = {
     method,
-    headers,
     credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
     ...options,
   };
 
@@ -46,43 +42,41 @@ export async function apiRequest(
   const response = await fetch(url, config);
 
   if (!response.ok) {
-    const errorData: ApiErrorResponse = await response.json().catch(() => ({
-      message: `HTTP error: ${response.status} ${response.statusText}`,
-    }));
+    try {
+      const errorData: ApiErrorResponse = await response.json().catch(() => ({
+        message: response.statusText || 'An error occurred',
+      }));
 
-    const error = new Error(
-      errorData.errors
-        ? `${errorData.message}: ${JSON.stringify(errorData.errors)}`
-        : errorData.message
-    );
-
-    throw error;
-  }
-
-  // Don't try to parse empty responses
-  const contentType = response.headers.get('Content-Type') || '';
-  if (contentType.includes('application/json') && response.status !== 204) {
-    return response;
+      const error = new Error(
+        errorData.message ||
+          errorData.errors?.[Object.keys(errorData.errors)[0]]?.[0] ||
+          'An error occurred'
+      );
+      throw error;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred');
+    }
   }
 
   return response;
 }
 
-// Default query function that assumes the queryKey starts with the endpoint
 export function getQueryFn(options: QueryFnOptions = {}) {
-  return async ({ queryKey }: { queryKey: [string, ...unknown[]] }) => {
-    const endpoint = queryKey[0];
-    
+  return async ({ queryKey }: { queryKey: string[] }) => {
+    const url = queryKey[0];
     try {
-      const response = await apiRequest('GET', endpoint);
-      
-      if (response.status === 204) {
-        return null;
-      }
-      
+      const response = await apiRequest('GET', url);
+      if (response.status === 204) return null;
       return await response.json();
-    } catch (error: any) {
-      if (error.message?.includes('HTTP error: 401') && options.on401 === 'returnNull') {
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes('Unauthorized') &&
+        options.on401 === 'returnNull'
+      ) {
         return null;
       }
       throw error;

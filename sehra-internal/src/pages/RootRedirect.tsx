@@ -3,23 +3,30 @@ import { useLocation } from 'wouter';
 import { useAuth } from '../lib/auth';
 
 export default function RootRedirect() {
-  const [, setLocation] = useLocation();
   const { user, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (!isLoading) {
-      if (!user) {
-        setLocation('/login');
-      } else if (user.role === 'vendor') {
+    if (isLoading) return;
+
+    if (!user) {
+      setLocation('/login');
+      return;
+    }
+
+    switch (user.role) {
+      case 'vendor':
         setLocation('/vendor-dashboard');
-      } else if (user.role === 'supervisor') {
+        break;
+      case 'supervisor':
         setLocation('/supervisor-dashboard');
-      } else if (user.role === 'admin') {
+        break;
+      case 'admin':
         setLocation('/admin-dashboard');
-      } else {
-        // Default fallback
-        setLocation('/login');
-      }
+        break;
+      default:
+        setLocation('/unauthorized');
+        break;
     }
   }, [user, isLoading, setLocation]);
 

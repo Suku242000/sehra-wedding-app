@@ -1,12 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { fadeIn } from '@/lib/motion';
 import { useToast } from '@/hooks/use-toast';
 import { fetchWithAuth, updateWithAuth } from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 import Layout from '@/components/Layout';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+// Initialize Stripe - make sure environment variable is set
+if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
+  throw new Error('Missing required Stripe key: VITE_STRIPE_PUBLIC_KEY');
+}
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 import {
   Card,

@@ -2,6 +2,7 @@ import { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { WebSocket } from "ws";
+import Stripe from "stripe";
 import { storage } from "./storage";
 import { 
   loginSchema, 
@@ -1256,21 +1257,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Mock payment processing function - will be replaced with actual Stripe integration
-  async function processPayment(amount: number, paymentMethod: any) {
-    return new Promise((resolve) => {
-      // Simulate payment processing
-      setTimeout(() => {
-        // Simulate successful payment with mock payment ID
-        resolve({
-          id: 'pay_' + Math.random().toString(36).substring(2, 15),
-          amount: amount,
-          status: 'succeeded',
-          created: Date.now()
-        });
-      }, 1000);
-    });
+  // Initialize Stripe
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
   }
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
   // Endpoint to create a payment intent for package upgrade
   app.post("/api/payment/create-intent", authenticateToken, async (req: Request, res: Response) => {
@@ -1339,19 +1330,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Process payment
-      const paymentResult = await processPayment(amount, paymentMethod);
+      // Process payment using Stripe
+      // Create a payment intent
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount * 100, // Stripe uses cents
+        currency: 'inr',
+        payment_method_types: ['card'],
+        metadata: {
+          userId: userId.toString(),
+          packageType
+        }
+      });
 
       // Update user package in database
       await storage.updateUser(userId, { 
-        package: packageType,
-        // Store payment information for reference
-        paymentInfo: {
-          paymentId: (paymentResult as any).id,
-          amount,
-          date: new Date().toISOString()
-        }
+        package: packageType
       });
+      
+      const paymentResult = {
+        id: paymentIntent.id,
+        amount,
+        status: paymentIntent.status
+      };
 
       res.json({
         success: true,

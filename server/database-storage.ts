@@ -23,6 +23,9 @@ import {
   InsertUserProgress,
   TimelineEvent,
   InsertTimelineEvent,
+  Notification,
+  VendorReview,
+  InsertVendorReview,
   users,
   vendorProfiles,
   tasks,
@@ -34,7 +37,9 @@ import {
   userProgress,
   timelineEvents,
   messages,
-  contactStatus
+  contactStatus,
+  notifications,
+  vendorReviews
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, count } from "drizzle-orm";

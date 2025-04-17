@@ -123,6 +123,34 @@ export interface IStorage {
   updateTimelineEvent(id: number, timelineEvent: Partial<TimelineEvent>): Promise<TimelineEvent | undefined>;
   deleteTimelineEvent(id: number): Promise<boolean>;
   reorderTimelineEvents(userId: number, eventIds: number[]): Promise<TimelineEvent[]>;
+  
+  // Message methods
+  getMessage(id: number): Promise<Message | undefined>;
+  getMessagesByUserId(userId: number): Promise<Message[]>;
+  getMessagesBetweenUsers(fromUserId: number, toUserId: number): Promise<Message[]>;
+  createMessage(message: InsertMessage): Promise<Message>;
+  markMessagesAsRead(fromUserId: number, toUserId: number): Promise<boolean>;
+  getUnreadMessageCount(userId: number): Promise<number>;
+  getLastMessages(userId: number): Promise<any[]>;
+  
+  // Contact Status methods
+  getContactStatus(userId: number, supervisorId: number): Promise<ContactStatus | undefined>;
+  createContactStatus(contactStatus: InsertContactStatus): Promise<ContactStatus>;
+  updateContactStatus(userId: number, supervisorId: number, data: Partial<ContactStatus>): Promise<ContactStatus | undefined>;
+  
+  // Notification methods
+  getNotification(id: number): Promise<Notification | undefined>;
+  getNotificationsByUserId(userId: number): Promise<Notification[]>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  updateNotification(id: number, notification: Partial<Notification>): Promise<Notification | undefined>;
+  markNotificationsAsRead(userId: number): Promise<boolean>;
+  
+  // Vendor Review methods
+  getVendorReview(id: number): Promise<VendorReview | undefined>;
+  getVendorReviewsByVendorId(vendorId: number): Promise<VendorReview[]>;
+  getVendorReviewsByUserId(userId: number): Promise<VendorReview[]>;
+  createVendorReview(review: InsertVendorReview): Promise<VendorReview>;
+  updateVendorReview(id: number, review: Partial<VendorReview>): Promise<VendorReview | undefined>;
 }
 
 // In-memory storage implementation
@@ -137,6 +165,10 @@ export class MemStorage implements IStorage {
   private userAchievements: Map<number, UserAchievement>;
   private userProgress: Map<number, UserProgress>;
   private timelineEvents: Map<number, TimelineEvent>;
+  private messages: Map<number, Message>;
+  private notifications: Map<number, Notification>;
+  private contactStatuses: Map<string, ContactStatus>;
+  private vendorReviews: Map<number, VendorReview>;
   
   private userId: number;
   private vendorProfileId: number;
@@ -148,6 +180,9 @@ export class MemStorage implements IStorage {
   private userAchievementId: number;
   private userProgressId: number;
   private timelineEventId: number;
+  private messageId: number;
+  private notificationId: number;
+  private vendorReviewId: number;
 
   constructor() {
     this.users = new Map();
@@ -160,6 +195,10 @@ export class MemStorage implements IStorage {
     this.userAchievements = new Map();
     this.userProgress = new Map();
     this.timelineEvents = new Map();
+    this.messages = new Map();
+    this.notifications = new Map();
+    this.contactStatuses = new Map();
+    this.vendorReviews = new Map();
     
     this.userId = 1;
     this.vendorProfileId = 1;
@@ -171,6 +210,9 @@ export class MemStorage implements IStorage {
     this.userAchievementId = 1;
     this.userProgressId = 1;
     this.timelineEventId = 1;
+    this.messageId = 1;
+    this.notificationId = 1;
+    this.vendorReviewId = 1;
     
     // Initialize with admin user
     this.createUser({
@@ -634,6 +676,240 @@ export class MemStorage implements IStorage {
     
     // Return events in the new order
     return updatedEvents.filter((event): event is TimelineEvent => event !== undefined);
+  }
+  
+  // Message methods
+  async getMessage(id: number): Promise<Message | undefined> {
+    return this.messages.get(id);
+  }
+
+  async getMessagesByUserId(userId: number): Promise<Message[]> {
+    return Array.from(this.messages.values()).filter(
+      (message) => message.fromUserId === userId || message.toUserId === userId
+    );
+  }
+
+  async getMessagesBetweenUsers(fromUserId: number, toUserId: number): Promise<Message[]> {
+    return Array.from(this.messages.values()).filter(
+      (message) => 
+        (message.fromUserId === fromUserId && message.toUserId === toUserId) ||
+        (message.fromUserId === toUserId && message.toUserId === fromUserId)
+    ).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }
+
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const id = this.messageId++;
+    const now = new Date().toISOString();
+    const newMessage: Message = { 
+      ...message, 
+      id, 
+      createdAt: now,
+      read: message.read || false
+    };
+    this.messages.set(id, newMessage);
+    return newMessage;
+  }
+
+  async markMessagesAsRead(fromUserId: number, toUserId: number): Promise<boolean> {
+    const messages = await this.getMessagesBetweenUsers(fromUserId, toUserId);
+    const unreadMessages = messages.filter(
+      (message) => message.fromUserId === fromUserId && !message.read
+    );
+    
+    for (const message of unreadMessages) {
+      await this.updateMessage(message.id, { read: true });
+    }
+    
+    return true;
+  }
+
+  async updateMessage(id: number, messageData: Partial<Message>): Promise<Message | undefined> {
+    const message = await this.getMessage(id);
+    if (!message) return undefined;
+    
+    const updatedMessage = { ...message, ...messageData };
+    this.messages.set(id, updatedMessage);
+    return updatedMessage;
+  }
+
+  async getUnreadMessageCount(userId: number): Promise<number> {
+    return Array.from(this.messages.values()).filter(
+      (message) => message.toUserId === userId && !message.read
+    ).length;
+  }
+
+  async getLastMessages(userId: number): Promise<any[]> {
+    const messages = Array.from(this.messages.values()).filter(
+      (message) => message.fromUserId === userId || message.toUserId === userId
+    );
+    
+    // Get unique user IDs from messages
+    const userIds = new Set<number>();
+    messages.forEach(message => {
+      if (message.fromUserId !== userId) userIds.add(message.fromUserId);
+      if (message.toUserId !== userId) userIds.add(message.toUserId);
+    });
+    
+    // Get last message for each user
+    const lastMessages = [];
+    for (const id of userIds) {
+      const userMessages = messages.filter(
+        message => message.fromUserId === id || message.toUserId === id
+      ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      if (userMessages.length > 0) {
+        const lastMessage = userMessages[0];
+        const unreadCount = userMessages.filter(
+          message => message.fromUserId === id && !message.read
+        ).length;
+        
+        lastMessages.push({
+          userId: id,
+          message: lastMessage,
+          unreadCount
+        });
+      }
+    }
+    
+    return lastMessages;
+  }
+  
+  // Contact Status methods
+  async getContactStatus(userId: number, supervisorId: number): Promise<ContactStatus | undefined> {
+    return this.contactStatuses.get(`${userId}-${supervisorId}`);
+  }
+
+  async createContactStatus(contactStatus: InsertContactStatus): Promise<ContactStatus> {
+    const key = `${contactStatus.userId}-${contactStatus.supervisorId}`;
+    const now = new Date().toISOString();
+    const newContactStatus: ContactStatus = { 
+      ...contactStatus, 
+      id: contactStatus.userId, // Using userId as the ID since it's a 1-to-1 relationship
+      lastUpdated: now,
+      contactComplete: contactStatus.contactComplete || false,
+      supervisorStatus: contactStatus.supervisorStatus || 'pending'
+    };
+    this.contactStatuses.set(key, newContactStatus);
+    return newContactStatus;
+  }
+
+  async updateContactStatus(userId: number, supervisorId: number, data: Partial<ContactStatus>): Promise<ContactStatus | undefined> {
+    const key = `${userId}-${supervisorId}`;
+    const contactStatus = await this.getContactStatus(userId, supervisorId);
+    if (!contactStatus) return undefined;
+    
+    const now = new Date().toISOString();
+    const updatedContactStatus = { 
+      ...contactStatus, 
+      ...data,
+      lastUpdated: now
+    };
+    this.contactStatuses.set(key, updatedContactStatus);
+    return updatedContactStatus;
+  }
+
+  // Notification methods
+  async getNotification(id: number): Promise<Notification | undefined> {
+    return this.notifications.get(id);
+  }
+
+  async getNotificationsByUserId(userId: number): Promise<Notification[]> {
+    return Array.from(this.notifications.values())
+      .filter(notification => notification.userId === userId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async createNotification(notification: Notification): Promise<Notification> {
+    const id = this.notificationId++;
+    const now = new Date().toISOString();
+    const newNotification: Notification = { 
+      ...notification, 
+      id, 
+      createdAt: now,
+      read: notification.read || false
+    };
+    this.notifications.set(id, newNotification);
+    return newNotification;
+  }
+
+  async updateNotification(id: number, data: Partial<Notification>): Promise<Notification | undefined> {
+    const notification = await this.getNotification(id);
+    if (!notification) return undefined;
+    
+    const updatedNotification = { ...notification, ...data };
+    this.notifications.set(id, updatedNotification);
+    return updatedNotification;
+  }
+
+  async markNotificationsAsRead(userId: number): Promise<boolean> {
+    const notifications = await this.getNotificationsByUserId(userId);
+    const unreadNotifications = notifications.filter(notification => !notification.read);
+    
+    for (const notification of unreadNotifications) {
+      await this.updateNotification(notification.id, { read: true });
+    }
+    
+    return true;
+  }
+
+  // Vendor Review methods
+  async getVendorReview(id: number): Promise<VendorReview | undefined> {
+    return this.vendorReviews.get(id);
+  }
+
+  async getVendorReviewsByVendorId(vendorId: number): Promise<VendorReview[]> {
+    return Array.from(this.vendorReviews.values())
+      .filter(review => review.vendorId === vendorId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async getVendorReviewsByUserId(userId: number): Promise<VendorReview[]> {
+    return Array.from(this.vendorReviews.values())
+      .filter(review => review.userId === userId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async createVendorReview(review: InsertVendorReview): Promise<VendorReview> {
+    const id = this.vendorReviewId++;
+    const now = new Date().toISOString();
+    const newReview: VendorReview = { 
+      ...review, 
+      id, 
+      createdAt: now
+    };
+    this.vendorReviews.set(id, newReview);
+    
+    // Update the vendor's average rating
+    const vendorId = review.vendorId;
+    const vendorProfile = await this.getVendorProfileByUserId(vendorId);
+    if (vendorProfile) {
+      const reviews = await this.getVendorReviewsByVendorId(vendorId);
+      const avgRating = reviews.reduce((sum, r) => sum + r.overallRating, 0) / reviews.length;
+      await this.updateVendorProfile(vendorProfile.id, { rating: avgRating });
+    }
+    
+    return newReview;
+  }
+
+  async updateVendorReview(id: number, reviewData: Partial<VendorReview>): Promise<VendorReview | undefined> {
+    const review = await this.getVendorReview(id);
+    if (!review) return undefined;
+    
+    const updatedReview = { ...review, ...reviewData };
+    this.vendorReviews.set(id, updatedReview);
+    
+    // Update the vendor's average rating if the rating changed
+    if (reviewData.overallRating) {
+      const vendorId = review.vendorId;
+      const vendorProfile = await this.getVendorProfileByUserId(vendorId);
+      if (vendorProfile) {
+        const reviews = await this.getVendorReviewsByVendorId(vendorId);
+        const avgRating = reviews.reduce((sum, r) => sum + r.overallRating, 0) / reviews.length;
+        await this.updateVendorProfile(vendorProfile.id, { rating: avgRating });
+      }
+    }
+    
+    return updatedReview;
   }
 }
 

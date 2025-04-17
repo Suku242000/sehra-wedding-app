@@ -1,14 +1,37 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchWithAuth } from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { InfoIcon, DollarSign, Calendar, Plus, Minus, AlertTriangle } from 'lucide-react';
+import { format } from 'date-fns';
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { fadeIn } from '@/lib/motion';
+import { useToast } from '@/hooks/use-toast';
+
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { 
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
+  DollarSign, 
+  CalendarDays,
+  FileText
+} from 'lucide-react';
 
 interface BudgetItem {
   id: number;
@@ -43,85 +66,110 @@ interface User {
   package?: string;
 }
 
-// Props for the component
 interface ClientBudgetViewProps {
   clientId: number;
   clientName?: string;
 }
 
 export default function ClientBudgetView({ clientId, clientName }: ClientBudgetViewProps) {
-  const [selectedTab, setSelectedTab] = useState<string>('overview');
+  const { toast } = useToast();
+  const [clientPackage, setClientPackage] = useState<string>('silver');
   const [totalBudget, setTotalBudget] = useState<number>(0);
-
+  const [totalSpent, setTotalSpent] = useState<number>(0);
+  const [totalAdvancePaid, setTotalAdvancePaid] = useState<number>(0);
+  const [percentageSpent, setPercentageSpent] = useState<number>(0);
+  const [categoryTotals, setCategoryTotals] = useState<Record<string, number>>({});
+  const [serviceChargeRate, setServiceChargeRate] = useState<number>(2); // Default 2% for Silver
+  const [totalServiceCharge, setTotalServiceCharge] = useState<number>(0);
+  
   // Fetch client budget items
-  const { data: budgetItems = [], isLoading, error } = useQuery<BudgetItem[]>({
+  const { data: budgetItems = [], isLoading: isBudgetLoading } = useQuery<BudgetItem[]>({
     queryKey: ['/api/supervisor/client-budget', clientId],
     queryFn: () => fetchWithAuth(`/api/supervisor/client-budget/${clientId}`),
     enabled: !!clientId,
   });
-
+  
   // Fetch client information
-  const { data: clientInfo } = useQuery<User>({
+  const { data: clientInfo, isLoading: isClientLoading } = useQuery<User>({
     queryKey: ['/api/supervisor/client-info', clientId],
     queryFn: () => fetchWithAuth(`/api/supervisor/client-info/${clientId}`),
     enabled: !!clientId,
   });
-
-  // Calculate summary data
-  const [summary, setSummary] = useState({
-    totalSpent: 0,
-    totalPaid: 0, 
-    totalAdvance: 0,
-    serviceCharge: 0,
-    pendingPayments: 0,
-    riskItems: [] as BudgetItem[],
-  });
-
+  
+  // Calculate totals and summaries
   useEffect(() => {
-    if (budgetItems && budgetItems.length > 0) {
-      let totalSpent = 0;
-      let totalPaid = 0;
-      let totalAdvance = 0;
-      let serviceCharge = 0;
-      const riskItems: BudgetItem[] = [];
-
-      budgetItems.forEach(item => {
-        const cost = item.actualCost || item.estimatedCost;
-        totalSpent += cost;
-
-        if (item.paid) {
-          totalPaid += cost;
+    if (budgetItems.length > 0) {
+      const totals: Record<string, number> = {};
+      let estimatedTotal = 0;
+      let actualTotal = 0;
+      let advanceTotal = 0;
+      
+      budgetItems.forEach((item) => {
+        const estimatedCost = item.estimatedCost || 0;
+        const actualCost = item.actualCost || estimatedCost;
+        const advanceAmount = item.advanceAmount || 0;
+        
+        estimatedTotal += estimatedCost;
+        
+        // Only count actual costs in the total if the item has an actual cost or is marked as paid
+        if (item.actualCost || item.paid) {
+          actualTotal += actualCost;
         }
-
-        if (item.advanceAmount) {
-          totalAdvance += item.advanceAmount;
-        }
-
-        if (item.serviceChargeAmount) {
-          serviceCharge += item.serviceChargeAmount;
-        }
-
-        // Identify risk items (high value, not paid)
-        if (cost > 50000 && item.paymentStatus === 'not_paid') {
-          riskItems.push(item);
+        
+        // Add to advance payment total
+        advanceTotal += advanceAmount;
+        
+        // Track by category
+        if (totals[item.category]) {
+          totals[item.category] += actualCost;
+        } else {
+          totals[item.category] = actualCost;
         }
       });
-
-      // Estimate the total budget based on spent plus 20%
-      const estimatedTotalBudget = totalSpent * 1.2;
-      setTotalBudget(estimatedTotalBudget);
-
-      setSummary({
-        totalSpent,
-        totalPaid,
-        totalAdvance,
-        serviceCharge,
-        pendingPayments: totalSpent - totalPaid,
-        riskItems
-      });
+      
+      // Update state with calculations
+      setCategoryTotals(totals);
+      setTotalBudget(estimatedTotal);
+      setTotalSpent(actualTotal);
+      setTotalAdvancePaid(advanceTotal);
+      
+      // Calculate percentage spent of total estimated
+      if (estimatedTotal > 0) {
+        setPercentageSpent(Math.round((actualTotal / estimatedTotal) * 100));
+      }
+    } else {
+      // Reset values if no budget items
+      setCategoryTotals({});
+      setTotalBudget(0);
+      setTotalSpent(0);
+      setTotalAdvancePaid(0);
+      setPercentageSpent(0);
     }
   }, [budgetItems]);
-
+  
+  // Set service charge rate based on client package
+  useEffect(() => {
+    if (clientInfo?.package) {
+      switch (clientInfo.package.toUpperCase()) {
+        case 'GOLD':
+          setServiceChargeRate(5);
+          setClientPackage('gold');
+          break;
+        case 'PLATINUM':
+          setServiceChargeRate(8);
+          setClientPackage('platinum');
+          break;
+        default:
+          setServiceChargeRate(2);
+          setClientPackage('silver');
+      }
+      
+      // Calculate total service charge
+      setTotalServiceCharge(Math.round(totalSpent * (serviceChargeRate / 100)));
+    }
+  }, [clientInfo, totalSpent, serviceChargeRate]);
+  
+  // Helper to format currency
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -129,375 +177,200 @@ export default function ClientBudgetView({ clientId, clientName }: ClientBudgetV
       maximumFractionDigits: 0,
     }).format(amount);
   };
-
-  const formatDate = (date: Date | null | string) => {
-    if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
-
-  const getPaymentStatusColor = (status: string) => {
+  
+  // Get appropriate payment status badge
+  const getPaymentStatusBadge = (status: string) => {
     switch (status) {
-      case 'fully_paid': return 'bg-green-100 text-green-800 border-green-200';
-      case 'advance_paid': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'partially_paid': return 'bg-amber-100 text-amber-800 border-amber-200';
-      default: return 'bg-red-100 text-red-800 border-red-200';
+      case 'fully_paid':
+        return <Badge variant="success" className="flex items-center gap-1">
+          <CheckCircle2 className="h-3 w-3" /> Fully Paid
+        </Badge>;
+      case 'advance_paid':
+        return <Badge variant="warning" className="flex items-center gap-1">
+          <Clock className="h-3 w-3" /> Advance Paid
+        </Badge>;
+      case 'partially_paid':
+        return <Badge variant="warning" className="flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3" /> Partially Paid
+        </Badge>;
+      default:
+        return <Badge variant="destructive" className="flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3" /> Not Paid
+        </Badge>;
     }
   };
-
-  const getPaymentStatusText = (status: string) => {
-    switch (status) {
-      case 'fully_paid': return 'Fully Paid';
-      case 'advance_paid': return 'Advance Paid';
-      case 'partially_paid': return 'Partially Paid';
-      default: return 'Not Paid';
-    }
-  };
-
-  if (isLoading) {
+  
+  // Handle if loading
+  if (isBudgetLoading || isClientLoading) {
     return (
-      <div className="flex justify-center items-center p-10">
-        <div className="animate-spin w-8 h-8 border-4 border-[#800000] border-t-transparent rounded-full"></div>
+      <div className="w-full py-12 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
-
-  if (error) {
-    return (
-      <Alert variant="destructive" className="mb-6">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Error</AlertTitle>
-        <AlertDescription>Failed to load client budget information.</AlertDescription>
-      </Alert>
-    );
-  }
-
-  const clientPackage = clientInfo?.package?.toUpperCase() || 'SILVER';
   
   return (
-    <Card className="mt-6 overflow-hidden">
-      <CardHeader className="bg-gradient-to-r from-[#800000] to-[#5c0000] text-white">
-        <CardTitle className="flex items-center justify-between">
-          <span>Budget Overview - {clientName || `Client #${clientId}`}</span>
-          <Badge className="bg-white text-[#800000]">
-            {clientPackage} Package
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      
-      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-        <div className="px-4 pt-4">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="payments">Payments</TabsTrigger>
-            <TabsTrigger value="advance">Advance Payments</TabsTrigger>
-            <TabsTrigger value="insights">Insights</TabsTrigger>
-          </TabsList>
-        </div>
-        
-        <CardContent className="pt-6">
-          <TabsContent value="overview" className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-sm text-muted-foreground">Total Budget (Est.)</div>
-                  <div className="text-2xl font-bold">{formatCurrency(totalBudget)}</div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-sm text-muted-foreground">Total Spent</div>
-                  <div className="text-2xl font-bold">{formatCurrency(summary.totalSpent)}</div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-sm text-muted-foreground">Total Paid</div>
-                  <div className="text-2xl font-bold text-green-600">{formatCurrency(summary.totalPaid)}</div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-sm text-muted-foreground">Pending Amount</div>
-                  <div className="text-2xl font-bold text-amber-600">{formatCurrency(summary.pendingPayments)}</div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className="mt-6">
-              <h3 className="text-lg font-medium mb-4">Budget Utilization</h3>
-              <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full rounded-full ${
-                    summary.totalSpent / totalBudget > 0.9 ? 'bg-red-500' : 
-                    summary.totalSpent / totalBudget > 0.7 ? 'bg-amber-500' : 'bg-green-500'
-                  }`}
-                  style={{ width: `${Math.min((summary.totalSpent / totalBudget) * 100, 100)}%` }}
-                ></div>
-              </div>
-              <div className="flex justify-between mt-2 text-sm text-gray-500">
-                <span>{formatCurrency(summary.totalSpent)} spent of {formatCurrency(totalBudget)}</span>
-                <span>{Math.round((summary.totalSpent / totalBudget) * 100)}% utilized</span>
-              </div>
-            </div>
-            
-            {summary.riskItems.length > 0 && (
-              <Alert className="mt-6 border-amber-300 bg-amber-50">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <AlertTitle className="text-amber-800">Attention Required</AlertTitle>
-                <AlertDescription className="text-amber-700">
-                  There are {summary.riskItems.length} high-value unpaid items that need attention.
-                </AlertDescription>
-              </Alert>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="payments" className="space-y-4">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left">Item</th>
-                    <th className="px-4 py-2 text-left">Category</th>
-                    <th className="px-4 py-2 text-right">Amount</th>
-                    <th className="px-4 py-2 text-center">Status</th>
-                    <th className="px-4 py-2 text-right">Vendor</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {budgetItems.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="text-center py-4 text-gray-500">
-                        No budget items found for this client.
-                      </td>
-                    </tr>
-                  ) : (
-                    budgetItems.map((item) => (
-                      <motion.tr 
-                        key={item.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.3 }}
-                        className="hover:bg-gray-50"
-                      >
-                        <td className="px-4 py-3">
-                          <div className="font-medium">{item.item}</div>
-                          {item.notes && (
-                            <div className="text-xs text-gray-500 mt-1">{item.notes}</div>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">{item.category}</td>
-                        <td className="px-4 py-3 text-right font-medium">
-                          {formatCurrency(item.actualCost || item.estimatedCost)}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <Badge className={cn("text-xs", getPaymentStatusColor(item.paymentStatus))}>
-                            {getPaymentStatusText(item.paymentStatus)}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          {item.vendorName || 'Not specified'}
-                        </td>
-                      </motion.tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="advance" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-sm text-muted-foreground">Total Advance Payments</div>
-                  <div className="text-2xl font-bold text-blue-600">{formatCurrency(summary.totalAdvance)}</div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-sm text-muted-foreground">Advance Payment Ratio</div>
-                  <div className="text-2xl font-bold">
-                    {summary.totalSpent > 0 ? Math.round((summary.totalAdvance / summary.totalSpent) * 100) : 0}%
+    <motion.div
+      variants={fadeIn('up', 0.2)}
+      initial="hidden"
+      animate="show"
+      className="w-full space-y-6"
+    >
+      <Card className={`border-l-4 border-l-${clientPackage === 'platinum' ? 'purple-600' : clientPackage === 'gold' ? 'amber-500' : 'gray-500'}`}>
+        <CardHeader>
+          <CardTitle className="flex justify-between">
+            <span>{clientName || clientInfo?.name || 'Client'}'s Budget</span>
+            <Badge variant={clientPackage === 'platinum' ? 'purple' : clientPackage === 'gold' ? 'warning' : 'secondary'}>
+              {clientPackage.charAt(0).toUpperCase() + clientPackage.slice(1)} Package
+            </Badge>
+          </CardTitle>
+          <CardDescription>
+            Service Charge: {serviceChargeRate}% ({formatCurrency(totalServiceCharge)})
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* Total Budget Card */}
+            <Card className="bg-secondary/10">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm font-medium mb-1">Total Budget</p>
+                    <p className="text-2xl font-bold">{formatCurrency(totalBudget)}</p>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left">Item</th>
-                    <th className="px-4 py-2 text-right">Advance Amount</th>
-                    <th className="px-4 py-2 text-center">Date</th>
-                    <th className="px-4 py-2 text-right">Total Cost</th>
-                    <th className="px-4 py-2 text-right">Vendor</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {budgetItems.filter(item => item.advanceAmount && item.advanceAmount > 0).length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="text-center py-4 text-gray-500">
-                        No advance payments recorded for this client.
-                      </td>
-                    </tr>
-                  ) : (
-                    budgetItems
-                      .filter(item => item.advanceAmount && item.advanceAmount > 0)
-                      .map((item) => (
-                        <motion.tr 
-                          key={item.id}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ duration: 0.3 }}
-                          className="hover:bg-gray-50"
-                        >
-                          <td className="px-4 py-3">
-                            <div className="font-medium">{item.item}</div>
-                            <div className="text-xs text-gray-500">{item.category}</div>
-                          </td>
-                          <td className="px-4 py-3 text-right font-medium text-blue-600">
-                            {formatCurrency(item.advanceAmount || 0)}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {formatDate(item.advanceDate)}
-                          </td>
-                          <td className="px-4 py-3 text-right font-medium">
-                            {formatCurrency(item.actualCost || item.estimatedCost)}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            {item.vendorName || 'Not specified'}
-                          </td>
-                        </motion.tr>
-                      ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="insights" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Payment Health</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span>Payment Completion Rate</span>
-                      <span className="font-medium">
-                        {summary.totalSpent > 0 ? Math.round((summary.totalPaid / summary.totalSpent) * 100) : 0}%
-                      </span>
-                    </div>
-                    
-                    <div className="w-full h-2 bg-gray-200 rounded-full">
-                      <div 
-                        className={`h-full rounded-full ${
-                          summary.totalPaid / summary.totalSpent > 0.8 ? 'bg-green-500' : 
-                          summary.totalPaid / summary.totalSpent > 0.5 ? 'bg-amber-500' : 'bg-red-500'
-                        }`}
-                        style={{ width: `${Math.min((summary.totalPaid / summary.totalSpent) * 100, 100)}%` }}
-                      ></div>
-                    </div>
-                    
-                    <div className="flex justify-between items-center pt-2">
-                      <span>Advance Payment Ratio</span>
-                      <span className="font-medium">
-                        {summary.totalSpent > 0 ? Math.round((summary.totalAdvance / summary.totalSpent) * 100) : 0}%
-                      </span>
-                    </div>
-                    
-                    <div className="w-full h-2 bg-gray-200 rounded-full">
-                      <div 
-                        className="h-full rounded-full bg-blue-500"
-                        style={{ width: `${Math.min((summary.totalAdvance / summary.totalSpent) * 100, 100)}%` }}
-                      ></div>
-                    </div>
+                  <div className="bg-primary/20 p-2 rounded-full">
+                    <DollarSign className="h-6 w-6 text-primary" />
                   </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Service Details</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span>Client Package</span>
-                      <Badge>{clientPackage}</Badge>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <span>Service Charge</span>
-                      <span className="font-medium">{formatCurrency(summary.serviceCharge)}</span>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <span>Service Charge Rate</span>
-                      <span className="font-medium">
-                        {clientPackage === 'PLATINUM' ? '8%' : clientPackage === 'GOLD' ? '5%' : '2%'}
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <span>Grand Total (with Service Charge)</span>
-                      <span className="font-medium text-[#800000]">
-                        {formatCurrency(summary.totalSpent + summary.serviceCharge)}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              </CardContent>
+            </Card>
             
-            {summary.riskItems.length > 0 && (
-              <Card className="mt-4 border-amber-200">
-                <CardHeader className="pb-2 bg-amber-50">
-                  <CardTitle className="text-base text-amber-800 flex items-center">
-                    <AlertTriangle className="h-4 w-4 mr-2" />
-                    Attention Required
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-amber-700 mb-4">
-                    The following high-value items are still unpaid and may require follow-up:
+            {/* Spent Amount Card */}
+            <Card className="bg-secondary/10">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm font-medium mb-1">Total Spent</p>
+                    <p className="text-2xl font-bold">{formatCurrency(totalSpent)}</p>
+                  </div>
+                  <div className="bg-primary/20 p-2 rounded-full">
+                    <FileText className="h-6 w-6 text-primary" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <Progress value={percentageSpent} className="h-2" />
+                  <p className="text-xs text-right mt-1">{percentageSpent}% of budget</p>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Advance Payments Card */}
+            <Card className="bg-secondary/10">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm font-medium mb-1">Total Advances</p>
+                    <p className="text-2xl font-bold">{formatCurrency(totalAdvancePaid)}</p>
+                  </div>
+                  <div className="bg-primary/20 p-2 rounded-full">
+                    <CalendarDays className="h-6 w-6 text-primary" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <Progress value={(totalAdvancePaid / totalSpent) * 100} className="h-2" />
+                  <p className="text-xs text-right mt-1">
+                    {totalSpent > 0 ? Math.round((totalAdvancePaid / totalSpent) * 100) : 0}% of spent amount
                   </p>
-                  <div className="space-y-2">
-                    {summary.riskItems.map((item) => (
-                      <div key={item.id} className="flex justify-between items-center p-2 bg-amber-50 rounded border border-amber-100">
-                        <div>
-                          <div className="font-medium">{item.item}</div>
-                          <div className="text-xs text-gray-500">{item.category}</div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Budget Items Table */}
+          <Card>
+            <CardHeader className="py-4">
+              <CardTitle className="text-lg">Budget Item Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Item</TableHead>
+                      <TableHead className="text-right">Estimated</TableHead>
+                      <TableHead className="text-right">Actual</TableHead>
+                      <TableHead className="text-right">Advance</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Vendor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {budgetItems.length > 0 ? (
+                      budgetItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.category}</TableCell>
+                          <TableCell>{item.item}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(item.estimatedCost)}</TableCell>
+                          <TableCell className="text-right">{item.actualCost ? formatCurrency(item.actualCost) : '-'}</TableCell>
+                          <TableCell className="text-right">
+                            {item.advanceAmount ? (
+                              <div>
+                                {formatCurrency(item.advanceAmount)}
+                                <div className="text-xs text-muted-foreground">
+                                  {item.advanceDate && format(new Date(item.advanceDate), 'dd MMM yyyy')}
+                                </div>
+                              </div>
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell>{getPaymentStatusBadge(item.paymentStatus)}</TableCell>
+                          <TableCell>{item.vendorName || '-'}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
+                          No budget items found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Category-wise Summary */}
+          {Object.keys(categoryTotals).length > 0 && (
+            <Card className="mt-6">
+              <CardHeader className="py-4">
+                <CardTitle className="text-lg">Category Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.entries(categoryTotals).map(([category, amount]) => (
+                    <Card key={category} className="bg-secondary/5">
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-center">
+                          <p className="font-medium">{category}</p>
+                          <p className="font-bold">{formatCurrency(amount)}</p>
                         </div>
-                        <span className="font-medium">
-                          {formatCurrency(item.actualCost || item.estimatedCost)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
+                        <Progress 
+                          value={(amount / totalSpent) * 100} 
+                          className="h-1 mt-2" 
+                        />
+                        <p className="text-xs text-right mt-1">
+                          {Math.round((amount / totalSpent) * 100)}% of total
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </CardContent>
-      </Tabs>
-      
-      <CardFooter className="bg-gray-50 border-t px-6 py-4">
-        <div className="flex items-center text-sm text-gray-500">
-          <InfoIcon className="h-4 w-4 mr-2" />
-          <span>Last updated: {new Date().toLocaleDateString()}</span>
-        </div>
-      </CardFooter>
-    </Card>
+      </Card>
+    </motion.div>
   );
 }

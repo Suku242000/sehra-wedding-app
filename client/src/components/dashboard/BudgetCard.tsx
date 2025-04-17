@@ -4,10 +4,12 @@ import { fadeIn } from '@/lib/motion';
 import { useAuth } from '@/context/AuthContext';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { fetchWithAuth, createWithAuth, updateWithAuth, deleteWithAuth } from '@/lib/api';
-import { BudgetItem } from '@shared/schema';
+import { BudgetItem, PaymentStatus } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { BUDGET_CATEGORIES } from '@/types';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { 
   CheckCircle2, 
   AlertTriangle, 
@@ -17,7 +19,11 @@ import {
   TrendingUp, 
   TrendingDown,
   Pencil,
-  Trash2
+  Trash2,
+  Calendar as CalendarIcon,
+  Plus,
+  Minus,
+  CircleDollarSign
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -35,6 +41,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from '@/components/ui/input';
 import {
@@ -44,6 +51,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { Switch } from '@/components/ui/switch';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';

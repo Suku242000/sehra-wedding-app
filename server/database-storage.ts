@@ -754,6 +754,112 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updatedAnalytics;
   }
+  
+  async calculateSQSScore(vendorId: number): Promise<{ sqsScore: number, category: string }> {
+    const vendorProfile = await this.getVendorProfileByUserId(vendorId);
+    if (!vendorProfile) {
+      throw new Error("Vendor profile not found");
+    }
+    
+    // Get vendor bookings
+    const bookings = await this.getVendorBookingsByVendorId(vendorProfile.id);
+    
+    // Get vendor reviews
+    const reviews = await this.getVendorReviewsByVendorId(vendorProfile.id);
+    
+    // Get vendor analytics
+    const analytics = await this.getVendorAnalyticsByVendorId(vendorProfile.id);
+    
+    // Calculate SQS Score components
+    
+    // 1. Client Ratings (30 points max)
+    const avgRating = reviews.length > 0 
+      ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
+      : 0;
+    // Convert 5-star scale to 30 points (each star = 6 points)
+    const ratingScore = Math.min(30, avgRating * 6);
+    
+    // 2. Booking Completion Rate (20 points max)
+    const completedBookings = bookings.filter(b => b.status === 'confirmed' || b.status === 'completed').length;
+    const bookingCompletionRate = bookings.length > 0 
+      ? completedBookings / bookings.length 
+      : 0;
+    const bookingCompletionScore = Math.min(20, bookingCompletionRate * 20);
+    
+    // 3. Response Time (10 points max)
+    // Lower response time is better (inverse relationship)
+    // Average response time in minutes, default to 120 if not available
+    const responseTime = analytics?.averageResponseTime || 120;
+    // Score formula: 10 - (responseTime / 60) with min 0, max 10
+    // < 60 mins: 9-10 points, 1-2 hrs: 8-9 points, 2-4 hrs: 6-8 points, >4 hrs: <6 points
+    const responseTimeScore = Math.max(0, Math.min(10, 10 - (responseTime / 60)));
+    
+    // 4. Years of Experience (10 points max)
+    // 1 point per year, max 10 points
+    const yearsExperience = vendorProfile.yearsExperience || 0;
+    const experienceScore = Math.min(10, yearsExperience);
+    
+    // 5. Portfolio Quality (10 points max)
+    // Based on portfolio size and quality rating
+    const portfolioSize = (vendorProfile.portfolio?.length || 0);
+    const portfolioQuality = vendorProfile.portfolioQuality || 0;
+    // Calculate score based on portfolio size (up to 5 points) and quality rating (up to 5 points)
+    const portfolioSizeScore = Math.min(5, portfolioSize / 2); // 2 images = 1 point, max 5 points for 10+ images
+    const portfolioQualityScore = Math.min(5, portfolioQuality);
+    const portfolioScore = portfolioSizeScore + portfolioQualityScore;
+    
+    // 6. Region Flexibility (10 points max)
+    const regionFlexibility = vendorProfile.regionFlexibility || 'local';
+    let regionScore = 0;
+    switch(regionFlexibility) {
+      case 'international':
+        regionScore = 10;
+        break;
+      case 'national':
+        regionScore = 7.5;
+        break;
+      case 'regional':
+        regionScore = 5;
+        break;
+      case 'local':
+      default:
+        regionScore = 2.5;
+        break;
+    }
+    
+    // 7. Verified Business Documents (10 points)
+    const verifiedDocumentsScore = vendorProfile.verifiedDocuments ? 10 : 0;
+    
+    // Calculate total SQS score (out of 100)
+    const sqsScore = Math.round(
+      ratingScore + 
+      bookingCompletionScore + 
+      responseTimeScore + 
+      experienceScore + 
+      portfolioScore + 
+      regionScore + 
+      verifiedDocumentsScore
+    );
+    
+    // Assign category based on score
+    let category = 'Standard';
+    if (sqsScore >= 86) {
+      category = 'Platinum';
+    } else if (sqsScore >= 61) {
+      category = 'Gold';
+    } else if (sqsScore > 0) {
+      category = 'Silver';
+    }
+    
+    // Update vendor profile with calculated values
+    await this.updateVendorProfile(vendorProfile.id, {
+      sqsScore,
+      category,
+      bookingCompletionRate
+    });
+    
+    return { sqsScore, category };
+  }
 
   async calculateVendorAnalytics(vendorId: number): Promise<VendorAnalytics> {
     // Get vendor profile
@@ -877,12 +983,18 @@ export class DatabaseStorage implements IStorage {
     };
     
     // Update or create analytics
+    let updatedAnalytics;
     if (analytics) {
       // Update existing analytics
-      return await this.updateVendorAnalytics(analytics.id, analyticsData);
+      updatedAnalytics = await this.updateVendorAnalytics(analytics.id, analyticsData);
     } else {
       // Create new analytics
-      return await this.createVendorAnalytics(analyticsData as InsertVendorAnalytics);
+      updatedAnalytics = await this.createVendorAnalytics(analyticsData as InsertVendorAnalytics);
     }
+    
+    // Also calculate and update the SQS score
+    await this.calculateSQSScore(vendorId);
+    
+    return updatedAnalytics;
   }
 }

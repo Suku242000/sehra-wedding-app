@@ -939,6 +939,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Calculate and get SQS score for a vendor
+  app.get("/api/vendors/:id/sqs", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const vendorId = parseInt(req.params.id);
+      
+      // Check if the user is the vendor or an admin/supervisor
+      if (!req.user || (req.user.id !== vendorId && req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERVISOR)) {
+        return res.status(403).json({ message: "Not authorized to view SQS score" });
+      }
+      
+      // Calculate SQS score
+      const sqsResult = await storage.calculateSQSScore(vendorId);
+      res.json(sqsResult);
+    } catch (error: any) {
+      console.error("Calculate SQS score error:", error);
+      res.status(500).json({ message: "Failed to calculate SQS score" });
+    }
+  });
+  
   // Update specific vendor analytics data (for manual updates)
   app.patch("/api/vendors/:id/analytics", authenticateToken, authorizeRoles([UserRole.ADMIN, UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
     try {

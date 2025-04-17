@@ -776,30 +776,103 @@ export class DatabaseStorage implements IStorage {
     const pendingBookings = bookings.filter(booking => booking.status === "pending").length;
     const cancelledBookings = bookings.filter(booking => booking.status === "cancelled").length;
     
-    // Create a placeholder for response rate (in a real system, this would use actual data)
-    const inquiryCount = vendorProfile.inquiryCount || 0;
+    // Determine inquiry count - this would typically come from a separate tracking system
+    // For demonstration, we'll use bookings count with some factor
+    const inquiryCount = analytics?.inquiryCount || Math.max(totalBookings * 3, 10);
     const bookingCount = totalBookings;
     const conversionRate = inquiryCount > 0 ? (bookingCount / inquiryCount) * 100 : 0;
+    
+    // Calculate profile views - would typically come from analytics tracking
+    // For demonstration, we'll use a factor of inquiries 
+    const profileViews = analytics?.profileViews || inquiryCount * 5;
     
     // Calculate average rating from reviews
     const avgRating = reviews.length > 0
       ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
       : 0;
     
-    // Create or update the monthly stats
-    const currentMonth = new Date().toISOString().slice(0, 7); // Format: YYYY-MM
+    // Calculate approximate response time (in minutes)
+    // In a real system, this would be calculated from actual message timestamps
+    const averageResponseTime = analytics?.averageResponseTime || 120; // Default 2 hours
+    
+    // Prepare daily and monthly stats
+    const today = new Date().toISOString().slice(0, 10); // Format: YYYY-MM-DD
+    const currentMonth = today.slice(0, 7); // Format: YYYY-MM
+    
+    // Create or update daily stats
+    let dailyStats = analytics?.dailyStats || [];
+    const todayStats = dailyStats.find(stat => stat.date === today);
+    
+    if (!todayStats) {
+      // Add new daily stats
+      dailyStats = [
+        ...dailyStats,
+        {
+          date: today,
+          views: Math.floor(Math.random() * 10) + 1, // Random 1-10 for demo
+          inquiries: Math.floor(Math.random() * 3), // Random 0-2 for demo
+          bookings: bookings.filter(b => 
+            new Date(b.createdAt || new Date()).toISOString().slice(0, 10) === today
+          ).length
+        }
+      ];
+      
+      // Keep only the last 30 days
+      if (dailyStats.length > 30) {
+        dailyStats = dailyStats.sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        ).slice(0, 30);
+      }
+    }
+    
+    // Create or update monthly stats
+    let monthlyStats = analytics?.monthlyStats || [];
+    const currentMonthStats = monthlyStats.find(stat => stat.month === currentMonth);
+    
+    if (!currentMonthStats) {
+      // Add new monthly stats
+      monthlyStats = [
+        ...monthlyStats,
+        {
+          month: currentMonth,
+          totalBookings: bookings.filter(b => 
+            new Date(b.createdAt || new Date()).toISOString().slice(0, 7) === currentMonth
+          ).length,
+          revenue: bookings
+            .filter(b => 
+              new Date(b.createdAt || new Date()).toISOString().slice(0, 7) === currentMonth && 
+              (b.status === "confirmed" || b.status === "completed")
+            )
+            .reduce((sum, b) => sum + (b.totalAmount || 0), 0),
+          avgRating: reviews
+            .filter(r => 
+              new Date(r.createdAt || new Date()).toISOString().slice(0, 7) === currentMonth
+            )
+            .reduce((sum, r, i, arr) => 
+              i === arr.length - 1 ? (sum + r.rating) / arr.length : sum + r.rating
+            , 0)
+        }
+      ];
+      
+      // Keep only the last 12 months
+      if (monthlyStats.length > 12) {
+        monthlyStats = monthlyStats.sort((a, b) => 
+          new Date(b.month + "-01").getTime() - new Date(a.month + "-01").getTime()
+        ).slice(0, 12);
+      }
+    }
     
     // Create analytics data
     const analyticsData = {
       vendorId: vendorProfile.id,
-      profileViews: vendorProfile.viewCount || 0,
+      profileViews,
       inquiryCount,
       bookingCount,
-      quoteRequestCount: vendorProfile.quoteRequestCount || 0,
+      quoteRequestCount: analytics?.quoteRequestCount || Math.round(inquiryCount * 0.4), // Estimate
       conversionRate,
-      averageResponseTime: 120, // Placeholder: average 2 hours response time
-      dailyStats: analytics?.dailyStats || [],
-      monthlyStats: analytics?.monthlyStats || [],
+      averageResponseTime,
+      dailyStats,
+      monthlyStats,
       lastUpdated: new Date()
     };
     

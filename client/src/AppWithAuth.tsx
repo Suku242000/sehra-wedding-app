@@ -8,6 +8,7 @@ import AdminDashboard from "@/pages/admin-dashboard";
 import VendorDashboard from "@/pages/vendor-dashboard";
 import SupervisorDashboard from "@/pages/supervisor-dashboard";
 import GamificationDashboard from "@/pages/gamification-dashboard";
+import PackageUpgrade from "@/pages/package-upgrade";
 import NotFound from "@/pages/not-found";
 import MessageCenter from "@/components/messaging/MessageCenter";
 import { PublicRoute, ProtectedRoute } from "@/lib/auth";
@@ -75,6 +76,12 @@ const AppWithAuth: React.FC = () => {
         <Route path="/wedding-journey">
           <ProtectedRoute requirePackage={true}>
             <GamificationDashboard />
+          </ProtectedRoute>
+        </Route>
+        
+        <Route path="/package-upgrade">
+          <ProtectedRoute>
+            <PackageUpgrade />
           </ProtectedRoute>
         </Route>
         

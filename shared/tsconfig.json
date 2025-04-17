@@ -6,21 +6,18 @@
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": false,
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "react-jsx",
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
+    "noEmit": false,
     "outDir": "dist",
     "declaration": true,
-    "composite": true,
-    "downlevelIteration": true
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "schema.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "schema.ts"],
+  "exclude": ["dist", "node_modules"]
 }

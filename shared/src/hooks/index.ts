@@ -1,5 +1,26 @@
-// Export shared hooks here
-// Hooks in this directory should be usable in both client and internal apps
+// Export all shared hooks here
+// Example: export * from './useMediaQuery'
+// This file will be exported from the root index.ts
 
-// Example: export { useToast } from './useToast';
-// Example: export { useMediaQuery } from './useMediaQuery';
+// Authentication and User Context
+export * from './useAuth';
+export * from './useUser';
+
+// UI Helpers
+export * from './useToast';
+export * from './useMediaQuery';
+export * from './useClickOutside';
+export * from './useKeyPress';
+
+// Wedding Planning Specific
+export * from './useBudget';
+export * from './useVendors';
+export * from './useTimeline';
+export * from './useTaskManager';
+export * from './useAchievements';
+
+// Dashboard Specific
+export * from './useAnalytics';
+export * from './useNotifications';
+export * from './useMessages';
+export * from './useCalendar';

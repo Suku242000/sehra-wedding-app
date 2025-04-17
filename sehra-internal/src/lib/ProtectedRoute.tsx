@@ -1,28 +1,33 @@
 import { ReactNode } from "react";
-import { Route, Redirect } from "wouter";
+import { Route, Redirect, useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
-import { useAuth, InternalUser } from "./auth";
+import { useAuth } from "./auth";
 
-interface ProtectedRouteProps {
-  path: string;
-  component: React.ComponentType;
-  roles?: Array<"vendor" | "supervisor" | "admin">;
-}
+type InternalRole = "vendor" | "supervisor" | "admin";
 
 /**
- * ProtectedRoute component for the internal application
- * - Redirects to /login if user is not authenticated
- * - Handles loading state during authentication check
- * - Supports role-based access restriction for internal roles
+ * ProtectedRoute Component for Internal App
+ * 
+ * Restricts access to routes based on authentication status and internal staff roles.
+ * 
+ * @param path The route path to protect
+ * @param component The component to render if access is granted
+ * @param allowedRoles Optional array of roles allowed to access this route
  */
-export function ProtectedRoute({ 
-  path, 
-  component: Component, 
-  roles 
-}: ProtectedRouteProps) {
+export function ProtectedRoute({
+  path,
+  component: Component,
+  allowedRoles,
+  children
+}: {
+  path: string;
+  component?: () => JSX.Element;
+  allowedRoles?: InternalRole[];
+  children?: ReactNode;
+}) {
   const { user, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
 
-  // Show loading spinner while authentication is being checked
   if (isLoading) {
     return (
       <Route path={path}>
@@ -33,7 +38,7 @@ export function ProtectedRoute({
     );
   }
 
-  // Redirect to login page if not logged in
+  // Redirect to login if not authenticated
   if (!user) {
     return (
       <Route path={path}>
@@ -42,34 +47,27 @@ export function ProtectedRoute({
     );
   }
 
-  // If roles are specified, check if user has the required role
-  if (roles && roles.length > 0) {
-    const hasRequiredRole = roles.includes(user.role as "vendor" | "supervisor" | "admin");
-    
-    if (!hasRequiredRole) {
-      return (
-        <Route path={path}>
-          <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-            <h2 className="text-2xl font-bold text-destructive mb-2">Access Denied</h2>
-            <p className="text-muted-foreground mb-4">
-              You don't have permission to access this page.
-            </p>
-            <a 
-              href="/" 
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-            >
-              Return to Dashboard
-            </a>
-          </div>
-        </Route>
-      );
-    }
+  // Check role permissions if allowedRoles are specified
+  if (allowedRoles && !hasRole(user.role as InternalRole, allowedRoles)) {
+    return (
+      <Route path={path}>
+        <Redirect to="/" />
+      </Route>
+    );
   }
 
-  // If all checks pass, render the protected component
-  return (
-    <Route path={path}>
-      <Component />
-    </Route>
-  );
+  // Render the protected component
+  if (Component) {
+    return <Route path={path} component={Component} />;
+  }
+
+  // Or render children
+  return <Route path={path}>{children}</Route>;
+}
+
+/**
+ * Helper function to check if a user has one of the allowed roles
+ */
+function hasRole(userRole: InternalRole, allowedRoles: InternalRole[]): boolean {
+  return allowedRoles.includes(userRole);
 }

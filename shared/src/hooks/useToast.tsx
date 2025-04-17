@@ -1,130 +1,71 @@
-import React, { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, ReactNode } from "react";
 
-// Toast action element interface
-export interface ToastActionElement {
-  altText: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}
+// Toast types for different use cases
+export type ToastType = "default" | "success" | "error" | "warning" | "info" | "destructive";
 
-// Toast variants
-type ToastVariant = "default" | "destructive" | "success";
-
-// Toast interface
 export interface Toast {
   id: string;
-  title?: React.ReactNode;
-  description?: React.ReactNode;
-  action?: ToastActionElement;
-  variant?: ToastVariant;
-}
-
-// Toast context interface
-interface ToastContextType {
-  toasts: Toast[];
-  addToast: (toast: Omit<Toast, "id">) => void;
-  updateToast: (id: string, toast: Partial<Toast>) => void;
-  dismissToast: (id: string) => void;
-  removeToast: (id: string) => void;
-}
-
-// Create context
-const ToastContext = createContext<ToastContextType | null>(null);
-
-// ToastProvider props
-interface ToastProviderProps {
-  children: React.ReactNode;
+  title: string;
+  description?: string;
+  variant?: ToastType;
   duration?: number;
-  variant?: ToastVariant;
 }
 
-// ToastProvider component
-export function ToastProvider({
-  children,
-  duration = 5000,
-  variant = "default",
-}: ToastProviderProps) {
+interface ToastContextValue {
+  toasts: Toast[];
+  toast: (toast: Omit<Toast, "id">) => void;
+  dismiss: (id: string) => void;
+  dismissAll: () => void;
+}
+
+const ToastContext = createContext<ToastContextValue | null>(null);
+
+export const ToastProvider = ({ children }: { children: ReactNode }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  // Add a new toast notification
-  const addToast = React.useCallback(
-    ({ ...props }: Omit<Toast, "id">) => {
-      const id = crypto.randomUUID();
-      setToasts((prev) => [...prev, { id, ...props, variant: props.variant || variant }]);
+  const toast = ({ title, description, variant = "default", duration = 5000 }: Omit<Toast, "id">) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    
+    setToasts((prevToasts) => [
+      ...prevToasts,
+      { id, title, description, variant, duration },
+    ]);
 
-      if (duration > 0) {
-        setTimeout(() => {
-          dismissToast(id);
-        }, duration);
-      }
+    if (duration > 0) {
+      setTimeout(() => {
+        dismiss(id);
+      }, duration);
+    }
+  };
 
-      return id;
-    },
-    [duration, variant]
-  );
+  const dismiss = (id: string) => {
+    setToasts((prevToasts) => prevToasts.filter((toast) => toast.id !== id));
+  };
 
-  // Update an existing toast
-  const updateToast = React.useCallback(
-    (id: string, { ...props }: Partial<Toast>) => {
-      setToasts((prev) =>
-        prev.map((toast) =>
-          toast.id === id ? { ...toast, ...props } : toast
-        )
-      );
-    },
-    []
-  );
+  const dismissAll = () => {
+    setToasts([]);
+  };
 
-  // Mark a toast as being dismissed (start exit animation)
-  const dismissToast = React.useCallback((id: string) => {
-    setToasts((prev) =>
-      prev.map((toast) =>
-        toast.id === id ? { ...toast, dismissed: true } : toast
-      )
-    );
-
-    // Remove the toast after animation (assuming 500ms for exit animation)
-    setTimeout(() => {
-      removeToast(id);
-    }, 500);
-  }, []);
-
-  // Remove a toast from the state
-  const removeToast = React.useCallback((id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  }, []);
-
-  // Context value
-  const value = React.useMemo(
-    () => ({
-      toasts,
-      addToast,
-      updateToast,
-      dismissToast,
-      removeToast,
-    }),
-    [toasts, addToast, updateToast, dismissToast, removeToast]
-  );
+  const value = {
+    toasts,
+    toast,
+    dismiss,
+    dismissAll,
+  };
 
   return (
     <ToastContext.Provider value={value}>
       {children}
     </ToastContext.Provider>
   );
-}
+};
 
-// Custom hook to access toast context
-export function useToast() {
+export const useToast = () => {
   const context = useContext(ToastContext);
 
   if (!context) {
     throw new Error("useToast must be used within a ToastProvider");
   }
 
-  return {
-    toast: context.addToast,
-    dismiss: context.dismissToast,
-    update: context.updateToast,
-    toasts: context.toasts,
-  };
-}
+  return context;
+};

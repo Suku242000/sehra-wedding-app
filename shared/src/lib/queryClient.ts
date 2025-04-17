@@ -1,85 +1,96 @@
 import { QueryClient } from "@tanstack/react-query";
 
-// Create a client
+// Initialize react-query client with default settings
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
       refetchOnWindowFocus: false,
-      retry: 1,
+      staleTime: 60 * 1000, // 1 minute
     },
   },
 });
 
+// Types for API requests
+type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+type RequestOptions = {
+  on401?: "returnNull" | "throw";
+  headers?: Record<string, string>;
+};
+
 /**
- * Helper function for making standardized API requests
- * @param method The HTTP method to use
- * @param endpoint The API endpoint to request
- * @param body The request body (for POST, PUT, PATCH)
- * @param options Additional fetch options
- * @returns The fetch response
+ * Standardized API request function
+ * - Handles Content-Type and credentials
+ * - Can be configured to handle 401 errors differently
+ * 
+ * @param method HTTP method
+ * @param endpoint API endpoint (should start with '/')
+ * @param data Optional data for POST/PUT/PATCH requests
+ * @param options Optional configuration
+ * @returns Response object
  */
 export async function apiRequest(
-  method: string,
+  method: Method,
   endpoint: string,
-  body?: any,
-  options?: RequestInit
+  data?: unknown,
+  options: RequestOptions = {}
 ): Promise<Response> {
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...(options?.headers || {}),
-  };
+  const { on401 = "throw", headers = {} } = options;
 
-  const config: RequestInit = {
+  const requestOptions: RequestInit = {
     method,
-    headers,
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
     credentials: "include",
-    ...options,
   };
 
-  if (body && (method === "POST" || method === "PUT" || method === "PATCH")) {
-    config.body = JSON.stringify(body);
+  if (data && method !== "GET") {
+    requestOptions.body = JSON.stringify(data);
   }
 
-  const response = await fetch(endpoint, config);
+  const response = await fetch(endpoint, requestOptions);
+
+  if (response.status === 401 && on401 === "throw") {
+    throw new Error("Unauthorized");
+  }
+
   return response;
 }
 
 /**
- * Configurable query function factory for TanStack Query
+ * Helper function for React Query's queryFn
+ * - Returns a function that makes an API request
+ * - Handles response parsing to JSON
+ * - Configurable 401 handling
  * 
- * @param options.on401 - how to handle 401 errors, "throw" or "returnNull"
- * @returns A fetch function for TanStack Query
+ * @param options Options for the request
+ * @returns Query function for React Query
  */
-export function getQueryFn({ 
-  on401 = "throw" 
-}: { 
-  on401?: "throw" | "returnNull" 
-} = {}) {
-  return async ({ queryKey }: { queryKey: (string | number)[] }) => {
-    const endpoint = String(queryKey[0]);
-    const res = await apiRequest("GET", endpoint);
-
-    if (res.status === 401) {
-      if (on401 === "returnNull") {
-        return null;
-      } else {
-        throw new Error("Unauthorized");
+export function getQueryFn<T = unknown>(options: RequestOptions = {}) {
+  return async ({ queryKey }: { queryKey: (string | Record<string, unknown>)[] }) => {
+    const endpoint = queryKey[0] as string;
+    
+    try {
+      const response = await apiRequest("GET", endpoint, undefined, options);
+      
+      if (!response.ok) {
+        if (response.status === 401 && options.on401 === "returnNull") {
+          return null as unknown as T;
+        }
+        
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `Failed to fetch data from ${endpoint}`
+        );
       }
+      
+      return response.json() as Promise<T>;
+    } catch (error) {
+      if (error instanceof Error && error.message === "Unauthorized" && options.on401 === "returnNull") {
+        return null as unknown as T;
+      }
+      throw error;
     }
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || 
-        `Failed to fetch data from ${endpoint}: ${res.statusText}`
-      );
-    }
-
-    if (res.status === 204) {
-      return null;
-    }
-
-    return res.json();
   };
 }

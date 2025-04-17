@@ -1,32 +1,20 @@
 import { ReactNode, createContext, useContext } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, getQueryFn, queryClient } from "../lib/queryClient";
+import { apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "./useToast";
 
-// Base user interface shared across all application roles
+// Base user interface that will be extended by client & internal specific interfaces
 export interface User {
   id: number;
-  email: string;
-  name: string;
-  role: string;
-}
-
-// Login credentials interface
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-// Registration credentials interface
-export interface RegisterCredentials {
   name: string;
   email: string;
-  password: string;
   role: string;
+  createdAt?: string;
+  lastLogin?: string;
 }
 
-// Base auth context interface with shared functionalities
-interface BaseAuthContextType {
+// Base auth context interface
+export interface BaseAuthContextType {
   user: User | null;
   isLoading: boolean;
   error: Error | null;
@@ -35,10 +23,9 @@ interface BaseAuthContextType {
   registerMutation: any;
 }
 
-// Create context
+// Base context
 const BaseAuthContext = createContext<BaseAuthContextType | null>(null);
 
-// Props for the base provider
 interface BaseAuthProviderProps {
   children: ReactNode;
   loginEndpoint: string;
@@ -48,34 +35,63 @@ interface BaseAuthProviderProps {
 }
 
 /**
- * Base authentication provider that will be extended by app-specific providers
- * Handles basic auth operations: login, logout, registration, user data fetching
+ * Base Authentication Provider
+ * 
+ * Shared foundation for both client and internal auth providers.
+ * Handles core authentication functionality:
+ * - User data fetching
+ * - Login/logout mutations
+ * - Registration
  */
 export function BaseAuthProvider({
-  children,
+  children, 
   loginEndpoint,
   logoutEndpoint,
   registerEndpoint,
-  userEndpoint,
+  userEndpoint
 }: BaseAuthProviderProps) {
   const { toast } = useToast();
 
-  // Fetch user data
+  // Fetch current user data
   const {
     data: user,
-    isLoading,
     error,
-  } = useQuery<User | null, Error>({
+    isLoading,
+  } = useQuery<User | null>({
     queryKey: [userEndpoint],
-    queryFn: getQueryFn({ on401: "returnNull" }),
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("GET", userEndpoint);
+        if (!res.ok) {
+          if (res.status === 401) {
+            return null;
+          }
+          const errorData = await res.json();
+          throw new Error(errorData.message || "Failed to fetch user data");
+        }
+        return await res.json();
+      } catch (err) {
+        if (err instanceof Error && err.message !== "Failed to fetch") {
+          console.error("User fetch error:", err);
+          toast({
+            title: "Error fetching user data",
+            description: err.message,
+            variant: "destructive",
+          });
+        }
+        return null;
+      }
+    },
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Login mutation
   const loginMutation = useMutation({
-    mutationFn: async (credentials: LoginCredentials) => {
+    mutationFn: async (credentials: { email: string; password: string }) => {
       const res = await apiRequest("POST", loginEndpoint, credentials);
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
+        const errorData = await res.json();
         throw new Error(errorData.message || "Login failed");
       }
       return await res.json();
@@ -97,13 +113,46 @@ export function BaseAuthProvider({
     },
   });
 
-  // Register mutation
-  const registerMutation = useMutation({
-    mutationFn: async (credentials: RegisterCredentials) => {
-      const res = await apiRequest("POST", registerEndpoint, credentials);
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", logoutEndpoint);
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Registration failed");
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Logout failed");
+      }
+    },
+    onSuccess: () => {
+      queryClient.setQueryData([userEndpoint], null);
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out.",
+        variant: "success",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Logout failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Registration mutation
+  const registerMutation = useMutation({
+    mutationFn: async (userData: {
+      name: string;
+      email: string;
+      password: string;
+      role?: string;
+    }) => {
+      const res = await apiRequest("POST", registerEndpoint, userData);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(
+          errorData.message || "Registration failed. Please try again."
+        );
       }
       return await res.json();
     },
@@ -111,7 +160,7 @@ export function BaseAuthProvider({
       queryClient.setQueryData([userEndpoint], userData);
       toast({
         title: "Registration successful",
-        description: "Your account has been created successfully.",
+        description: `Welcome to Sehra, ${userData.name}!`,
         variant: "success",
       });
     },
@@ -124,40 +173,14 @@ export function BaseAuthProvider({
     },
   });
 
-  // Logout mutation
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", logoutEndpoint);
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Logout failed");
-      }
-    },
-    onSuccess: () => {
-      queryClient.setQueryData([userEndpoint], null);
-      toast({
-        title: "Logged out",
-        description: "You have been logged out successfully.",
-        variant: "default",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Logout failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Base context value
+  // Create base context value
   const contextValue: BaseAuthContextType = {
     user: user || null,
     isLoading,
-    error,
+    error: error as Error | null,
     loginMutation,
-    registerMutation,
     logoutMutation,
+    registerMutation,
   };
 
   return (
@@ -167,11 +190,11 @@ export function BaseAuthProvider({
   );
 }
 
-// Base hook for accessing auth context
+// Hook for accessing base auth context
 export function useAuth() {
   const context = useContext(BaseAuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error("useAuth must be used within a BaseAuthProvider");
   }
   return context;
 }

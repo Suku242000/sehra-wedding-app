@@ -1,7 +1,7 @@
 import { queryClient } from "./queryClient";
 
-// Base URL for API requests
-const API_BASE_URL = '/api';
+// Base URL for API requests - ensure it uses the correct host
+const API_BASE_URL = `${window.location.origin}/api`;
 
 /**
  * Generic function to make API requests

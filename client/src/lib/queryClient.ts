@@ -51,7 +51,12 @@ export const getQueryFn: <T>(options: {
       headers['Authorization'] = `Bearer ${token}`;
     }
     
-    const res = await fetch(queryKey[0] as string, {
+    // Ensure URLs are absolute with correct origin
+    const url = (queryKey[0] as string).startsWith('http') 
+      ? queryKey[0] as string
+      : `${window.location.origin}${(queryKey[0] as string)}`;
+      
+    const res = await fetch(url, {
       credentials: "include",
       headers
     });

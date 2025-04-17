@@ -8,17 +8,29 @@ class SocketService {
   public connect(token: string): void {
     if (this.isConnected) return;
     
+    // Dynamically determine the appropriate websocket URL based on current location
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    
     // Create socket connection with authentication token
-    this.socket = io({
+    this.socket = io(`${window.location.protocol}//${host}`, {
+      path: '/ws',
       auth: {
         token
-      }
+      },
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      transports: ['websocket', 'polling']
     });
     
     // Setup event handlers
     this.socket.on('connect', () => {
       console.log('Connected to Socket.IO');
       this.isConnected = true;
+    });
+    
+    this.socket.on('connect_error', (error) => {
+      console.error('Connection error:', error);
     });
     
     this.socket.on('disconnect', () => {

@@ -23,6 +23,7 @@ export interface InternalUser extends User {
 interface LoginCredentials {
   email: string;
   password: string;
+  role?: string; // Optional role for role-based login
 }
 
 // Internal roles
@@ -41,7 +42,7 @@ interface InternalAuthContextType {
   user: InternalUser | null;
   isLoading: boolean;
   error: Error | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, role?: string) => Promise<void>;
   register: (name: string, email: string, password: string, role: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<InternalUser>) => Promise<void>;
@@ -69,13 +70,13 @@ export function InternalAuthProvider({ children }: { children: ReactNode }) {
       // Redirect based on role
       switch (user.role) {
         case "vendor":
-          setLocation("/vendor-dashboard");
+          setLocation("/vendor/dashboard");
           break;
         case "supervisor":
-          setLocation("/supervisor-dashboard");
+          setLocation("/supervisor/dashboard");
           break;
         case "admin":
-          setLocation("/admin-dashboard");
+          setLocation("/admin/dashboard");
           break;
         default:
           setLocation("/");
@@ -108,13 +109,13 @@ export function InternalAuthProvider({ children }: { children: ReactNode }) {
       // Redirect based on role
       switch (user.role) {
         case "vendor":
-          setLocation("/vendor-dashboard");
+          setLocation("/vendor/dashboard");
           break;
         case "supervisor":
-          setLocation("/supervisor-dashboard");
+          setLocation("/supervisor/dashboard");
           break;
         case "admin":
-          setLocation("/admin-dashboard");
+          setLocation("/admin/dashboard");
           break;
         default:
           setLocation("/");
@@ -154,8 +155,8 @@ export function InternalAuthProvider({ children }: { children: ReactNode }) {
   });
 
   // Login function
-  const login = async (email: string, password: string) => {
-    await loginMutation.mutateAsync({ email, password });
+  const login = async (email: string, password: string, role?: string) => {
+    await loginMutation.mutateAsync({ email, password, role });
   };
   
   // Register function
@@ -170,7 +171,7 @@ export function InternalAuthProvider({ children }: { children: ReactNode }) {
 
   // Custom on logout success handler
   const handleLogoutSuccess = () => {
-    setLocation("/login");
+    setLocation("/internal/login");
   };
 
   // Extra context values specific to internal app

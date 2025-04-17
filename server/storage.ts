@@ -19,6 +19,14 @@ import {
   InsertUserProgress,
   TimelineEvent,
   InsertTimelineEvent,
+  Message,
+  InsertMessage,
+  ContactStatus,
+  InsertContactStatus,
+  Notification,
+  InsertNotification,
+  VendorReview,
+  InsertVendorReview,
   users,
   vendorProfiles,
   tasks,
@@ -28,7 +36,11 @@ import {
   achievements,
   userAchievements,
   userProgress,
-  timelineEvents
+  timelineEvents,
+  messages,
+  contactStatus,
+  notifications,
+  vendorReviews
 } from "@shared/schema";
 
 // Interface for storage methods

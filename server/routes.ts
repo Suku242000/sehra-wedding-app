@@ -442,6 +442,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all vendors - public access
+  app.get("/api/vendors", async (req: Request, res: Response) => {
+    try {
+      const vendors = await storage.getAllVendorProfiles();
+      // Sort featured vendors first
+      const sortedVendors = vendors.sort((a, b) => {
+        // First sort by featured status
+        if (a.featured && !b.featured) return -1;
+        if (!a.featured && b.featured) return 1;
+        // Then sort by verification status
+        if (a.verificationStatus === 'verified' && b.verificationStatus !== 'verified') return -1;
+        if (a.verificationStatus !== 'verified' && b.verificationStatus === 'verified') return 1;
+        // Finally sort by rating (highest first)
+        return (b.rating || 0) - (a.rating || 0);
+      });
+      res.json(sortedVendors);
+    } catch (error) {
+      console.error("Get all vendors error:", error);
+      res.status(500).json({ message: "Failed to retrieve vendors" });
+    }
+  });
+
+  // Get vendors by type
+  app.get("/api/vendors/type/:vendorType", async (req: Request, res: Response) => {
+    try {
+      const { vendorType } = req.params;
+      const vendors = await storage.getVendorProfilesByType(vendorType);
+      res.json(vendors);
+    } catch (error) {
+      console.error("Get vendors by type error:", error);
+      res.status(500).json({ message: "Failed to retrieve vendors" });
+    }
+  });
+
+  // Get vendor by ID
   app.get("/api/vendors/:id", async (req: Request, res: Response) => {
     try {
       const vendorId = parseInt(req.params.id);
@@ -451,14 +486,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Vendor not found" });
       }
       
-      res.json(vendor);
+      // Get vendor reviews
+      const reviews = await storage.getVendorReviewsByVendorId(vendorId);
+      
+      // Combine vendor profile with reviews
+      const vendorWithReviews = {
+        ...vendor,
+        reviews: reviews || []
+      };
+      
+      res.json(vendorWithReviews);
     } catch (error) {
       console.error("Get vendor error:", error);
       res.status(500).json({ message: "Failed to retrieve vendor" });
     }
   });
 
-  app.post("/api/vendors", authenticateToken, authorizeRoles([UserRole.VENDOR, UserRole.ADMIN]), async (req: Request, res: Response) => {
+  // Get current vendor's profile
+  app.get("/api/vendors/my-profile", authenticateToken, authorizeRoles([UserRole.VENDOR]), async (req: Request, res: Response) => {
+    try {
+      const userId = req.user.id;
+      const vendorProfile = await storage.getVendorProfileByUserId(userId);
+      
+      if (!vendorProfile) {
+        return res.status(404).json({ message: "Vendor profile not found" });
+      }
+      
+      res.json(vendorProfile);
+    } catch (error) {
+      console.error("Get vendor profile error:", error);
+      res.status(500).json({ message: "Failed to retrieve vendor profile" });
+    }
+  });
+
+  // Create vendor profile
+  app.post("/api/vendors", authenticateToken, authorizeRoles([UserRole.VENDOR]), async (req: Request, res: Response) => {
     try {
       const userId = req.user.id;
       
@@ -471,9 +533,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertVendorProfileSchema.parse({
         ...req.body,
         userId,
+        profileComplete: true, // Mark profile as complete upon creation
+        verificationStatus: 'pending',
       });
       
       const vendorProfile = await storage.createVendorProfile(validatedData);
+
+      // Create notification for admin about new vendor registration
+      const adminUsers = await storage.getUsersByRole(UserRole.ADMIN);
+      if (adminUsers && adminUsers.length > 0) {
+        for (const admin of adminUsers) {
+          await storage.createNotification({
+            userId: admin.id,
+            title: "New Vendor Registration",
+            content: `Vendor ${vendorProfile.businessName} has registered and is pending verification.`,
+            type: "vendor",
+            isRead: false,
+            relatedId: vendorProfile.id,
+            link: "/admin/vendors"
+          });
+        }
+      }
+      
       res.status(201).json(vendorProfile);
     } catch (error) {
       console.error("Create vendor profile error:", error);
@@ -483,28 +564,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to create vendor profile" });
     }
   });
-
+  
+  // Update vendor profile
   app.patch("/api/vendors/:id", authenticateToken, authorizeRoles([UserRole.VENDOR, UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const vendorId = parseInt(req.params.id);
+      const vendorProfile = await storage.getVendorProfile(vendorId);
+      
+      if (!vendorProfile) {
+        return res.status(404).json({ message: "Vendor profile not found" });
+      }
+      
+      // Ensure only the vendor or admin can update the profile
+      if (vendorProfile.userId !== req.user.id && req.user.role !== UserRole.ADMIN) {
+        return res.status(403).json({ message: "Not authorized to update this vendor profile" });
+      }
+      
+      // Prevent changing specific fields for non-admin users
+      if (req.user.role !== UserRole.ADMIN) {
+        delete req.body.featured;
+        delete req.body.verificationStatus;
+        delete req.body.reviewCount;
+      }
+      
+      const updatedProfile = await storage.updateVendorProfile(vendorId, req.body);
+      
+      if (!updatedProfile) {
+        return res.status(500).json({ message: "Failed to update vendor profile" });
+      }
+      
+      // If this is the first time the vendor completes their profile, create a notification
+      if (!vendorProfile.profileComplete && req.body.profileComplete) {
+        // Notify supervisors
+        const supervisors = await storage.getUsersByRole(UserRole.SUPERVISOR);
+        if (supervisors && supervisors.length > 0) {
+          for (const supervisor of supervisors) {
+            await storage.createNotification({
+              userId: supervisor.id,
+              title: "New Vendor Profile Completed",
+              content: `${updatedProfile.businessName} has completed their vendor profile.`,
+              type: "vendor",
+              isRead: false,
+              relatedId: vendorProfile.id,
+              link: `/supervisor/vendors/${vendorProfile.id}`
+            });
+          }
+        }
+      }
+      
+      res.json(updatedProfile);
+    } catch (error) {
+      console.error("Update vendor profile error:", error);
+      res.status(500).json({ message: "Failed to update vendor profile" });
+    }
+  });
+  
+  // Get vendor reviews
+  app.get("/api/vendors/:id/reviews", async (req: Request, res: Response) => {
+    try {
+      const vendorId = parseInt(req.params.id);
+      const reviews = await storage.getVendorReviewsByVendorId(vendorId);
+      res.json(reviews);
+    } catch (error) {
+      console.error("Get vendor reviews error:", error);
+      res.status(500).json({ message: "Failed to retrieve vendor reviews" });
+    }
+  });
+  
+  // Create vendor review
+  app.post("/api/vendors/:id/reviews", authenticateToken, authorizeRoles([UserRole.BRIDE, UserRole.GROOM, UserRole.FAMILY]), async (req: Request, res: Response) => {
     try {
       const vendorId = parseInt(req.params.id);
       const userId = req.user.id;
       
-      // Check if vendor profile exists
+      // Check if vendor exists
       const vendor = await storage.getVendorProfile(vendorId);
       if (!vendor) {
-        return res.status(404).json({ message: "Vendor profile not found" });
+        return res.status(404).json({ message: "Vendor not found" });
       }
       
-      // Check if user is authorized to update this vendor profile
-      if (vendor.userId !== userId && req.user.role !== UserRole.ADMIN) {
-        return res.status(403).json({ message: "Not authorized to update this vendor profile" });
+      // Check if user has a booking with this vendor
+      const bookings = await storage.getVendorBookingsByUserId(userId);
+      const hasBooking = bookings.some(booking => 
+        booking.vendorId === vendorId && 
+        ['confirmed', 'completed'].includes(booking.status)
+      );
+      
+      // Only allow reviews if the user has a confirmed/completed booking with this vendor
+      // Unless they're an admin (for testing)
+      if (!hasBooking && req.user.role !== UserRole.ADMIN) {
+        return res.status(403).json({ 
+          message: "You can only review vendors you have booked and confirmed/completed" 
+        });
       }
       
-      const updatedVendor = await storage.updateVendorProfile(vendorId, req.body);
-      res.json(updatedVendor);
+      // If user has already reviewed this vendor, don't allow another review
+      const existingReviews = await storage.getVendorReviewsByVendorId(vendorId);
+      const alreadyReviewed = existingReviews.some(review => review.userId === userId);
+      
+      if (alreadyReviewed) {
+        return res.status(400).json({ message: "You have already reviewed this vendor" });
+      }
+      
+      const validatedData = insertVendorReviewSchema.parse({
+        ...req.body,
+        vendorId,
+        userId,
+        verified: hasBooking, // Mark as verified if they have a booking
+      });
+      
+      const review = await storage.createVendorReview(validatedData);
+      
+      // Update vendor rating and review count
+      let totalRating = 0;
+      let reviewCount = existingReviews.length + 1;
+      
+      existingReviews.forEach(r => {
+        totalRating += r.rating;
+      });
+      totalRating += review.rating;
+      
+      const averageRating = Math.round(totalRating / reviewCount);
+      
+      await storage.updateVendorProfile(vendorId, {
+        rating: averageRating,
+        reviewCount
+      });
+      
+      // Notify vendor about the new review
+      const vendorUser = await storage.getUser(vendor.userId);
+      if (vendorUser) {
+        await storage.createNotification({
+          userId: vendorUser.id,
+          title: "New Review Received",
+          content: `You've received a ${review.rating}-star review from a client.`,
+          type: "vendor",
+          isRead: false,
+          relatedId: review.id,
+          link: "/vendor/reviews"
+        });
+      }
+      
+      res.status(201).json(review);
     } catch (error) {
-      console.error("Update vendor profile error:", error);
-      res.status(500).json({ message: "Failed to update vendor profile" });
+      console.error("Create vendor review error:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create vendor review" });
     }
   });
 

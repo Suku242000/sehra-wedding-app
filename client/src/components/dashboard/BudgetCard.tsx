@@ -56,6 +56,16 @@ const budgetItemSchema = z.object({
   estimatedCost: z.coerce.number().positive('Cost must be positive'),
   actualCost: z.coerce.number().positive('Cost must be positive').optional(),
   paid: z.boolean().default(false),
+  advanceAmount: z.coerce.number().min(0, 'Advance must be non-negative').optional(),
+  advanceDate: z.date().optional(),
+  vendorId: z.number().optional(),
+  vendorName: z.string().optional(),
+  paymentStatus: z.enum(['not_paid', 'advance_paid', 'fully_paid']).default('not_paid'),
+  billingInfo: z.object({
+    userBillId: z.string().optional(),
+    vendorBillId: z.string().optional(),
+    billDate: z.date().optional(),
+  }).optional(),
   serviceChargePercentage: z.coerce.number().optional(),
   serviceChargeAmount: z.coerce.number().optional(),
   serviceChargeEdited: z.boolean().default(false),
@@ -112,6 +122,15 @@ const BudgetCard: React.FC = () => {
   const [showItemsList, setShowItemsList] = useState(false);
   const [totalServiceCharge, setTotalServiceCharge] = useState(0);
   const [showBillSummary, setShowBillSummary] = useState(false);
+  const [budgetChanges, setBudgetChanges] = useState<{
+    item: string;
+    category: string;
+    amount: number;
+    type: 'addition' | 'deduction' | 'modification';
+    timestamp: Date;
+  }[]>([]);
+  const [totalAdvancePayments, setTotalAdvancePayments] = useState(0);
+  const [showBudgetMatrix, setShowBudgetMatrix] = useState(false);
   
   // Fetch budget items with auth
   const { data: budgetItems = [], isLoading, refetch } = useQuery<BudgetItem[]>({
@@ -149,6 +168,16 @@ const BudgetCard: React.FC = () => {
       estimatedCost: 0,
       actualCost: undefined,
       paid: false,
+      advanceAmount: 0,
+      advanceDate: undefined,
+      vendorId: undefined,
+      vendorName: '',
+      paymentStatus: 'not_paid',
+      billingInfo: {
+        userBillId: undefined,
+        vendorBillId: undefined,
+        billDate: undefined,
+      },
       serviceChargePercentage: getServiceChargePercentage(),
       serviceChargeAmount: 0,
       serviceChargeEdited: false,
@@ -159,7 +188,25 @@ const BudgetCard: React.FC = () => {
   // Create budget item mutation
   const createBudgetItemMutation = useMutation({
     mutationFn: (newItem: BudgetFormValues) => createWithAuth('/api/budget', newItem),
-    onSuccess: () => {
+    onSuccess: (response, variables) => {
+      // Record the budget addition in our change history
+      const newChange = {
+        item: variables.item,
+        category: variables.category,
+        amount: variables.actualCost || variables.estimatedCost,
+        type: 'addition' as const,
+        timestamp: new Date()
+      };
+      setBudgetChanges(prev => [newChange, ...prev.slice(0, 19)]); // Keep only last 20 changes
+      
+      // If this item has an advance payment, update the advance payments total
+      if (variables.advanceAmount && variables.advanceAmount > 0) {
+        setTotalAdvancePayments(prev => prev + variables.advanceAmount);
+      }
+      
+      // Show budget matrix after adding a new item
+      setShowBudgetMatrix(true);
+      
       queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
       refetch(); // Immediate refetch to update UI
       toast({ 
@@ -183,7 +230,39 @@ const BudgetCard: React.FC = () => {
   const updateBudgetItemMutation = useMutation({
     mutationFn: ({ id, data }: { id: number, data: BudgetFormValues }) => 
       updateWithAuth(`/api/budget/${id}`, data),
-    onSuccess: () => {
+    onSuccess: (response, variables) => {
+      if (editingBudgetItem) {
+        // Calculate the difference in cost
+        const oldAmount = editingBudgetItem.actualCost || editingBudgetItem.estimatedCost;
+        const newAmount = variables.data.actualCost || variables.data.estimatedCost;
+        const amountDifference = newAmount - oldAmount;
+        
+        // Only record if there was an actual change in amount
+        if (amountDifference !== 0) {
+          // Record the budget modification in our change history
+          const newChange = {
+            item: variables.data.item,
+            category: variables.data.category,
+            amount: Math.abs(amountDifference), // Store the absolute value
+            type: amountDifference > 0 ? 'addition' as const : 'deduction' as const,
+            timestamp: new Date()
+          };
+          setBudgetChanges(prev => [newChange, ...prev.slice(0, 19)]); // Keep only last 20 changes
+        }
+        
+        // Check if advance payment was modified
+        const oldAdvance = editingBudgetItem.advanceAmount || 0;
+        const newAdvance = variables.data.advanceAmount || 0;
+        if (oldAdvance !== newAdvance) {
+          setTotalAdvancePayments(prev => prev - oldAdvance + newAdvance);
+        }
+        
+        // Show budget matrix after significant changes
+        if (amountDifference !== 0 || oldAdvance !== newAdvance) {
+          setShowBudgetMatrix(true);
+        }
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
       refetch(); // Immediate refetch to update UI
       toast({ 
@@ -206,7 +285,30 @@ const BudgetCard: React.FC = () => {
   // Delete budget item mutation
   const deleteBudgetItemMutation = useMutation({
     mutationFn: (id: number) => deleteWithAuth(`/api/budget/${id}`),
-    onSuccess: () => {
+    onSuccess: (response, variables) => {
+      // Find the budget item being deleted
+      const deletedItem = budgetItems.find(item => item.id === variables);
+      
+      if (deletedItem) {
+        // Record the budget deletion in our change history
+        const newChange = {
+          item: deletedItem.item,
+          category: deletedItem.category,
+          amount: deletedItem.actualCost || deletedItem.estimatedCost,
+          type: 'deduction' as const,
+          timestamp: new Date()
+        };
+        setBudgetChanges(prev => [newChange, ...prev.slice(0, 19)]); // Keep only last 20 changes
+        
+        // If this item had an advance payment, update the advance payments total
+        if (deletedItem.advanceAmount && deletedItem.advanceAmount > 0) {
+          setTotalAdvancePayments(prev => prev - deletedItem.advanceAmount);
+        }
+        
+        // Show budget matrix after deleting an item
+        setShowBudgetMatrix(true);
+      }
+      
       // First reset all amount values to ensure UI shows zero when no items
       if (budgetItems.length === 1) {
         setSpentAmount(0);
@@ -215,6 +317,7 @@ const BudgetCard: React.FC = () => {
         setBudgetPercentage(0);
         setBudgetMood('excellent');
       }
+      
       // Then invalidate the cache to refresh data
       queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
       refetch(); // Immediate refetch to update UI
@@ -324,12 +427,25 @@ const BudgetCard: React.FC = () => {
     const serviceChargeAmount = item.serviceChargeAmount !== null ?
       item.serviceChargeAmount : calculateServiceCharge(item.actualCost || item.estimatedCost, serviceChargePercentage);
     
+    // Extract payment status or use default
+    const paymentStatus = item.paymentStatus || (item.paid ? 'fully_paid' : 'not_paid');
+    
     form.reset({
       category: item.category,
       item: item.item,
       estimatedCost: item.estimatedCost,
       actualCost: item.actualCost || undefined,
       paid: item.paid || false,
+      advanceAmount: item.advanceAmount || 0,
+      advanceDate: item.advanceDate || undefined,
+      vendorId: item.vendorId || undefined,
+      vendorName: item.vendorName || '',
+      paymentStatus: paymentStatus,
+      billingInfo: {
+        userBillId: item.billingInfo?.userBillId || undefined,
+        vendorBillId: item.billingInfo?.vendorBillId || undefined,
+        billDate: item.billingInfo?.billDate || undefined,
+      },
       serviceChargePercentage: serviceChargePercentage,
       serviceChargeAmount: serviceChargeAmount,
       serviceChargeEdited: item.serviceChargeEdited || false,
@@ -523,15 +639,89 @@ const BudgetCard: React.FC = () => {
                     <span className="font-medium">{formatCurrency(totalServiceCharge)}</span>
                   </div>
                   
+                  {totalAdvancePayments > 0 && (
+                    <div className="flex justify-between text-blue-600">
+                      <span>Advance Payments</span>
+                      <span className="font-medium">- {formatCurrency(totalAdvancePayments)}</span>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-between pt-2 border-t border-gray-200">
                     <span className="font-semibold">Total</span>
-                    <span className="font-semibold">{formatCurrency(spentAmount + totalServiceCharge)}</span>
+                    <span className="font-semibold">{formatCurrency(spentAmount + totalServiceCharge - totalAdvancePayments)}</span>
                   </div>
                   
                   <div className="text-xs text-gray-500 mt-2">
                     <p>* Service charges are applied based on your selected package.</p>
                     <p>Silver: 2% | Gold: 5% | Platinum: 8%</p>
+                    {totalAdvancePayments > 0 && (
+                      <p className="text-blue-600 mt-1">* Advance payments are deducted from the total amount.</p>
+                    )}
                   </div>
+                  
+                  {/* Budget Matrix Button */}
+                  <div className="mt-3 pt-2 border-t border-gray-200">
+                    <Button 
+                      onClick={() => setShowBudgetMatrix(!showBudgetMatrix)}
+                      variant="outline" 
+                      className="w-full text-xs text-[#800000] border-[#800000] hover:bg-[#800000] hover:text-white"
+                      size="sm"
+                    >
+                      {showBudgetMatrix ? 'Hide Budget Matrix' : 'View Budget Matrix'}
+                    </Button>
+                  </div>
+                  
+                  {/* Budget Matrix - Showing additions and deductions */}
+                  {showBudgetMatrix && (
+                    <div className="mt-3 space-y-2">
+                      <h6 className="text-xs font-medium">Budget Matrix (Recent Changes)</h6>
+                      
+                      {budgetChanges.length === 0 ? (
+                        <p className="text-xs text-gray-500 italic">No budget changes recorded yet.</p>
+                      ) : (
+                        <div className="border rounded overflow-hidden max-h-48 overflow-y-auto">
+                          <table className="w-full text-xs">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-2 py-1 text-left">Item</th>
+                                <th className="px-2 py-1 text-left">Category</th>
+                                <th className="px-2 py-1 text-right">Amount</th>
+                                <th className="px-2 py-1 text-center">Type</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                              {budgetChanges.map((change, index) => (
+                                <tr key={index} className={`
+                                  ${change.type === 'addition' ? 'bg-green-50' : change.type === 'deduction' ? 'bg-red-50' : 'bg-blue-50'}
+                                `}>
+                                  <td className="px-2 py-1.5 truncate max-w-[100px]">{change.item}</td>
+                                  <td className="px-2 py-1.5 truncate max-w-[80px]">{change.category}</td>
+                                  <td className="px-2 py-1.5 text-right font-medium">
+                                    {formatCurrency(change.amount)}
+                                  </td>
+                                  <td className="px-2 py-1.5 text-center">
+                                    <Badge variant="outline" className={`
+                                      ${change.type === 'addition' ? 'text-green-600 border-green-600' : 
+                                        change.type === 'deduction' ? 'text-red-600 border-red-600' : 
+                                        'text-blue-600 border-blue-600'}
+                                    `}>
+                                      {change.type === 'addition' ? '+' : 
+                                       change.type === 'deduction' ? '-' : 'Δ'}
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                      
+                      <div className="text-xs text-gray-500 mt-2">
+                        <p>* The budget matrix shows additions (+), deductions (-), and modifications (Δ).</p>
+                        <p>* All changes are reflected in real-time with the exact amounts.</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

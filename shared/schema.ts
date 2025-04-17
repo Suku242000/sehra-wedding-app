@@ -83,6 +83,7 @@ export const vendorProfiles = pgTable("vendor_profiles", {
     description: string;
     price: string;
   }[]>(),
+  packageOfferings: json("package_offerings").$type<string[]>(), // Array of packages vendor offers (silver, gold, platinum)
   logoUrl: text("logo_url"), // URL or base64 of business logo
   featured: boolean("featured").default(false), // For highlighting top vendors
   verificationStatus: text("verification_status").default("pending"), // pending, verified, rejected

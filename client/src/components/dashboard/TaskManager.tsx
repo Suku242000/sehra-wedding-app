@@ -203,12 +203,58 @@ const TaskManager: React.FC = () => {
     }
   });
   
-  // Handle status toggle from checkbox
+  // Handle status toggle from checkbox - directly implemented with console logs for debugging
   const handleStatusToggle = (task: Task) => {
     // If already completed, set to in_progress
     // If not completed, set to completed
     const newStatus = task.status === 'completed' ? 'in_progress' : 'completed';
-    handleStatusChange(task, newStatus);
+    console.log(`Toggle task ${task.id} from ${task.status} to ${newStatus}`);
+    
+    // First, update the local state immediately for a smooth UI transition
+    const optimisticTasks = tasks.map(t => 
+      t.id === task.id ? { ...t, status: newStatus } : t
+    );
+    
+    // Set the optimistic data to avoid flicker
+    queryClient.setQueryData(['/api/tasks'], optimisticTasks);
+    
+    // Then send the update to the server
+    updateTaskMutation.mutate({
+      id: task.id,
+      data: { status: newStatus }
+    }, {
+      onSuccess: () => {
+        console.log(`Successfully updated task ${task.id} status to ${newStatus}`);
+        queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+        
+        // Show a toast notification of the status change
+        toast({
+          title: `Task ${newStatus === 'completed' ? 'Completed' : 'In Progress'}`,
+          description: `Task "${task.title}" has been marked as ${newStatus === 'completed' ? 'completed' : 'in progress'}.`,
+          duration: 2000
+        });
+        
+        // Celebration logic for task completion
+        if (newStatus === 'completed') {
+          const pendingTasksCount = optimisticTasks.filter(t => t.status !== 'completed').length;
+          if (pendingTasksCount === 0) {
+            // Slight delay to let the update complete first
+            setTimeout(() => {
+              triggerCelebration();
+            }, 300);
+          }
+        }
+      },
+      onError: (error) => {
+        console.error(`Failed to update task status: ${error.message}`);
+        queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+        toast({
+          title: "Error",
+          description: "Failed to update task status. Please try again.",
+          variant: "destructive"
+        });
+      }
+    });
   };
   
   // Handle status change from dropdown
@@ -616,37 +662,22 @@ const TaskManager: React.FC = () => {
                   <div className="flex items-center flex-1">
                     <motion.div
                       whileTap={{ scale: 0.9 }}
-                      className="relative"
+                      className="mr-2"
                     >
-                      <Checkbox 
-                        checked={task.status === 'completed'} 
-                        onCheckedChange={() => {
-                          // Toggle between completed and in_progress
+                      <div 
+                        onClick={() => {
                           handleStatusToggle(task);
                         }}
-                        className="mr-2 data-[state=checked]:bg-[#800000] data-[state=checked]:text-white border-2 h-5 w-5 rounded transition-all duration-300 hover:border-[#800000] cursor-pointer"
-                      />
-                      {task.status === 'completed' ? (
-                        <motion.span
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="absolute inset-0 flex items-center justify-center text-white"
-                        >
-                          <Check className="h-3 w-3" />
-                        </motion.span>
-                      ) : (
-                        <motion.span
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-20"
-                        >
-                          <Check className="h-3 w-3 text-[#800000]" />
-                        </motion.span>
-                      )}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                          task.status === 'completed' 
+                            ? 'bg-[#800000] border-[#800000] text-white' 
+                            : 'border-gray-300 bg-white hover:border-[#800000]'
+                        } cursor-pointer transition-all duration-300`}
+                      >
+                        {task.status === 'completed' && (
+                          <Check className="h-3 w-3 text-white" />
+                        )}
+                      </div>
                     </motion.div>
                     <span className={`ml-2 flex-1 ${task.status === 'completed' ? 'line-through text-gray-500' : ''}`}>
                       {task.title}

@@ -22,7 +22,8 @@ import {
   ShieldIcon, UserCheckIcon, AlertTriangleIcon, BellIcon,
   TrendingUpIcon, BarChart2Icon, PieChartIcon, 
   EyeIcon, UserPlusIcon, ActivityIcon, RefreshCwIcon,
-  CheckSquareIcon, PercentIcon, ClockIcon as ClockIconFilled
+  CheckSquareIcon, PercentIcon, ClockIcon as ClockIconFilled,
+  CheckCircleIcon
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -1174,6 +1175,90 @@ const VendorDashboard: React.FC = () => {
                   </div>
                 ) : (
                   <div className="space-y-8">
+                    {/* SQS Score Section */}
+                    <div className="bg-gray-50 p-6 rounded-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-medium">Sehra Quality Score (SQS)</h3>
+                        <Badge 
+                          variant={
+                            sqsData?.category === 'Gold' ? 'secondary' :
+                            sqsData?.category === 'Platinum' ? 'destructive' : 'outline'
+                          }
+                          className="ml-2"
+                        >
+                          {sqsData?.category || 'Standard'} Vendor
+                        </Badge>
+                      </div>
+                      
+                      <div className="relative pt-1 mb-6">
+                        <div className="overflow-hidden h-6 mb-1 text-xs flex rounded-full bg-gray-200">
+                          <div 
+                            style={{ width: `${sqsData?.sqsScore || 0}%` }} 
+                            className={
+                              sqsData?.category === 'Platinum' ? 'shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-[#B91C1C]' :
+                              sqsData?.category === 'Gold' ? 'shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-[#D97706]' :
+                              'shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-[#0369A1]'
+                            }
+                          >
+                            <span className="font-semibold">{sqsData?.sqsScore || 0}/100</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white p-4 rounded-md border">
+                          <h4 className="font-medium mb-2 text-[#800000]">What is SQS?</h4>
+                          <p className="text-sm text-gray-600">
+                            Sehra Quality Score is our proprietary metric that measures vendor quality, reliability, and performance. 
+                            Higher scores lead to better placement and visibility in search results.
+                          </p>
+                        </div>
+                        <div className="bg-white p-4 rounded-md border">
+                          <h4 className="font-medium mb-2 text-[#800000]">How it's Calculated</h4>
+                          <p className="text-sm text-gray-600">
+                            Your score is based on weighted factors including booking completion rate, experience, response time, client reviews, and profile completeness.
+                          </p>
+                        </div>
+                        <div className="bg-white p-4 rounded-md border">
+                          <h4 className="font-medium mb-2 text-[#800000]">Tier Benefits</h4>
+                          <ul className="text-sm text-gray-600 list-disc pl-5">
+                            <li>Gold (70-89): Priority placement and 'Gold' badge</li>
+                            <li>Platinum (90-100): Featured on homepage, exclusive badge, and top search results</li>
+                          </ul>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4 bg-white p-4 rounded-md border">
+                        <h4 className="font-medium mb-2">Improve Your Score</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                          <div className="flex items-start">
+                            <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                            <span>Respond to inquiries quickly</span>
+                          </div>
+                          <div className="flex items-start">
+                            <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                            <span>Complete your profile details</span>
+                          </div>
+                          <div className="flex items-start">
+                            <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                            <span>Maintain high booking completion rate</span>
+                          </div>
+                          <div className="flex items-start">
+                            <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                            <span>Encourage clients to leave reviews</span>
+                          </div>
+                          <div className="flex items-start">
+                            <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                            <span>Regularly update your portfolio</span>
+                          </div>
+                          <div className="flex items-start">
+                            <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                            <span>Provide excellent customer service</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
                     {/* Key Metrics */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="bg-gray-50 p-4 rounded-lg text-center">

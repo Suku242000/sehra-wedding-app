@@ -520,16 +520,27 @@ const TaskManager: React.FC = () => {
                       <Checkbox 
                         checked={task.status === 'completed'} 
                         onCheckedChange={() => handleStatusToggle(task)}
-                        className="mr-2 data-[state=checked]:bg-[#800000] data-[state=checked]:text-white border-2 h-5 w-5 rounded transition-all duration-300 data-[state=checked]:scale-105 hover:border-[#800000]"
+                        className="mr-2 data-[state=checked]:bg-[#800000] data-[state=checked]:text-white border-2 h-5 w-5 rounded transition-all duration-300 hover:border-[#800000] cursor-pointer"
                       />
-                      {task.status === 'completed' && (
+                      {task.status === 'completed' ? (
                         <motion.span
                           initial={{ scale: 0, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0, opacity: 0 }}
                           transition={{ duration: 0.2 }}
                           className="absolute inset-0 flex items-center justify-center text-white"
                         >
                           <Check className="h-3 w-3" />
+                        </motion.span>
+                      ) : (
+                        <motion.span
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-20"
+                        >
+                          <Check className="h-3 w-3 text-[#800000]" />
                         </motion.span>
                       )}
                     </motion.div>

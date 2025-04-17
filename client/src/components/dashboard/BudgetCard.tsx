@@ -269,6 +269,14 @@ const BudgetCard: React.FC = () => {
       } else {
         setBudgetMood('critical');
       }
+    } else {
+      // If there are no budget items, reset all values to zero
+      setCategoryTotals({});
+      setSpentAmount(0);
+      setPaidAmount(0);
+      setBudgetPercentage(0);
+      setBudgetMood('excellent');
+      setSpendingTrend('stable');
     }
   }, [budgetItems, totalBudget, previousSpentAmount, spentAmount]);
   

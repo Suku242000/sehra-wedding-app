@@ -1,57 +1,67 @@
 import React from 'react';
 import { Route, useLocation } from 'wouter';
-import { Loader2 } from 'lucide-react';
-import { useAuth } from '@shared/hooks/useAuth';
+import { useAuth } from './auth';
 
-type ProtectedRouteProps = {
-  path: string;
+interface ProtectedRouteProps {
   component: React.ComponentType;
-  roles: ('vendor' | 'supervisor' | 'admin')[];
-};
+  path: string;
+  allowedRoles: ('vendor' | 'supervisor' | 'admin')[];
+}
 
-export function ProtectedRoute({ path, component: Component, roles }: ProtectedRouteProps) {
+export function ProtectedRoute({ 
+  component: Component, 
+  path, 
+  allowedRoles 
+}: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
-  // Show loading spinner while auth state is being determined
-  if (isLoading) {
-    return (
-      <Route path={path}>
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </Route>
-    );
-  }
+  return (
+    <Route
+      path={path}
+      component={() => {
+        // Show loading spinner while checking authentication
+        if (isLoading) {
+          return (
+            <div className="flex items-center justify-center min-h-screen">
+              <div className="w-8 h-8 border-t-2 border-primary border-solid rounded-full animate-spin"></div>
+            </div>
+          );
+        }
 
-  // If no user is logged in, redirect to login page
-  if (!user) {
-    React.useEffect(() => {
-      setLocation('/login');
-    }, [setLocation]);
-    
-    return <Route path={path} component={() => <div />} />;
-  }
+        // Redirect to login if not authenticated
+        if (!user) {
+          // Use a side effect to redirect
+          React.useEffect(() => {
+            setLocation('/login');
+          }, [setLocation]);
 
-  // If user doesn't have the required role, redirect to their appropriate dashboard or show permission error
-  if (!roles.includes(user.role as any)) {
-    React.useEffect(() => {
-      // Redirect based on user role
-      if (user.role === 'vendor') {
-        setLocation('/vendor-dashboard');
-      } else if (user.role === 'supervisor') {
-        setLocation('/supervisor-dashboard');
-      } else if (user.role === 'admin') {
-        setLocation('/admin-dashboard');
-      } else {
-        // If somehow a client user got here, send them to login
-        setLocation('/login');
-      }
-    }, [setLocation, user.role]);
-    
-    return <Route path={path} component={() => <div />} />;
-  }
+          // Return loading spinner while redirect happens
+          return (
+            <div className="flex items-center justify-center min-h-screen">
+              <div className="w-8 h-8 border-t-2 border-primary border-solid rounded-full animate-spin"></div>
+            </div>
+          );
+        }
 
-  // If all checks pass, render the protected component
-  return <Route path={path} component={Component} />;
+        // Check if user has required role
+        if (!allowedRoles.includes(user.role as any)) {
+          // Use a side effect to redirect
+          React.useEffect(() => {
+            setLocation('/unauthorized');
+          }, [setLocation]);
+
+          // Return loading spinner while redirect happens
+          return (
+            <div className="flex items-center justify-center min-h-screen">
+              <div className="w-8 h-8 border-t-2 border-primary border-solid rounded-full animate-spin"></div>
+            </div>
+          );
+        }
+
+        // Render the protected component
+        return <Component />;
+      }}
+    />
+  );
 }

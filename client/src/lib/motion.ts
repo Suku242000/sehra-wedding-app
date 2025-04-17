@@ -1,11 +1,27 @@
 import { Variants } from 'framer-motion';
 
-// Fade in animation
+// Stagger container for child elements animation
+export const staggerContainer = (
+  staggerChildren: number = 0.05, 
+  delayChildren: number = 0
+): Variants => {
+  return {
+    hidden: {},
+    show: {
+      transition: {
+        staggerChildren,
+        delayChildren,
+      },
+    },
+  };
+};
+
+// Fade-in animation variants with direction support
 export const fadeIn = (
-  direction: 'up' | 'down' | 'left' | 'right' | 'none' = 'none',
-  type: 'tween' | 'spring' = 'tween',
-  delay: number = 0,
-  duration: number = 0.5
+  direction: 'up' | 'down' | 'left' | 'right',
+  type: 'tween' | 'spring',
+  delay: number,
+  duration: number
 ): Variants => {
   return {
     hidden: {
@@ -27,98 +43,17 @@ export const fadeIn = (
   };
 };
 
-// Stagger container
-export const staggerContainer: Variants = {
-  hidden: {},
-  show: {
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2,
-    },
-  },
-};
-
-// Card hover
-export const cardHover = {
-  rest: {
-    scale: 1,
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-    transition: {
-      duration: 0.3,
-      ease: 'easeOut',
-    },
-  },
-  hover: {
-    scale: 1.03,
-    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-    transition: {
-      duration: 0.3,
-      ease: 'easeInOut',
-    },
-  },
-};
-
-// Shimmer animation (for loading states)
-export const shimmer: Variants = {
-  hidden: {
-    backgroundPosition: '-1000px 0',
-  },
-  animate: {
-    backgroundPosition: ['1000px 0', '-1000px 0'],
-    transition: {
-      repeat: Infinity,
-      duration: 2,
-      ease: 'linear',
-    },
-  },
-};
-
-// Progress bar animation
-export const progressBar = (width: number): Variants => {
-  return {
-    hidden: {
-      width: '0%',
-    },
-    show: {
-      width: `${width}%`,
-      transition: {
-        duration: 1,
-        ease: 'easeInOut',
-      },
-    },
-  };
-};
-
-// Page transition variants
-export const pageVariants: Variants = {
-  initial: {
-    opacity: 0,
-    y: 20,
-  },
-  in: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.5,
-      ease: [0.6, -0.05, 0.01, 0.99],
-    },
-  },
-  out: {
-    opacity: 0,
-    y: -20,
-    transition: {
-      duration: 0.3,
-      ease: [0.6, -0.05, 0.01, 0.99],
-    },
-  },
-};
-
-// Item variants for lists with stagger effect
+// Item animation variants for list items
 export const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { 
+    opacity: 0, 
+    y: 20,
+    scale: 0.95 
+  },
   show: { 
     opacity: 1, 
-    y: 0, 
+    y: 0,
+    scale: 1,
     transition: { 
       type: 'spring', 
       stiffness: 300, 
@@ -127,42 +62,45 @@ export const itemVariants: Variants = {
   },
   exit: { 
     opacity: 0, 
-    y: 20, 
+    y: -10,
     transition: { 
-      duration: 0.2, 
-      ease: 'easeInOut' 
+      duration: 0.2 
     } 
   }
 };
 
-// Scale up animation
-export const scaleUp: Variants = {
-  hidden: {
-    scale: 0.8,
-    opacity: 0,
-  },
+// Staggered container animation for list containers
+export const containerVariants: Variants = {
+  hidden: { opacity: 0 },
   show: {
-    scale: 1,
     opacity: 1,
     transition: {
-      duration: 0.5,
-      ease: [0.6, -0.05, 0.01, 0.99],
+      staggerChildren: 0.05,
+      delayChildren: 0.1,
     },
   },
 };
 
-// Pulse animation
-export const pulse = {
-  scale: [1, 1.05, 1],
-  transition: {
-    duration: 1.5,
-    repeat: Infinity,
-    repeatType: 'reverse',
-  },
+// Pulse animation for notifications
+export const pulseAnimation: Variants = {
+  initial: { scale: 1 },
+  pulse: {
+    scale: [1, 1.05, 1],
+    transition: { 
+      duration: 0.6, 
+      repeat: Infinity, 
+      repeatType: 'reverse' 
+    }
+  }
 };
 
-// Slide transitions for tabs and modals
-export const slideIn = (direction: 'left' | 'right' | 'up' | 'down'): Variants => {
+// Slide-in animation for modals and drawers
+export const slideIn = (
+  direction: 'up' | 'down' | 'left' | 'right',
+  type: 'tween' | 'spring',
+  delay: number,
+  duration: number
+): Variants => {
   return {
     hidden: {
       x: direction === 'left' ? '-100%' : direction === 'right' ? '100%' : 0,
@@ -172,19 +110,101 @@ export const slideIn = (direction: 'left' | 'right' | 'up' | 'down'): Variants =
       x: 0,
       y: 0,
       transition: {
-        type: 'tween',
-        duration: 0.5,
-        ease: 'easeInOut',
+        type,
+        delay,
+        duration,
+        ease: 'easeOut',
       },
     },
-    exit: {
-      x: direction === 'left' ? '-100%' : direction === 'right' ? '100%' : 0,
-      y: direction === 'up' ? '100%' : direction === 'down' ? '-100%' : 0,
+  };
+};
+
+// Rotate animation for loading spinners
+export const rotateAnimation: Variants = {
+  hidden: { opacity: 0, rotate: 0 },
+  show: { 
+    opacity: 1, 
+    rotate: 360,
+    transition: {
+      duration: 1,
+      ease: 'linear',
+      repeat: Infinity
+    }
+  }
+};
+
+// Zoom animation
+export const zoomIn = (delay: number, duration: number): Variants => {
+  return {
+    hidden: {
+      scale: 0,
+      opacity: 0,
+    },
+    show: {
+      scale: 1,
+      opacity: 1,
       transition: {
         type: 'tween',
-        duration: 0.3,
-        ease: 'easeInOut',
+        delay,
+        duration,
+        ease: 'easeOut',
       },
     },
+  };
+};
+
+// Text character animation for hero text
+export const textVariant = (delay: number): Variants => {
+  return {
+    hidden: {
+      y: 50,
+      opacity: 0,
+    },
+    show: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: 'spring',
+        duration: 1.25,
+        delay,
+      },
+    },
+  };
+};
+
+// Page transition
+export const pageTransition: Variants = {
+  hidden: {
+    opacity: 0,
+  },
+  show: {
+    opacity: 1,
+    transition: {
+      duration: 0.5,
+      when: 'beforeChildren',
+      staggerChildren: 0.25,
+    },
+  },
+  exit: {
+    opacity: 0,
+    transition: {
+      duration: 0.5,
+      when: 'afterChildren',
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+// Progress bar animation
+export const progressBar = (progress: number): Variants => {
+  return {
+    hidden: { width: 0 },
+    show: { 
+      width: `${progress}%`,
+      transition: { 
+        duration: 0.8,
+        ease: "easeOut"
+      }
+    }
   };
 };

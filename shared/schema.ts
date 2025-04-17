@@ -189,6 +189,7 @@ export const tasks = pgTable("tasks", {
   description: text("description"),
   dueDate: date("due_date"),
   completed: boolean("completed").default(false),
+  status: text("status").default("pending"),  // pending, in_progress, completed
   category: text("category").default("general"),
   priority: text("priority").default("medium"),
   createdAt: timestamp("created_at").defaultNow(),

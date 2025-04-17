@@ -1,438 +1,506 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { apiRequest, queryClient } from '@/lib/queryClient';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Plus, X, Calendar, Clock, ArrowUpDown, Filter, Search } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useToast } from '@/hooks/use-toast';
+import { 
+  fetchWithAuth, 
+  updateWithAuth, 
+  deleteWithAuth 
+} from '@/lib/api';
+import { queryClient } from '@/lib/queryClient';
+import { Task } from '@shared/schema';
 import { motion, AnimatePresence } from 'framer-motion';
-
-type Task = {
-  id: number;
-  title: string;
-  description?: string;
-  completed: boolean;
-  dueDate?: string;
-  priority: 'high' | 'medium' | 'low';
-  category: string;
-  createdAt: string;
-};
+import { fadeIn, itemVariants } from '@/lib/motion';
+import { useToast } from '@/hooks/use-toast';
+import { 
+  CheckCircle2, 
+  Clock, 
+  AlertTriangle, 
+  Trash2,
+  Check,
+  Calendar,
+  ClipboardList,
+  Filter,
+  PlusCircle
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import confetti from 'canvas-confetti';
 
 const MobileChecklist: React.FC = () => {
-  const [newTask, setNewTask] = useState('');
-  const [filter, setFilter] = useState<'all' | 'completed' | 'pending'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isAddingTask, setIsAddingTask] = useState(false);
-  const [selectedPriority, setSelectedPriority] = useState<'high' | 'medium' | 'low'>('medium');
-  const [sortBy, setSortBy] = useState<'dueDate' | 'priority' | 'created'>('dueDate');
-  const [dueDateInput, setDueDateInput] = useState('');
   const { toast } = useToast();
-
-  // Fetch tasks
-  const { data: tasks = [], isLoading, error } = useQuery<Task[]>({
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
+  
+  // Fetch tasks with auth
+  const { data: tasks = [], isLoading, refetch } = useQuery<Task[]>({
     queryKey: ['/api/tasks'],
+    queryFn: () => fetchWithAuth('/api/tasks'),
+    enabled: true,
+    refetchInterval: 3000, // Auto-refresh every 3 seconds
+    refetchOnWindowFocus: true, // Also refresh when window gets focus
   });
-
-  // Create task mutation
-  const createTaskMutation = useMutation({
-    mutationFn: async (newTaskData: Omit<Task, 'id' | 'createdAt'>) => {
-      const res = await apiRequest('POST', '/api/tasks', newTaskData);
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
-      toast({
-        title: "Task created",
-        description: "Your task has been added to the checklist.",
-      });
-      resetTaskForm();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to create task",
-        description: error.message || "An error occurred while creating the task.",
-        variant: "destructive"
-      });
+  
+  // Calculate task completion status and progress
+  useEffect(() => {
+    if (tasks && tasks.length > 0) {
+      const completedTasks = tasks.filter((task: Task) => task.completed || task.status === 'completed').length;
+      const newProgressPercent = Math.round((completedTasks / tasks.length) * 100);
+      
+      // If we just reached 100% completion, trigger celebration
+      if (newProgressPercent === 100 && progressPercent !== 100) {
+        triggerCelebration();
+      }
+      
+      setProgressPercent(newProgressPercent);
+    } else {
+      setProgressPercent(0);
     }
+  }, [tasks]);
+  
+  // Filter tasks based on selected filter
+  const filteredTasks = tasks.filter((task: Task) => {
+    if (filterStatus === "all") return true;
+    if (filterStatus === "completed") return task.completed || task.status === "completed";
+    if (filterStatus === "pending") return !task.completed && (!task.status || task.status === "pending");
+    if (filterStatus === "in_progress") return !task.completed && task.status === "in_progress";
+    return true;
   });
-
+  
+  // Prioritize tasks (high priority first, then by due date)
+  const prioritizedTasks = [...filteredTasks].sort((a, b) => {
+    // First by priority
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    const priorityDiff = priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
+    
+    if (priorityDiff !== 0) return priorityDiff;
+    
+    // Then by due date if both have due dates
+    if (a.dueDate && b.dueDate) {
+      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+    }
+    
+    // Tasks with due dates come before those without
+    if (a.dueDate && !b.dueDate) return -1;
+    if (!a.dueDate && b.dueDate) return 1;
+    
+    // Finally by title
+    return a.title.localeCompare(b.title);
+  });
+  
+  // Trigger confetti celebration
+  const triggerCelebration = () => {
+    setShowCelebration(true);
+    
+    // Trigger confetti animation
+    confetti({
+      particleCount: 150,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
+    
+    toast({
+      title: "Congratulations! 🎉",
+      description: "You've completed all your wedding planning tasks!",
+      variant: "default",
+    });
+    
+    // Reset celebration state after animation
+    setTimeout(() => {
+      setShowCelebration(false);
+    }, 4000);
+  };
+  
   // Update task mutation
   const updateTaskMutation = useMutation({
-    mutationFn: async ({ id, completed }: { id: number; completed: boolean }) => {
-      const res = await apiRequest('PATCH', `/api/tasks/${id}`, { completed });
-      return await res.json();
-    },
+    mutationFn: ({ id, data }: { id: number; data: Partial<Task> }) => 
+      updateWithAuth(`/api/tasks/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      toast({ title: "Task Updated", description: "Task has been updated successfully." });
+      setSelectedTask(null);
+      setShowDetails(false);
     },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to update task",
-        description: error.message || "An error occurred while updating the task.",
-        variant: "destructive"
+    onError: (error: Error) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to update task.", 
+        variant: "destructive" 
       });
     }
   });
-
+  
   // Delete task mutation
   const deleteTaskMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest('DELETE', `/api/tasks/${id}`);
-      return id;
-    },
+    mutationFn: (id: number) => deleteWithAuth(`/api/tasks/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
-      toast({
-        title: "Task deleted",
-        description: "The task has been removed from your checklist.",
-      });
+      toast({ title: "Task Deleted", description: "Task has been deleted successfully." });
+      setSelectedTask(null);
+      setShowDetails(false);
     },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to delete task",
-        description: error.message || "An error occurred while deleting the task.",
-        variant: "destructive"
+    onError: (error: Error) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to delete task.", 
+        variant: "destructive" 
       });
     }
   });
-
-  const handleAddTask = () => {
-    if (!newTask.trim()) {
-      toast({
-        title: "Task title required",
-        description: "Please enter a title for your task.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const taskData = {
-      title: newTask,
-      description: "",
-      completed: false,
-      dueDate: dueDateInput || undefined,
-      priority: selectedPriority,
-      category: 'wedding', // Default category
-    };
-
-    createTaskMutation.mutate(taskData);
-  };
-
-  const handleTaskToggle = (id: number, completed: boolean) => {
-    updateTaskMutation.mutate({ id, completed: !completed });
-  };
-
-  const handleDeleteTask = (id: number) => {
-    deleteTaskMutation.mutate(id);
-  };
-
-  const resetTaskForm = () => {
-    setNewTask('');
-    setDueDateInput('');
-    setSelectedPriority('medium');
-    setIsAddingTask(false);
-  };
-
-  // Smart prioritization: Sort tasks based on due date, priority, and completion status
-  const sortedAndFilteredTasks = React.useMemo(() => {
-    let filteredTasks = [...tasks];
-
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filteredTasks = filteredTasks.filter(task => 
-        task.title.toLowerCase().includes(query) || 
-        (task.description?.toLowerCase().includes(query))
-      );
-    }
-
-    // Apply completion filter
-    if (filter === 'completed') {
-      filteredTasks = filteredTasks.filter(task => task.completed);
-    } else if (filter === 'pending') {
-      filteredTasks = filteredTasks.filter(task => !task.completed);
-    }
-
-    // Apply sorting
-    return filteredTasks.sort((a, b) => {
-      // Always show incomplete tasks first within the current filter
-      if (filter === 'all' && a.completed !== b.completed) {
-        return a.completed ? 1 : -1;
-      }
-
-      if (sortBy === 'dueDate') {
-        if (!a.dueDate) return 1;
-        if (!b.dueDate) return -1;
-        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-      } else if (sortBy === 'priority') {
-        const priorityWeight = { high: 3, medium: 2, low: 1 };
-        return priorityWeight[b.priority] - priorityWeight[a.priority];
-      } else {
-        // Sort by created date (newest first)
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  
+  // Handle status toggle from checkbox
+  const handleStatusToggle = (task: Task) => {
+    // If already completed, set to in_progress
+    // If not completed, set to completed
+    const newStatus = task.status === 'completed' ? 'in_progress' : 'completed';
+    
+    // First, update the local state immediately for a smooth UI transition
+    const optimisticTasks = tasks.map(t => 
+      t.id === task.id ? { ...t, status: newStatus } : t
+    );
+    
+    // Set the optimistic data to avoid flicker
+    queryClient.setQueryData(['/api/tasks'], optimisticTasks);
+    
+    // Then send the update to the server
+    updateTaskMutation.mutate({
+      id: task.id,
+      data: { status: newStatus }
+    }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+        
+        // Show a toast notification of the status change
+        toast({
+          title: `Task ${newStatus === 'completed' ? 'Completed' : 'In Progress'}`,
+          description: `Task "${task.title}" has been marked as ${newStatus === 'completed' ? 'completed' : 'in progress'}.`,
+          duration: 2000
+        });
+        
+        // Celebration logic for task completion
+        if (newStatus === 'completed') {
+          const pendingTasksCount = optimisticTasks.filter(t => t.status !== 'completed').length;
+          if (pendingTasksCount === 0) {
+            // Slight delay to let the update complete first
+            setTimeout(() => {
+              triggerCelebration();
+            }, 300);
+          }
+        }
+      },
+      onError: (error) => {
+        console.error(`Failed to update task status: ${error.message}`);
+        queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+        toast({
+          title: "Error",
+          description: "Failed to update task status. Please try again.",
+          variant: "destructive"
+        });
       }
     });
-  }, [tasks, filter, searchQuery, sortBy]);
-
-  // Calculate progress percentage
-  const completionPercentage = tasks.length > 0 
-    ? Math.round((tasks.filter(task => task.completed).length / tasks.length) * 100) 
-    : 0;
-
-  // Get priority color
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'low': return 'bg-green-500';
-      default: return 'bg-blue-500';
+  };
+  
+  // Handle delete
+  const handleDelete = (id: number) => {
+    deleteTaskMutation.mutate(id);
+  };
+  
+  // View task details
+  const viewTaskDetails = (task: Task) => {
+    setSelectedTask(task);
+    setShowDetails(true);
+  };
+  
+  // Get status icon
+  const getStatusIcon = (status: string | null) => {
+    switch(status) {
+      case 'completed':
+        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+      case 'in_progress':
+        return <Clock className="h-4 w-4 text-blue-600" />;
+      case 'pending':
+      default:
+        return <AlertTriangle className="h-4 w-4 text-amber-600" />;
     }
   };
-
-  // Format date to readable format
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'No date';
+  
+  // Get priority badge
+  const getPriorityBadge = (priority: string) => {
+    switch(priority) {
+      case 'high':
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200">High</Badge>;
+      case 'medium':
+        return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200">Medium</Badge>;
+      case 'low':
+      default:
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Low</Badge>;
+    }
+  };
+  
+  // Format date for display
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'No due date';
+    
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const options: Intl.DateTimeFormatOptions = { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    };
+    
+    return date.toLocaleDateString('en-IN', options);
   };
-
-  // Check if a task is overdue
-  const isOverdue = (dueDate?: string) => {
-    if (!dueDate) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const taskDate = new Date(dueDate);
-    return taskDate < today && taskDate.getTime() !== today.getTime();
-  };
-
-  // Calculate urgency based on due date and priority
-  const getUrgencyBadge = (task: Task) => {
-    if (task.completed) return null;
-    
-    if (isOverdue(task.dueDate)) {
-      return <Badge variant="destructive" className="ml-2">Overdue</Badge>;
-    }
-    
-    if (task.priority === 'high') {
-      return <Badge variant="outline" className="ml-2 border-red-500 text-red-500">Urgent</Badge>;
-    }
-    
-    if (task.dueDate) {
-      const dueDate = new Date(task.dueDate);
-      const today = new Date();
-      const diffTime = dueDate.getTime() - today.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diffDays <= 7 && diffDays > 0) {
-        return <Badge variant="outline" className="ml-2 border-yellow-500 text-yellow-500">Soon</Badge>;
-      }
-    }
-    
-    return null;
-  };
-
+  
   return (
-    <Card className="border shadow-md">
-      <CardHeader className="space-y-1 pb-2">
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-xl font-serif text-rose-700">Wedding Checklist</CardTitle>
-          <Badge variant="outline" className="font-semibold">
-            {completionPercentage}% Complete
-          </Badge>
-        </div>
-        <CardDescription>
-          Organize and track your wedding planning tasks
-        </CardDescription>
-        
-        <div className="flex mt-2 items-center space-x-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search tasks..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8"
-            />
+    <motion.div 
+      className="bg-white rounded-xl shadow-md overflow-hidden col-span-3"
+      variants={fadeIn('up', 'tween', 0.2, 0.5)}
+      initial="hidden"
+      animate="show"
+    >
+      <div className="bg-[#800000] py-3 px-4 border-b border-[#5c0000] flex justify-between items-center">
+        <h2 className="text-white font-medium flex items-center">
+          <ClipboardList className="mr-2 h-5 w-5" /> 
+          Wedding Planning Checklist
+        </h2>
+        <Button 
+          size="sm"
+          variant="outline"
+          className="bg-white/10 text-white border-white/30 hover:bg-white/20"
+          onClick={() => window.location.href = '/tasks/new'}
+        >
+          <PlusCircle className="h-4 w-4 mr-1" /> Add Task
+        </Button>
+      </div>
+      
+      <div className="p-4">
+        {/* Progress Bar */}
+        <div className="mb-6">
+          <div className="flex justify-between mb-1 items-center">
+            <div className="text-sm font-medium">Wedding Readiness</div>
+            <div className="text-sm text-gray-600">{progressPercent}% Complete</div>
           </div>
+          <Progress 
+            value={progressPercent} 
+            className="h-2.5" 
+            indicatorClassName={
+              progressPercent === 100 
+                ? 'bg-green-600' 
+                : progressPercent > 66 
+                ? 'bg-[#800000]' 
+                : progressPercent > 33 
+                ? 'bg-amber-500' 
+                : 'bg-red-500'
+            }
+          />
+        </div>
+        
+        {/* Filter Tabs */}
+        <div className="mb-4 flex overflow-x-auto pb-2 gap-2">
           <Button 
             size="sm" 
-            variant="outline" 
-            onClick={() => setSortBy(prev => 
-              prev === 'dueDate' ? 'priority' : prev === 'priority' ? 'created' : 'dueDate'
-            )}
+            variant={filterStatus === "all" ? "default" : "outline"}
+            onClick={() => setFilterStatus("all")}
+            className={filterStatus === "all" ? 'bg-[#800000] text-white' : ''}
           >
-            <ArrowUpDown className="h-4 w-4 mr-1" />
-            {sortBy === 'dueDate' ? 'Due' : sortBy === 'priority' ? 'Priority' : 'New'}
+            <Filter className="h-4 w-4 mr-1" /> All
+          </Button>
+          <Button 
+            size="sm" 
+            variant={filterStatus === "pending" ? "default" : "outline"}
+            onClick={() => setFilterStatus("pending")}
+            className={filterStatus === "pending" ? 'bg-[#800000] text-white' : ''}
+          >
+            <AlertTriangle className="h-4 w-4 mr-1" /> Not Started
+          </Button>
+          <Button 
+            size="sm" 
+            variant={filterStatus === "in_progress" ? "default" : "outline"}
+            onClick={() => setFilterStatus("in_progress")}
+            className={filterStatus === "in_progress" ? 'bg-[#800000] text-white' : ''}
+          >
+            <Clock className="h-4 w-4 mr-1" /> In Progress
+          </Button>
+          <Button 
+            size="sm" 
+            variant={filterStatus === "completed" ? "default" : "outline"}
+            onClick={() => setFilterStatus("completed")}
+            className={filterStatus === "completed" ? 'bg-[#800000] text-white' : ''}
+          >
+            <CheckCircle2 className="h-4 w-4 mr-1" /> Completed
           </Button>
         </div>
         
-        <Tabs defaultValue="all" value={filter} onValueChange={(value) => setFilter(value as any)} className="mt-2">
-          <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="pending">To Do</TabsTrigger>
-            <TabsTrigger value="completed">Done</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </CardHeader>
-      
-      <CardContent className="pb-4">
-        {isLoading ? (
-          <div className="flex justify-center py-6">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-rose-700"></div>
-          </div>
-        ) : error ? (
-          <div className="text-center py-6 text-red-500">
-            Error loading tasks. Please try again.
-          </div>
-        ) : (
-          <>
-            <ScrollArea className="h-[320px] pr-4">
-              <AnimatePresence initial={false}>
-                {sortedAndFilteredTasks.length === 0 ? (
-                  <div className="text-center py-6 text-gray-500">
-                    {searchQuery ? 'No matching tasks found' : 'No tasks yet. Add your first task!'}
-                  </div>
-                ) : (
-                  <ul className="space-y-3">
-                    {sortedAndFilteredTasks.map((task) => (
-                      <motion.li
-                        key={task.id}
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="relative flex items-start space-x-2 bg-white rounded-md border p-3 shadow-sm"
-                      >
-                        <Checkbox
-                          id={`task-${task.id}`}
-                          checked={task.completed}
-                          onCheckedChange={() => handleTaskToggle(task.id, task.completed)}
-                          className="mt-1"
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <label
-                              htmlFor={`task-${task.id}`}
-                              className={`font-medium cursor-pointer ${task.completed ? 'line-through text-gray-400' : ''}`}
-                            >
-                              {task.title}
-                              {getUrgencyBadge(task)}
-                            </label>
-                            <button 
-                              onClick={() => handleDeleteTask(task.id)}
-                              className="text-gray-400 hover:text-red-500"
-                            >
-                              <X size={16} />
-                            </button>
-                          </div>
-                          {task.dueDate && (
-                            <div className={`flex items-center text-xs mt-1 ${
-                              isOverdue(task.dueDate) && !task.completed 
-                                ? 'text-red-500' 
-                                : 'text-gray-500'
-                            }`}>
-                              <Calendar size={12} className="mr-1" />
-                              {formatDate(task.dueDate)}
-                            </div>
-                          )}
-                          <div className="flex mt-2 items-center space-x-2">
-                            <div 
-                              className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`}
-                            ></div>
-                            <span className="text-xs capitalize text-gray-500">
-                              {task.priority} priority
-                            </span>
-                          </div>
-                        </div>
-                      </motion.li>
-                    ))}
-                  </ul>
-                )}
-              </AnimatePresence>
-            </ScrollArea>
-            
-            {isAddingTask ? (
-              <div className="mt-4 border rounded-md p-3 bg-gray-50">
-                <Input
-                  placeholder="Task title..."
-                  value={newTask}
-                  onChange={(e) => setNewTask(e.target.value)}
-                  className="mb-2"
-                />
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="flex-1">
-                    <Input
-                      type="date"
-                      value={dueDateInput}
-                      onChange={(e) => setDueDateInput(e.target.value)}
-                      className="text-sm"
-                    />
-                  </div>
-                  <div className="flex space-x-1">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={selectedPriority === 'low' ? 'default' : 'outline'}
-                      className={selectedPriority === 'low' ? 'bg-green-500 hover:bg-green-600' : 'border-green-500 text-green-500'}
-                      onClick={() => setSelectedPriority('low')}
-                    >
-                      Low
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={selectedPriority === 'medium' ? 'default' : 'outline'}
-                      className={selectedPriority === 'medium' ? 'bg-yellow-500 hover:bg-yellow-600' : 'border-yellow-500 text-yellow-500'}
-                      onClick={() => setSelectedPriority('medium')}
-                    >
-                      Med
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={selectedPriority === 'high' ? 'default' : 'outline'}
-                      className={selectedPriority === 'high' ? 'bg-red-500 hover:bg-red-600' : 'border-red-500 text-red-500'}
-                      onClick={() => setSelectedPriority('high')}
-                    >
-                      High
-                    </Button>
-                  </div>
-                </div>
-                <div className="flex justify-end space-x-2 mt-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={resetTaskForm}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    onClick={handleAddTask}
-                    disabled={createTaskMutation.isPending}
-                    className="bg-rose-600 hover:bg-rose-700"
-                  >
-                    {createTaskMutation.isPending ? 'Adding...' : 'Add Task'}
-                  </Button>
-                </div>
+        {/* Task List */}
+        <div className="space-y-3">
+          <AnimatePresence>
+            {isLoading ? (
+              <div className="py-8 text-center text-gray-500">
+                <div className="animate-spin w-8 h-8 border-4 border-[#800000] border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p>Loading your wedding planning tasks...</p>
+              </div>
+            ) : prioritizedTasks.length === 0 ? (
+              <div className="py-8 text-center text-gray-500">
+                <ClipboardList className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                <p className="mb-2">No tasks found</p>
+                <Button 
+                  size="sm"
+                  variant="default"
+                  className="bg-[#800000] hover:bg-[#600000]"
+                  onClick={() => window.location.href = '/tasks/new'}
+                >
+                  <PlusCircle className="h-4 w-4 mr-1" /> Add Your First Task
+                </Button>
               </div>
             ) : (
-              <Button 
-                className="w-full mt-4 bg-rose-600 hover:bg-rose-700"
-                onClick={() => setIsAddingTask(true)}
-              >
-                <Plus size={16} className="mr-1" /> Add New Task
-              </Button>
+              <div className="divide-y">
+                {prioritizedTasks.map((task) => (
+                  <motion.div
+                    key={task.id}
+                    variants={itemVariants}
+                    initial="hidden"
+                    animate="show"
+                    exit="exit"
+                    className={`py-3 flex items-start gap-3 ${
+                      task.status === 'completed' ? 'bg-gray-50' : ''
+                    }`}
+                    onClick={() => viewTaskDetails(task)}
+                  >
+                    <div 
+                      className="mt-0.5" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStatusToggle(task);
+                      }}
+                    >
+                      <Checkbox 
+                        checked={task.status === 'completed'}
+                        className="border-2 data-[state=checked]:bg-[#800000] data-[state=checked]:border-[#800000]"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`text-sm font-medium ${
+                        task.status === 'completed' ? 'line-through text-gray-500' : ''
+                      }`}>
+                        {task.title}
+                      </h3>
+                      {task.description && (
+                        <p className="text-xs text-gray-500 mt-0.5 truncate">
+                          {task.description}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2 mt-1.5">
+                        {task.dueDate && (
+                          <div className="text-xs text-gray-600 flex items-center">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {formatDate(task.dueDate)}
+                          </div>
+                        )}
+                        {task.priority && (
+                          <div className="ml-auto">
+                            {getPriorityBadge(task.priority)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0">
+                      {getStatusIcon(task.status)}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             )}
-          </>
-        )}
-      </CardContent>
-    </Card>
+          </AnimatePresence>
+        </div>
+      </div>
+      
+      {/* Task Details Dialog */}
+      <Dialog open={showDetails} onOpenChange={setShowDetails}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{selectedTask?.title}</DialogTitle>
+            <DialogDescription className="flex items-center gap-2">
+              {selectedTask?.status && (
+                <div className="text-xs flex items-center">
+                  {getStatusIcon(selectedTask.status)}
+                  <span className="ml-1 capitalize">{selectedTask.status.replace('_', ' ')}</span>
+                </div>
+              )}
+              {selectedTask?.priority && (
+                <div className="ml-2">
+                  {getPriorityBadge(selectedTask.priority)}
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedTask?.description && (
+              <div>
+                <h4 className="text-sm font-medium mb-1">Description</h4>
+                <p className="text-sm text-gray-600">{selectedTask.description}</p>
+              </div>
+            )}
+            {selectedTask?.dueDate && (
+              <div>
+                <h4 className="text-sm font-medium mb-1">Due Date</h4>
+                <p className="text-sm text-gray-600 flex items-center">
+                  <Calendar className="h-4 w-4 mr-1" />
+                  {formatDate(selectedTask.dueDate)}
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex items-center justify-between sm:justify-between">
+            <Button
+              variant="destructive"
+              size="sm"
+              className="text-xs flex items-center"
+              onClick={() => selectedTask && handleDelete(selectedTask.id)}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="text-xs"
+                onClick={() => setShowDetails(false)}
+              >
+                Close
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="text-xs flex items-center bg-[#800000] hover:bg-[#600000]"
+                onClick={() => selectedTask && handleStatusToggle(selectedTask)}
+              >
+                {selectedTask?.status === 'completed' ? (
+                  <>
+                    <Clock className="h-3.5 w-3.5 mr-1" /> Mark In Progress
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-3.5 w-3.5 mr-1" /> Mark Complete
+                  </>
+                )}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </motion.div>
   );
 };
 

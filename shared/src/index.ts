@@ -1,14 +1,24 @@
-// Export shared schema
+// Re-export shared schemas
 export * from './schema';
 
-// Export shared types
-export * from './types';
+// Re-export shared types explicitly to avoid conflicts
+export type {
+  // Type definitions from shared/types
+  ApiResponse,
+  AuthState,
+  LoginResponse,
+  RegisterResponse,
+  NotificationEvent,
+  MessageEvent,
+  BookingEvent,
+  SocketEvents
+} from './types';
 
-// Export shared components
+// Re-export shared components
 export * from './components';
 
-// Export shared hooks
+// Re-export shared hooks
 export * from './hooks';
 
-// Export shared utilities
+// Re-export shared utilities
 export * from './utils';

@@ -8,16 +8,20 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@shared': path.resolve(__dirname, '../shared'),
       '@assets': path.resolve(__dirname, '../attached_assets'),
-      '@shared': path.resolve(__dirname, '../shared/src'),
     },
   },
   server: {
     port: 3000,
+    strictPort: true,
     proxy: {
-      '/api': 'http://localhost:8000',
-      '/socket.io': {
-        target: 'http://localhost:8000',
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: 'ws://localhost:5000',
         ws: true,
       },
     },

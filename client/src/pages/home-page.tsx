@@ -30,6 +30,8 @@ import weddingLights from '@assets/55108fbd-fa8c-45c3-93c3-7db28631ff72_17447350
 import moroccanDecor from '@assets/Moroccan Arabian Nights Decor_1744735065406.jpg';
 import pinkFlowerDecor from '@assets/Pink Flower Decor 🩷✨_1744735079925.jpg';
 import traditionalWedding from '@assets/d5ee3a09-8df7-45ae-a484-2370559882e2_1744735071301.jpg';
+import royalWedding from '@assets/e35ef38c-56f1-43a2-adde-9ea5aaf3c7f9_1744735060085.jpg';
+import gardenWedding from '@assets/download_1744735076613.jpg';
 
 const HomePage: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
@@ -136,6 +138,42 @@ const HomePage: React.FC = () => {
       ],
       popular: false,
       color: 'bg-slate-50 border-slate-200'
+    }
+  ];
+
+  // Decor Showcase data
+  const decorStyles = [
+    {
+      id: 1,
+      name: "Royal Mandap",
+      image: royalWedding,
+      description: "Elegant and opulent traditional mandap with rich fabrics and intricate detailing",
+      features: ["Traditional Elegance", "Gold Accents", "Rich Fabrics", "Intricate Carvings"],
+      popular: true
+    },
+    {
+      id: 2,
+      name: "Moroccan Nights",
+      image: moroccanDecor,
+      description: "Exotic and vibrant decor inspired by Moroccan architecture and patterns",
+      features: ["Lanterns & Candles", "Jewel Tones", "Geometric Patterns", "Plush Seating"],
+      popular: false
+    },
+    {
+      id: 3,
+      name: "Garden Romance",
+      image: gardenWedding,
+      description: "Fresh and natural setting with abundant floral arrangements and greenery",
+      features: ["Fresh Flowers", "Natural Elements", "Soft Lighting", "Outdoor Setting"],
+      popular: false
+    },
+    {
+      id: 4,
+      name: "Pastel Perfection",
+      image: pinkFlowerDecor,
+      description: "Soft and romantic ambiance with delicate pastel color palette and floral accents",
+      features: ["Pastel Tones", "Crystal Elements", "Floating Candles", "Dreamy Fabric Drapes"],
+      popular: true
     }
   ];
 
@@ -351,6 +389,96 @@ const HomePage: React.FC = () => {
                   </Card>
                 </motion.div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Decor Showcase Section */}
+        <section id="decor-showcase" className="py-20 md:py-28 bg-[#FFFAF0]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div 
+              className="text-center mb-16"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: false, amount: 0.3 }}
+              transition={{ duration: 0.7 }}
+            >
+              <Badge className="bg-[#800000]/20 text-[#800000] mb-4">Decoration Styles</Badge>
+              <h2 className="text-3xl md:text-4xl font-serif font-bold text-[#800000] mb-4">
+                Exquisite Decor for Your Special Day
+              </h2>
+              <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+                Browse our stunning decor themes and find the perfect style to transform your wedding venue
+              </p>
+            </motion.div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              {decorStyles.map((style, index) => (
+                <motion.div
+                  key={style.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: false, amount: 0.1 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  className="relative group"
+                >
+                  <div className="relative h-[350px] overflow-hidden rounded-xl">
+                    <img 
+                      src={style.image} 
+                      alt={style.name}
+                      className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                    
+                    {style.popular && (
+                      <div className="absolute top-4 right-4 bg-[#FFD700] text-[#800000] rounded-full px-3 py-1 text-xs font-semibold">
+                        POPULAR CHOICE
+                      </div>
+                    )}
+                    
+                    <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                      <h3 className="text-2xl font-serif font-bold mb-2">
+                        {style.name}
+                      </h3>
+                      <p className="text-white/80 mb-4">
+                        {style.description}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {style.features.map((feature, fIndex) => (
+                          <span 
+                            key={fIndex}
+                            className="bg-white/20 backdrop-blur-sm text-white rounded-full px-3 py-1 text-xs"
+                          >
+                            {feature}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="bg-[#800000] hover:bg-[#800000]/90 text-white shadow-lg"
+                      onClick={() => isAuthenticated ? goToDashboard() : window.location.href = '/auth'}
+                    >
+                      {isAuthenticated ? 'Add to My Wedding' : 'Get Started'}
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+            
+            <div className="mt-16 text-center">
+              <Button
+                variant="outline"
+                size="lg"
+                className="border-[#800000] text-[#800000] hover:bg-[#800000]/10"
+                onClick={() => isAuthenticated ? goToDashboard() : window.location.href = '/auth'}
+              >
+                {isAuthenticated ? 'Explore More Styles in Dashboard' : 'View All Decoration Themes'}
+              </Button>
             </div>
           </div>
         </section>

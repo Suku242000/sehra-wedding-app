@@ -1659,6 +1659,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get payment summary for a client's budget items
+  app.get("/api/supervisor/payment-summary/:clientId", authenticateToken, authorizeRoles([UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
+    try {
+      const clientId = parseInt(req.params.clientId);
+      
+      // Check if client is assigned to this supervisor
+      const supervisorId = req.user.id;
+      const clients = await storage.getUsersBySupervisorId(supervisorId);
+      const client = clients.find(c => c.id === clientId);
+      
+      if (!client) {
+        return res.status(403).json({ message: "You don't have permission to view this client's payment data" });
+      }
+      
+      // Get client's budget items
+      const budgetItems = await storage.getBudgetItemsByUserId(clientId);
+      
+      // Ensure all items have payment status
+      const enhancedItems = budgetItems.map(item => {
+        // Default status
+        let paymentStatus = item.paymentStatus || 'not_paid';
+        
+        // If legacy item without payment status but with paid flag
+        if (!item.paymentStatus && item.paid) {
+          paymentStatus = 'fully_paid';
+        } 
+        // If has advance payment but not marked as fully paid
+        else if (!item.paymentStatus && item.advanceAmount && item.advanceAmount > 0) {
+          paymentStatus = 'advance_paid';
+        }
+        
+        return {
+          ...item,
+          paymentStatus
+        };
+      });
+      
+      // Calculate payment metrics
+      const totalBudget = enhancedItems.reduce((sum, item) => sum + item.estimatedCost, 0);
+      const totalSpent = enhancedItems.reduce((sum, item) => {
+        if (item.actualCost || item.paid) {
+          return sum + (item.actualCost || item.estimatedCost);
+        }
+        return sum;
+      }, 0);
+      const totalAdvancePaid = enhancedItems.reduce((sum, item) => sum + (item.advanceAmount || 0), 0);
+      
+      // Count items by payment status
+      const pendingCount = enhancedItems.filter(item => item.paymentStatus === 'not_paid').length;
+      const advanceCount = enhancedItems.filter(item => item.paymentStatus === 'advance_paid').length;
+      const partialCount = enhancedItems.filter(item => item.paymentStatus === 'partially_paid').length;
+      const paidCount = enhancedItems.filter(item => item.paymentStatus === 'fully_paid').length;
+      
+      // Group by category
+      const categorySummary = enhancedItems.reduce((acc, item) => {
+        if (!acc[item.category]) {
+          acc[item.category] = { 
+            total: 0, 
+            paid: 0, 
+            pending: 0,
+            itemCount: 0 
+          };
+        }
+        
+        acc[item.category].total += item.estimatedCost;
+        acc[item.category].itemCount += 1;
+        
+        if (item.paymentStatus === 'fully_paid') {
+          acc[item.category].paid += item.estimatedCost;
+        } else if (item.paymentStatus === 'advance_paid' && item.advanceAmount) {
+          acc[item.category].paid += item.advanceAmount;
+          acc[item.category].pending += (item.estimatedCost - item.advanceAmount);
+        } else {
+          acc[item.category].pending += item.estimatedCost;
+        }
+        
+        return acc;
+      }, {} as Record<string, { total: number, paid: number, pending: number, itemCount: number }>);
+      
+      res.json({
+        summary: {
+          totalBudget,
+          totalSpent,
+          totalAdvancePaid,
+          percentSpent: totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0,
+          percentAdvancePaid: totalBudget > 0 ? Math.round((totalAdvancePaid / totalBudget) * 100) : 0,
+          paymentStatusCounts: {
+            pending: pendingCount,
+            advance: advanceCount,
+            partial: partialCount,
+            paid: paidCount,
+            total: enhancedItems.length
+          }
+        },
+        categorySummary,
+        pendingItems: enhancedItems.filter(item => item.paymentStatus === 'not_paid'),
+        advanceItems: enhancedItems.filter(item => item.paymentStatus === 'advance_paid'),
+        partiallyPaidItems: enhancedItems.filter(item => item.paymentStatus === 'partially_paid'),
+        fullyPaidItems: enhancedItems.filter(item => item.paymentStatus === 'fully_paid')
+      });
+    } catch (error) {
+      console.error("Error generating payment summary: ", error);
+      res.status(500).json({ error: "Failed to generate payment summary" });
+    }
+  });
+  
   // Get client information for supervisor
   app.get("/api/supervisor/client-info/:clientId", authenticateToken, authorizeRoles([UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
     try {

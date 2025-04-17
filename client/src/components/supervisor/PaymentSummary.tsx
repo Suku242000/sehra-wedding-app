@@ -60,11 +60,20 @@ interface PaymentItem {
 
 export default function PaymentSummary({ clientId }: PaymentSummaryProps) {
   // Fetch payment data for the client
-  const { data: paymentItems = [], isLoading } = useQuery<PaymentItem[]>({
-    queryKey: ['/api/supervisor/client-payments', clientId],
-    queryFn: () => fetchWithAuth(`/api/supervisor/client-budget/${clientId}`),
+  const { data: paymentData, isLoading } = useQuery({
+    queryKey: ['/api/supervisor/payment-summary', clientId],
+    queryFn: () => fetchWithAuth(`/api/supervisor/payment-summary/${clientId}`),
     enabled: !!clientId,
   });
+  
+  // Create references to the payment items from the summary data
+  const pendingItems: PaymentItem[] = paymentData?.pendingItems || [];
+  const advanceItems: PaymentItem[] = paymentData?.advanceItems || [];
+  const partialItems: PaymentItem[] = paymentData?.partiallyPaidItems || [];
+  const paidItems: PaymentItem[] = paymentData?.fullyPaidItems || [];
+  
+  // Combine all items for total calculations
+  const allItems = [...pendingItems, ...advanceItems, ...partialItems, ...paidItems];
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -73,28 +82,30 @@ export default function PaymentSummary({ clientId }: PaymentSummaryProps) {
       maximumFractionDigits: 0,
     }).format(amount);
   };
-
-  // Calculate payment metrics
-  const pendingPayments = paymentItems.filter(item => item.paymentStatus === 'not_paid');
-  const advancePayments = paymentItems.filter(item => item.paymentStatus === 'advance_paid');
-  const fullyPaidItems = paymentItems.filter(item => item.paymentStatus === 'fully_paid');
   
-  const totalBudget = paymentItems.reduce((sum, item) => sum + item.estimatedCost, 0);
-  const totalAdvancePaid = paymentItems.reduce((sum, item) => sum + (item.advanceAmount || 0), 0);
-  const totalPendingAmount = pendingPayments.reduce((sum, item) => sum + item.estimatedCost, 0);
+  // Use summary data if available, otherwise calculate from items
+  const totalBudget = paymentData?.summary?.totalBudget || 
+                      allItems.reduce((sum, item) => sum + item.estimatedCost, 0);
+                      
+  const totalAdvancePaid = paymentData?.summary?.totalAdvancePaid || 
+                          allItems.reduce((sum, item) => sum + (item.advanceAmount || 0), 0);
+                          
+  const totalPendingAmount = pendingItems.reduce((sum, item) => sum + item.estimatedCost, 0);
   
-  const advancePaymentPercentage = totalBudget > 0 
-    ? Math.round((totalAdvancePaid / totalBudget) * 100) 
-    : 0;
+  const advancePaymentPercentage = paymentData?.summary?.percentAdvancePaid || 
+                                 (totalBudget > 0 ? Math.round((totalAdvancePaid / totalBudget) * 100) : 0);
   
   const pendingPercentage = totalBudget > 0 
     ? Math.round((totalPendingAmount / totalBudget) * 100) 
     : 0;
 
-  // Group items by category for the summary
-  const categoryTotals: Record<string, {total: number, paid: number, pending: number}> = {};
+  // Use category summary from API or build one
+  const categoryTotals: Record<string, {total: number, paid: number, pending: number}> = 
+    paymentData?.categorySummary || {};
   
-  paymentItems.forEach(item => {
+  // If no category data from API, build it from items  
+  if (Object.keys(categoryTotals).length === 0) {
+    allItems.forEach(item => {
     if (!categoryTotals[item.category]) {
       categoryTotals[item.category] = {
         total: 0,
@@ -114,6 +125,7 @@ export default function PaymentSummary({ clientId }: PaymentSummaryProps) {
       categoryTotals[item.category].pending += item.estimatedCost;
     }
   });
+  }
 
   // Get appropriate payment status badge
   const getPaymentStatusBadge = (status: string) => {
@@ -195,13 +207,13 @@ export default function PaymentSummary({ clientId }: PaymentSummaryProps) {
                 <p className="text-sm text-muted-foreground mb-1">Payment Status</p>
                 <div className="flex gap-2 mt-2">
                   <Badge variant="outline" className="bg-gray-100">
-                    {pendingPayments.length} Pending
+                    {pendingItems.length} Pending
                   </Badge>
                   <Badge variant="outline" className="bg-amber-100">
-                    {advancePayments.length} Advance Paid
+                    {advanceItems.length} Advance Paid
                   </Badge>
                   <Badge variant="outline" className="bg-green-100">
-                    {fullyPaidItems.length} Fully Paid
+                    {paidItems.length} Fully Paid
                   </Badge>
                 </div>
               </div>
@@ -213,15 +225,15 @@ export default function PaymentSummary({ clientId }: PaymentSummaryProps) {
               <div className="h-2 flex-1 rounded-full bg-gray-100 overflow-hidden flex">
                 <div 
                   className="bg-red-500 h-full" 
-                  style={{ width: `${pendingPayments.length / paymentItems.length * 100}%` }} 
+                  style={{ width: `${pendingItems.length / allItems.length * 100}%` }} 
                 />
                 <div 
                   className="bg-amber-500 h-full" 
-                  style={{ width: `${advancePayments.length / paymentItems.length * 100}%` }} 
+                  style={{ width: `${advanceItems.length / allItems.length * 100}%` }} 
                 />
                 <div 
                   className="bg-green-500 h-full" 
-                  style={{ width: `${fullyPaidItems.length / paymentItems.length * 100}%` }} 
+                  style={{ width: `${paidItems.length / allItems.length * 100}%` }} 
                 />
               </div>
             </div>
@@ -243,7 +255,7 @@ export default function PaymentSummary({ clientId }: PaymentSummaryProps) {
               <CardDescription>Items that require payment attention</CardDescription>
             </CardHeader>
             <CardContent>
-              {pendingPayments.length > 0 ? (
+              {pendingItems.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -255,7 +267,7 @@ export default function PaymentSummary({ clientId }: PaymentSummaryProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pendingPayments.map(item => (
+                    {pendingItems.map((item: PaymentItem) => (
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">{item.item}</TableCell>
                         <TableCell>{item.category}</TableCell>
@@ -283,7 +295,7 @@ export default function PaymentSummary({ clientId }: PaymentSummaryProps) {
               <CardDescription>Payments made in advance</CardDescription>
             </CardHeader>
             <CardContent>
-              {advancePayments.length > 0 ? (
+              {advanceItems.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -296,7 +308,7 @@ export default function PaymentSummary({ clientId }: PaymentSummaryProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {advancePayments.map(item => (
+                    {advanceItems.map((item: PaymentItem) => (
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">{item.item}</TableCell>
                         <TableCell>{item.category}</TableCell>

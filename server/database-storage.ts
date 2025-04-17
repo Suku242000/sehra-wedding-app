@@ -26,6 +26,8 @@ import {
   Notification,
   VendorReview,
   InsertVendorReview,
+  VendorCalendar,
+  InsertVendorCalendar,
   users,
   vendorProfiles,
   tasks,
@@ -39,7 +41,8 @@ import {
   messages,
   contactStatus,
   notifications,
-  vendorReviews
+  vendorReviews,
+  vendorCalendar
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, count } from "drizzle-orm";
@@ -672,5 +675,52 @@ export class DatabaseStorage implements IStorage {
     }
     
     return results;
+  }
+
+  // Vendor Calendar methods
+  async getVendorCalendarEntry(id: number): Promise<VendorCalendar | undefined> {
+    const [entry] = await db.select().from(vendorCalendar).where(eq(vendorCalendar.id, id));
+    return entry;
+  }
+
+  async getVendorCalendarByVendorId(vendorId: number): Promise<VendorCalendar[]> {
+    return await db
+      .select()
+      .from(vendorCalendar)
+      .where(eq(vendorCalendar.vendorId, vendorId))
+      .orderBy(vendorCalendar.date);
+  }
+
+  async getVendorCalendarByDateRange(vendorId: number, startDate: Date, endDate: Date): Promise<VendorCalendar[]> {
+    return await db
+      .select()
+      .from(vendorCalendar)
+      .where(
+        and(
+          eq(vendorCalendar.vendorId, vendorId),
+          vendorCalendar.date >= startDate,
+          vendorCalendar.date <= endDate
+        )
+      )
+      .orderBy(vendorCalendar.date);
+  }
+
+  async createVendorCalendarEntry(calendarEntry: InsertVendorCalendar): Promise<VendorCalendar> {
+    const [newEntry] = await db.insert(vendorCalendar).values(calendarEntry).returning();
+    return newEntry;
+  }
+
+  async updateVendorCalendarEntry(id: number, calendarEntry: Partial<VendorCalendar>): Promise<VendorCalendar | undefined> {
+    const [updatedEntry] = await db
+      .update(vendorCalendar)
+      .set(calendarEntry)
+      .where(eq(vendorCalendar.id, id))
+      .returning();
+    return updatedEntry;
+  }
+
+  async deleteVendorCalendarEntry(id: number): Promise<boolean> {
+    const result = await db.delete(vendorCalendar).where(eq(vendorCalendar.id, id));
+    return !!result;
   }
 }

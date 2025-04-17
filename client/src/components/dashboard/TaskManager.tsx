@@ -208,25 +208,40 @@ const TaskManager: React.FC = () => {
   
   // Handle status change from dropdown
   const handleStatusChange = (task: Task, newStatus: 'pending' | 'in_progress' | 'completed') => {    
+    // Validate the status to ensure it's one of our expected values
+    let validStatus: 'pending' | 'in_progress' | 'completed';
+    
+    if (newStatus === 'pending' || newStatus === 'in_progress' || newStatus === 'completed') {
+      validStatus = newStatus;
+    } else {
+      // Default to in_progress if status is not valid
+      validStatus = 'in_progress';
+      console.warn(`Invalid status value: ${newStatus}, defaulting to in_progress`);
+    }
+    
     // First, update the local state immediately for a smooth UI transition
     const optimisticTasks = tasks.map(t => 
-      t.id === task.id ? { ...t, status: newStatus } : t
+      t.id === task.id ? { ...t, status: validStatus } : t
     );
     
     // Set the optimistic data to avoid flicker
     queryClient.setQueryData(['/api/tasks'], optimisticTasks);
     
+    // Log the update we're making for debugging
+    console.log(`Updating task ${task.id} status from ${task.status} to ${validStatus}`);
+    
     // Then send the update to the server
     updateTaskMutation.mutate({
       id: task.id,
-      data: { status: newStatus }
+      data: { status: validStatus }
     }, {
       onSuccess: () => {
         // On success, refresh the task list to ensure consistency
+        console.log(`Successfully updated task ${task.id} status to ${validStatus}`);
         queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
         
         // Celebration logic for task completion
-        if (newStatus === 'completed') {
+        if (validStatus === 'completed') {
           const pendingTasksCount = optimisticTasks.filter(t => t.status !== 'completed').length;
           if (pendingTasksCount === 0) {
             // Slight delay to let the update complete first
@@ -236,8 +251,9 @@ const TaskManager: React.FC = () => {
           }
         }
       },
-      onError: () => {
+      onError: (error) => {
         // On error, revert the optimistic update and notify user
+        console.error(`Failed to update task status: ${error.message}`);
         queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
         toast({
           title: "Error",
@@ -583,7 +599,11 @@ const TaskManager: React.FC = () => {
                     >
                       <Checkbox 
                         checked={task.status === 'completed'} 
-                        onCheckedChange={() => handleStatusToggle(task)}
+                        onCheckedChange={(checked) => {
+                          // If checkbox is checked, mark as completed, otherwise mark as "in_progress"
+                          const newStatus = checked ? 'completed' : 'in_progress';
+                          handleStatusChange(task, newStatus);
+                        }}
                         className="mr-2 data-[state=checked]:bg-[#800000] data-[state=checked]:text-white border-2 h-5 w-5 rounded transition-all duration-300 hover:border-[#800000] cursor-pointer"
                       />
                       {task.status === 'completed' ? (
@@ -614,7 +634,7 @@ const TaskManager: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <Select 
-                      defaultValue={task.status as 'pending' | 'in_progress' | 'completed'}
+                      value={task.status as 'pending' | 'in_progress' | 'completed'}
                       onValueChange={(value) => handleStatusChange(task, value as 'pending' | 'in_progress' | 'completed')}
                     >
                       <SelectTrigger className="w-[130px] h-7 text-xs border-dashed">

@@ -1236,6 +1236,162 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Package and payment routes
+  // Endpoint to fetch user's current package
+  app.get("/api/users/package", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json({
+        package: user.package || 'SILVER'
+      });
+    } catch (error) {
+      console.error("Get user package error:", error);
+      res.status(500).json({ message: "Failed to get user package" });
+    }
+  });
+
+  // Mock payment processing function - will be replaced with actual Stripe integration
+  async function processPayment(amount: number, paymentMethod: any) {
+    return new Promise((resolve) => {
+      // Simulate payment processing
+      setTimeout(() => {
+        // Simulate successful payment with mock payment ID
+        resolve({
+          id: 'pay_' + Math.random().toString(36).substring(2, 15),
+          amount: amount,
+          status: 'succeeded',
+          created: Date.now()
+        });
+      }, 1000);
+    });
+  }
+
+  // Endpoint to create a payment intent for package upgrade
+  app.post("/api/payment/create-intent", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const { packageType } = req.body;
+      const userId = req.user.id;
+
+      if (!packageType) {
+        return res.status(400).json({ message: "Package type is required" });
+      }
+
+      // Determine amount based on package type
+      let amount = 0;
+      if (packageType === 'GOLD') {
+        amount = 999;
+      } else if (packageType === 'PLATINUM') {
+        amount = 2999;
+      }
+
+      // For free tier, no payment intent needed
+      if (amount === 0) {
+        return res.json({ 
+          clientSecret: 'free_tier',
+          amount: 0 
+        });
+      }
+
+      // Mock payment intent creation (would use Stripe in production)
+      const paymentIntent = {
+        clientSecret: 'mock_pi_secret_' + Math.random().toString(36).substring(2, 15),
+        amount
+      };
+
+      res.json(paymentIntent);
+    } catch (error) {
+      console.error("Create payment intent error:", error);
+      res.status(500).json({ message: "Failed to create payment intent" });
+    }
+  });
+
+  // Endpoint to confirm payment and upgrade package
+  app.post("/api/payment/confirm", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const { packageType, paymentMethod } = req.body;
+      const userId = req.user.id;
+
+      if (!packageType) {
+        return res.status(400).json({ message: "Package type is required" });
+      }
+
+      // Determine amount based on package type
+      let amount = 0;
+      if (packageType === 'GOLD') {
+        amount = 999;
+      } else if (packageType === 'PLATINUM') {
+        amount = 2999;
+      }
+
+      // For free tier, just update user package
+      if (amount === 0) {
+        await storage.updateUser(userId, { package: packageType });
+        return res.json({ 
+          success: true,
+          message: "Package upgraded successfully",
+          package: packageType
+        });
+      }
+
+      // Process payment
+      const paymentResult = await processPayment(amount, paymentMethod);
+
+      // Update user package in database
+      await storage.updateUser(userId, { 
+        package: packageType,
+        // Store payment information for reference
+        paymentInfo: {
+          paymentId: (paymentResult as any).id,
+          amount,
+          date: new Date().toISOString()
+        }
+      });
+
+      res.json({
+        success: true,
+        message: "Payment processed and package upgraded successfully",
+        package: packageType,
+        paymentResult
+      });
+    } catch (error) {
+      console.error("Confirm payment error:", error);
+      res.status(500).json({ message: "Failed to process payment" });
+    }
+  });
+
+  // Endpoint to update user package (for testing or admin operations)
+  app.patch("/api/users/package", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const { package: packageType } = req.body;
+      const userId = req.user.id;
+
+      if (!packageType || !['SILVER', 'GOLD', 'PLATINUM'].includes(packageType)) {
+        return res.status(400).json({ message: "Valid package type is required" });
+      }
+
+      // Update user package
+      const updatedUser = await storage.updateUser(userId, { package: packageType });
+
+      res.json({
+        success: true,
+        message: "Package updated successfully",
+        user: {
+          id: updatedUser?.id,
+          package: updatedUser?.package || packageType
+        }
+      });
+    } catch (error) {
+      console.error("Update user package error:", error);
+      res.status(500).json({ message: "Failed to update user package" });
+    }
+  });
+
   // Socket.io event handlers
   io.on("connection", async (socket) => {
     console.log("Client connected to Socket.IO:", socket.id);

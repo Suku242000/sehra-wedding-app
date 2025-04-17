@@ -15,6 +15,31 @@ import { PublicRoute, ProtectedRoute } from "@/lib/auth";
 import { UserRole } from "@shared/schema";
 import { useAuth } from "@/context/AuthContext";
 
+// Import the Internal App
+import InternalLogin from "@/pages/internal/login";
+
+// Create placeholders for internal dashboard pages
+const VendorDashboardPage = () => (
+  <div className="p-8 bg-white shadow-lg rounded-lg">
+    <h1 className="text-2xl font-bold mb-4">Vendor Dashboard</h1>
+    <p>Welcome to the vendor dashboard. This is a placeholder.</p>
+  </div>
+);
+
+const SupervisorDashboardPage = () => (
+  <div className="p-8 bg-white shadow-lg rounded-lg">
+    <h1 className="text-2xl font-bold mb-4">Supervisor Dashboard</h1>
+    <p>Welcome to the supervisor dashboard. This is a placeholder.</p>
+  </div>
+);
+
+const AdminDashboardPage = () => (
+  <div className="p-8 bg-white shadow-lg rounded-lg">
+    <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
+    <p>Welcome to the admin dashboard. This is a placeholder.</p>
+  </div>
+);
+
 const AppWithAuth: React.FC = () => {
   // Make sure auth is being initialized
   const { loading, user } = useAuth();
@@ -31,6 +56,7 @@ const AppWithAuth: React.FC = () => {
   return (
     <>
       <Switch>
+        {/* Main Client Routes */}
         <Route path="/">
           <PublicRoute noRedirect={true}>
             <HomePage />
@@ -82,6 +108,31 @@ const AppWithAuth: React.FC = () => {
         <Route path="/package-upgrade">
           <ProtectedRoute>
             <PackageUpgrade />
+          </ProtectedRoute>
+        </Route>
+        
+        {/* Internal App Routes */}
+        <Route path="/internal/login">
+          <PublicRoute>
+            <InternalLogin />
+          </PublicRoute>
+        </Route>
+        
+        <Route path="/vendor/dashboard">
+          <ProtectedRoute requiredRoles={[UserRole.VENDOR]}>
+            <VendorDashboardPage />
+          </ProtectedRoute>
+        </Route>
+        
+        <Route path="/supervisor/dashboard">
+          <ProtectedRoute requiredRoles={[UserRole.SUPERVISOR]}>
+            <SupervisorDashboardPage />
+          </ProtectedRoute>
+        </Route>
+        
+        <Route path="/admin/dashboard">
+          <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
+            <AdminDashboardPage />
           </ProtectedRoute>
         </Route>
         

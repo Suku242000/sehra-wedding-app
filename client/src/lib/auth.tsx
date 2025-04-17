@@ -47,8 +47,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       }
       
       // Redirect to package selection if package is required but not selected
-      // Skip package requirement for supervisors
-      if (requirePackage && user && !user.package && user.role.toLowerCase() !== 'supervisor') {
+      // Skip package requirement for supervisors, vendors and admins
+      if (requirePackage && user && !user.package && 
+          !['supervisor', 'vendor', 'admin'].includes(user.role.toLowerCase())) {
         setLocation('/select-package');
         return;
       }
@@ -58,7 +59,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Show nothing while checking authentication or redirecting
   if (loading || !isAuthenticated || 
       (requiredRoles.length > 0 && user && !requiredRoles.includes(user.role as UserRoleType)) ||
-      (requirePackage && user && !user.package && user.role.toLowerCase() !== 'supervisor')) {
+      (requirePackage && user && !user.package && 
+       !['supervisor', 'vendor', 'admin'].includes(user.role.toLowerCase()))) {
     return null;
   }
   
@@ -95,8 +97,9 @@ export const PublicRoute: React.FC<{ children: React.ReactNode, noRedirect?: boo
   // Show nothing while checking authentication or redirecting
   // But if noRedirect is true, always render children regardless of auth state
   if (!noRedirect && (loading || (isAuthenticated && user))) {
-    // Special case: if we're on select-package and user is a supervisor, allow rendering
-    if (location === "/select-package" && user && user.role.toLowerCase() === "supervisor") {
+    // Special case: if we're on select-package and user is a supervisor, vendor, or admin, allow rendering
+    if (location === "/select-package" && user && 
+        ['supervisor', 'vendor', 'admin'].includes(user.role.toLowerCase())) {
       return <>{children}</>;
     }
     return null;

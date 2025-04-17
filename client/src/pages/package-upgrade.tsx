@@ -118,6 +118,128 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
+// Stripe Payment Component
+const StripeCheckout = ({ 
+  packageType, 
+  clientSecret, 
+  onSuccess, 
+  onCancel 
+}: { 
+  packageType: string, 
+  clientSecret: string,
+  onSuccess: () => void, 
+  onCancel: () => void 
+}) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setErrorMessage(null);
+
+    try {
+      // Confirm the payment with Stripe
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: window.location.origin + '/dashboard',
+        },
+        redirect: 'if_required',
+      });
+
+      if (error) {
+        setErrorMessage(error.message || 'Payment failed');
+        toast({
+          title: "Payment Failed",
+          description: error.message || "An error occurred during payment processing",
+          variant: "destructive",
+        });
+      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+        // Payment succeeded, confirm with backend
+        const confirmResponse = await fetch('/api/payment/confirm', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ packageType }),
+        });
+        
+        if (!confirmResponse.ok) {
+          throw new Error('Failed to upgrade package');
+        }
+        
+        toast({
+          title: "Payment Successful!",
+          description: `Your package has been upgraded`,
+          variant: "default",
+        });
+        
+        // Invoke success callback
+        onSuccess();
+      }
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      toast({
+        title: "Payment Failed",
+        description: error.message || "An error occurred during payment processing",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="mb-6">
+        <PaymentElement />
+      </div>
+      
+      {errorMessage && (
+        <div className="text-red-500 mb-4 text-sm">
+          {errorMessage}
+        </div>
+      )}
+      
+      <div className="flex justify-end space-x-3">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={onCancel} 
+          disabled={isProcessing}
+          className="bg-gray-100 hover:bg-gray-200 text-gray-700"
+        >
+          Cancel
+        </Button>
+        <Button 
+          type="submit" 
+          disabled={!stripe || isProcessing}
+          className="bg-[#800000] hover:bg-[#5c0000]"
+        >
+          {isProcessing ? (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            'Pay Now'
+          )}
+        </Button>
+      </div>
+    </form>
+  );
+};
+
 const PackageUpgrade: React.FC = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -134,6 +256,7 @@ const PackageUpgrade: React.FC = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   // Fetch user's current package
   const { data: userPackage, isLoading } = useQuery({
@@ -175,17 +298,78 @@ const PackageUpgrade: React.FC = () => {
     }
   });
 
-  // Handle payment submission
+  // Create payment intent with Stripe when a paid package is selected
+  const createPaymentIntent = async (packageType: string) => {
+    if (!packageType) return null;
+    
+    try {
+      const packageInfo = PACKAGES[packageType as keyof typeof PACKAGES];
+      
+      // For free tier, no payment intent needed
+      if (packageInfo.price === 0) {
+        return null;
+      }
+      
+      setIsProcessing(true);
+      
+      // Create payment intent
+      const response = await fetch('/api/payment/create-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ packageType })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create payment intent');
+      }
+      
+      const data = await response.json();
+      return data.clientSecret;
+    } catch (error) {
+      console.error('Error creating payment intent:', error);
+      toast({
+        title: "Error",
+        description: "Failed to initialize payment. Please try again.",
+        variant: "destructive"
+      });
+      return null;
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Handle payment submission for free tier
   const handlePaymentSubmit = () => {
     if (!selectedPackage) return;
     
     setIsProcessing(true);
     
-    // Simulate payment processing
-    setTimeout(() => {
-      // Process payment and upgrade package
-      upgradeMutation.mutate(selectedPackage);
-    }, 2000);
+    // Process payment and upgrade package
+    upgradeMutation.mutate(selectedPackage);
+  };
+  
+  // Handle package selection and payment flow
+  const handlePackageSelect = async (packageKey: keyof typeof PACKAGES) => {
+    setSelectedPackage(packageKey);
+    
+    const packageInfo = PACKAGES[packageKey];
+    
+    // For free tier, just show confirmation
+    if (packageInfo.price === 0) {
+      setIsPaymentModalOpen(true);
+      return;
+    }
+    
+    // For paid packages, create payment intent first
+    const clientSecret = await createPaymentIntent(packageKey);
+    
+    if (clientSecret) {
+      setClientSecret(clientSecret);
+      setIsPaymentModalOpen(true);
+    }
   };
 
   // Get current package details
@@ -273,12 +457,14 @@ const PackageUpgrade: React.FC = () => {
           ) : isAvailable ? (
             <Button 
               className="w-full bg-[#800000] hover:bg-[#5c0000]"
-              onClick={() => {
-                setSelectedPackage(packageKey);
-                setIsPaymentModalOpen(true);
-              }}
+              onClick={() => handlePackageSelect(packageKey)}
+              disabled={isProcessing}
             >
-              Upgrade Now
+              {isProcessing && selectedPackage === packageKey ? (
+                <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Processing</>
+              ) : (
+                <>Upgrade Now</>
+              )}
             </Button>
           ) : (
             <Button className="w-full" disabled>
@@ -569,7 +755,29 @@ const PackageUpgrade: React.FC = () => {
                   </div>
                 </div>
                 
-                {renderPaymentStep()}
+                {clientSecret && selectedPackage && PACKAGES[selectedPackage as keyof typeof PACKAGES].price > 0 ? (
+                  <Elements stripe={stripePromise} options={{ clientSecret }}>
+                    <StripeCheckout 
+                      packageType={selectedPackage}
+                      clientSecret={clientSecret}
+                      onSuccess={() => {
+                        setPaymentSuccess(true);
+                        queryClient.invalidateQueries({ queryKey: ['/api/users/package'] });
+                        queryClient.invalidateQueries({ queryKey: ['/api/users/me'] });
+                        setTimeout(() => {
+                          setIsPaymentModalOpen(false);
+                          setPaymentSuccess(false);
+                        }, 2000);
+                      }}
+                      onCancel={() => {
+                        setIsPaymentModalOpen(false);
+                        setClientSecret(null);
+                      }}
+                    />
+                  </Elements>
+                ) : (
+                  renderPaymentStep()
+                )}
               </div>
             )}
           </DialogContent>

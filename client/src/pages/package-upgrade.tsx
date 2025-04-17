@@ -180,7 +180,7 @@ const StripeCheckout = ({
         
         toast({
           title: "Payment Successful!",
-          description: `Your package has been upgraded`,
+          description: "Your package has been upgraded. Thank you for choosing the full service!",
           variant: "default",
         });
         
@@ -284,7 +284,7 @@ const PackageUpgrade: React.FC = () => {
         
         toast({
           title: "Package Upgraded Successfully",
-          description: `Your account has been upgraded to ${selectedPackage} package.`,
+          description: `Your account has been upgraded to ${selectedPackage} package. Thank you for choosing the full service!`,
         });
       }, 2000);
     },
@@ -721,7 +721,7 @@ const PackageUpgrade: React.FC = () => {
               </DialogTitle>
               <DialogDescription>
                 {paymentSuccess 
-                  ? "Your package has been upgraded successfully." 
+                  ? "Your package has been upgraded successfully. Thank you for choosing the full service!" 
                   : "Complete your payment to upgrade your wedding planning experience."}
               </DialogDescription>
             </DialogHeader>
@@ -733,7 +733,7 @@ const PackageUpgrade: React.FC = () => {
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Thank You!</h3>
                 <p className="text-center text-gray-600">
-                  Your package has been upgraded successfully. Enjoy your new features!
+                  Your package has been upgraded successfully. Thank you for choosing the full service! Enjoy your new features!
                 </p>
               </div>
             ) : (

@@ -436,6 +436,7 @@ export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type InsertContactStatus = z.infer<typeof insertContactStatusSchema>;
 export type InsertVendorReview = z.infer<typeof insertVendorReviewSchema>;
 export type InsertVendorCalendar = z.infer<typeof insertVendorCalendarSchema>;
+export type InsertVendorAnalytics = z.infer<typeof insertVendorAnalyticsSchema>;
 
 export type User = typeof users.$inferSelect;
 export type VendorProfile = typeof vendorProfiles.$inferSelect;
@@ -452,6 +453,7 @@ export type ContactStatus = typeof contactStatus.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type VendorReview = typeof vendorReviews.$inferSelect;
 export type VendorCalendar = typeof vendorCalendar.$inferSelect;
+export type VendorAnalytics = typeof vendorAnalytics.$inferSelect;
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;

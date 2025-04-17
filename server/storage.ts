@@ -28,6 +28,8 @@ import {
   InsertVendorReview,
   VendorCalendar,
   InsertVendorCalendar,
+  VendorAnalytics,
+  InsertVendorAnalytics,
   users,
   vendorProfiles,
   tasks,
@@ -42,7 +44,8 @@ import {
   contactStatus,
   notifications,
   vendorReviews,
-  vendorCalendar
+  vendorCalendar,
+  vendorAnalytics
 } from "@shared/schema";
 
 // Interface for storage methods
@@ -161,6 +164,13 @@ export interface IStorage {
   createVendorCalendarEntry(calendarEntry: InsertVendorCalendar): Promise<VendorCalendar>;
   updateVendorCalendarEntry(id: number, calendarEntry: Partial<VendorCalendar>): Promise<VendorCalendar | undefined>;
   deleteVendorCalendarEntry(id: number): Promise<boolean>;
+  
+  // Vendor Analytics methods
+  getVendorAnalytics(id: number): Promise<VendorAnalytics | undefined>;
+  getVendorAnalyticsByVendorId(vendorId: number): Promise<VendorAnalytics | undefined>;
+  createVendorAnalytics(analytics: InsertVendorAnalytics): Promise<VendorAnalytics>;
+  updateVendorAnalytics(id: number, analytics: Partial<VendorAnalytics>): Promise<VendorAnalytics | undefined>;
+  calculateVendorAnalytics(vendorId: number): Promise<VendorAnalytics>;
 }
 
 // In-memory storage implementation
@@ -180,6 +190,7 @@ export class MemStorage implements IStorage {
   private contactStatuses: Map<string, ContactStatus>;
   private vendorReviews: Map<number, VendorReview>;
   private vendorCalendars: Map<number, VendorCalendar>;
+  private vendorAnalytics: Map<number, VendorAnalytics>;
   
   private userId: number;
   private vendorProfileId: number;
@@ -195,6 +206,7 @@ export class MemStorage implements IStorage {
   private notificationId: number;
   private vendorReviewId: number;
   private vendorCalendarId: number;
+  private vendorAnalyticsId: number;
 
   constructor() {
     this.users = new Map();

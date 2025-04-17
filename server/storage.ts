@@ -224,6 +224,7 @@ export class MemStorage implements IStorage {
     this.contactStatuses = new Map();
     this.vendorReviews = new Map();
     this.vendorCalendars = new Map();
+    this.vendorAnalytics = new Map();
     
     this.userId = 1;
     this.vendorProfileId = 1;
@@ -239,6 +240,7 @@ export class MemStorage implements IStorage {
     this.notificationId = 1;
     this.vendorReviewId = 1;
     this.vendorCalendarId = 1;
+    this.vendorAnalyticsId = 1;
     
     // Initialize with admin user
     this.createUser({
@@ -994,6 +996,160 @@ export class MemStorage implements IStorage {
 
   async deleteVendorCalendarEntry(id: number): Promise<boolean> {
     return this.vendorCalendars.delete(id);
+  }
+  
+  // Vendor Analytics methods
+  async getVendorAnalytics(id: number): Promise<VendorAnalytics | undefined> {
+    return this.vendorAnalytics.get(id);
+  }
+  
+  async getVendorAnalyticsByVendorId(vendorId: number): Promise<VendorAnalytics | undefined> {
+    return Array.from(this.vendorAnalytics.values()).find(
+      (analytics) => analytics.vendorId === vendorId
+    );
+  }
+  
+  async createVendorAnalytics(analytics: InsertVendorAnalytics): Promise<VendorAnalytics> {
+    const id = this.vendorAnalyticsId++;
+    const now = new Date().toISOString();
+    const newAnalytics: VendorAnalytics = { 
+      ...analytics, 
+      id, 
+      createdAt: now,
+      updatedAt: now
+    };
+    this.vendorAnalytics.set(id, newAnalytics);
+    return newAnalytics;
+  }
+  
+  async updateVendorAnalytics(id: number, analyticsData: Partial<VendorAnalytics>): Promise<VendorAnalytics | undefined> {
+    const analytics = await this.getVendorAnalytics(id);
+    if (!analytics) return undefined;
+    
+    const now = new Date().toISOString();
+    const updatedAnalytics = { 
+      ...analytics, 
+      ...analyticsData,
+      updatedAt: now
+    };
+    this.vendorAnalytics.set(id, updatedAnalytics);
+    return updatedAnalytics;
+  }
+  
+  async calculateVendorAnalytics(vendorId: number): Promise<VendorAnalytics> {
+    // Get vendor profile
+    const vendorProfile = await this.getAllVendorProfiles().find(
+      profile => profile.userId === vendorId
+    );
+    
+    if (!vendorProfile) {
+      throw new Error("Vendor profile not found");
+    }
+    
+    // Get existing analytics or create new one
+    let analytics = await this.getVendorAnalyticsByVendorId(vendorProfile.id);
+    
+    // Calculate metrics
+    const bookings = await this.getVendorBookingsByVendorId(vendorProfile.id);
+    const reviews = await this.getVendorReviewsByVendorId(vendorProfile.id);
+    const calendar = await this.getVendorCalendarByVendorId(vendorProfile.id);
+    
+    // Calculate booking metrics
+    const totalBookings = bookings.length;
+    const confirmedBookings = bookings.filter(booking => booking.status === "confirmed").length;
+    const pendingBookings = bookings.filter(booking => booking.status === "pending").length;
+    const cancelledBookings = bookings.filter(booking => booking.status === "cancelled").length;
+    
+    // Calculate revenue
+    const totalRevenue = bookings
+      .filter(booking => booking.status === "confirmed" || booking.status === "completed")
+      .reduce((sum, booking) => sum + (booking.totalAmount || 0), 0);
+    
+    // Calculate availability
+    const availableSlots = calendar
+      .flatMap(entry => entry.timeSlots || [])
+      .filter(slot => slot.status === "available").length;
+    
+    const bookedSlots = calendar
+      .flatMap(entry => entry.timeSlots || [])
+      .filter(slot => slot.status === "booked").length;
+    
+    // Calculate performance metrics
+    const responseRate = bookings.length > 0 
+      ? (bookings.filter(b => b.vendorResponseTime).length / bookings.length) * 100 
+      : 0;
+      
+    const avgResponseTime = bookings
+      .filter(b => b.vendorResponseTime)
+      .reduce((sum, b) => sum + (b.vendorResponseTime || 0), 0) / 
+      (bookings.filter(b => b.vendorResponseTime).length || 1);
+    
+    // Calculate ratings
+    const avgRating = reviews.length > 0
+      ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+      : 0;
+    
+    // Calculate seasonal performance
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+    
+    const bookingsThisMonth = bookings.filter(b => {
+      const bookingDate = new Date(b.eventDate);
+      return bookingDate.getMonth() + 1 === currentMonth && 
+             bookingDate.getFullYear() === currentYear;
+    }).length;
+    
+    const revenueThisMonth = bookings
+      .filter(b => {
+        const bookingDate = new Date(b.eventDate);
+        return (bookingDate.getMonth() + 1 === currentMonth && 
+               bookingDate.getFullYear() === currentYear) &&
+               (b.status === "confirmed" || b.status === "completed");
+      })
+      .reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+    
+    // Calculate traffic metrics
+    const profileViews = vendorProfile.viewCount || 0;
+    const contactRequests = bookings.filter(b => b.status === "inquiry").length;
+    const conversionRate = profileViews > 0 
+      ? (contactRequests / profileViews) * 100 
+      : 0;
+    
+    // Create analytics data
+    const analyticsData = {
+      vendorId: vendorProfile.id,
+      totalBookings,
+      confirmedBookings,
+      pendingBookings,
+      cancelledBookings,
+      totalRevenue,
+      availableSlots,
+      bookedSlots,
+      responseRate,
+      avgResponseTime,
+      avgRating,
+      bookingsThisMonth,
+      revenueThisMonth,
+      profileViews,
+      contactRequests,
+      conversionRate,
+      seasonalTrends: analytics?.seasonalTrends || {},
+      popularServices: analytics?.popularServices || [],
+      customerDemographics: analytics?.customerDemographics || {},
+      performanceMetrics: {
+        bookingCompletionRate: totalBookings > 0 ? (confirmedBookings / totalBookings) * 100 : 0,
+        customerReturnRate: 0, // Need customer history data to calculate
+        avgPreparationTime: 0, // Need more detailed booking data
+        ...analytics?.performanceMetrics
+      }
+    };
+    
+    // Update or create analytics
+    if (analytics) {
+      return await this.updateVendorAnalytics(analytics.id, analyticsData);
+    } else {
+      return await this.createVendorAnalytics(analyticsData as InsertVendorAnalytics);
+    }
   }
 }
 

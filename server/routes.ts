@@ -897,6 +897,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Vendor Analytics API routes
+  // Get vendor analytics
+  app.get("/api/vendors/:id/analytics", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const vendorId = parseInt(req.params.id);
+      
+      // Get vendor profile
+      const vendorProfile = await storage.getVendorProfileByUserId(vendorId);
+      if (!vendorProfile) {
+        return res.status(404).json({ message: "Vendor profile not found" });
+      }
+      
+      // Check if the user is the vendor or an admin/supervisor
+      if (req.user.id !== vendorId && req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERVISOR) {
+        return res.status(403).json({ message: "Not authorized to view these analytics" });
+      }
+      
+      // Get analytics
+      const analytics = await storage.getVendorAnalyticsByVendorId(vendorProfile.id);
+      
+      // If no analytics exist yet, calculate them
+      if (!analytics) {
+        const newAnalytics = await storage.calculateVendorAnalytics(vendorId);
+        return res.json(newAnalytics);
+      }
+      
+      res.json(analytics);
+    } catch (error) {
+      console.error("Get vendor analytics error:", error);
+      res.status(500).json({ message: "Failed to retrieve vendor analytics" });
+    }
+  });
+  
+  // Generate/refresh vendor analytics
+  app.post("/api/vendors/:id/analytics/calculate", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      const vendorId = parseInt(req.params.id);
+      
+      // Check if the user is the vendor or an admin/supervisor
+      if (req.user.id !== vendorId && req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.SUPERVISOR) {
+        return res.status(403).json({ message: "Not authorized to calculate these analytics" });
+      }
+      
+      // Calculate analytics
+      const analytics = await storage.calculateVendorAnalytics(vendorId);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Calculate vendor analytics error:", error);
+      res.status(500).json({ message: "Failed to calculate vendor analytics" });
+    }
+  });
+  
+  // Update specific vendor analytics data (for manual updates)
+  app.patch("/api/vendors/:id/analytics", authenticateToken, authorizeRoles([UserRole.ADMIN, UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
+    try {
+      const vendorId = parseInt(req.params.id);
+      
+      // Get vendor profile
+      const vendorProfile = await storage.getVendorProfileByUserId(vendorId);
+      if (!vendorProfile) {
+        return res.status(404).json({ message: "Vendor profile not found" });
+      }
+      
+      // Get analytics
+      const analytics = await storage.getVendorAnalyticsByVendorId(vendorProfile.id);
+      if (!analytics) {
+        return res.status(404).json({ message: "Analytics not found for this vendor" });
+      }
+      
+      // Update analytics
+      const updatedAnalytics = await storage.updateVendorAnalytics(analytics.id, req.body);
+      res.json(updatedAnalytics);
+    } catch (error) {
+      console.error("Update vendor analytics error:", error);
+      res.status(500).json({ message: "Failed to update vendor analytics" });
+    }
+  });
+
   // Vendor booking routes
   app.get("/api/bookings", authenticateToken, async (req: Request, res: Response) => {
     try {

@@ -57,7 +57,7 @@ export default function SupervisorClients() {
   const getContactStatusBadge = (status?: string) => {
     switch (status) {
       case 'active':
-        return <Badge variant="success" className="flex items-center gap-1">
+        return <Badge variant="outline" className="flex items-center gap-1 bg-green-50 text-green-700 border-green-300">
           <CheckCircle className="h-3 w-3" /> Active
         </Badge>;
       case 'in_progress':
@@ -91,7 +91,7 @@ export default function SupervisorClients() {
 
   return (
     <motion.div
-      variants={fadeIn('up', 0.2)}
+      variants={fadeIn('up', 'tween')}
       initial="hidden"
       animate="show"
       className="space-y-6"

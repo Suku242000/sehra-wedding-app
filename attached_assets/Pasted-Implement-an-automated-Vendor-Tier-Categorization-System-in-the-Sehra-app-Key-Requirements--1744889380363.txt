@@ -1,0 +1,56 @@
+Implement an automated Vendor Tier Categorization System in the Sehra app.
+
+✨ Key Requirements:
+
+1. **Vendor Quality Score (SQS) Engine**:
+   - Each vendor should be evaluated with a score out of 100.
+   - Scoring criteria (with weights):
+     - Client Ratings (out of 30%)
+     - Booking Completion Rate (20%)
+     - Response Time (10%)
+     - Years of Experience (10%)
+     - Portfolio Quality (10%)
+     - Region Flexibility (10%)
+     - Verified Business Documents (10%)
+
+2. **Tier Assignment Logic**:
+   - Platinum: 86 – 100
+   - Gold: 61 – 85
+   - Silver: 0 – 60
+   - Automatically categorize vendors based on SQS.
+
+3. **Database Fields**:
+   - Add `sqsScore` and `category` to each vendor schema (e.g., `vendor.sqsScore = 92`, `vendor.category = "Platinum"`).
+   - On vendor profile update or new registration, re-evaluate and assign.
+
+4. **Real-Time Display**:
+   - On the Vendor Dashboard, show their tier badge (Gold/Platinum/Silver) with score and review summary.
+   - On the Client and Supervisor dashboards, allow filtering vendors by tier.
+   - Add visual tier indicators like icons or color ribbons.
+
+5. **Admin Panel**:
+   - Show vendor evaluation metrics.
+   - Allow admin to override vendor tier manually (with a reason).
+   - Option to schedule automatic re-evaluations (e.g., monthly or after each booking).
+
+6. **Reactivity & Sync**:
+   - After vendor updates or customer reviews, automatically recalculate the SQS and refresh category in real-time (without manual reload).
+
+7. **Optional Enhancements**:
+   - Add badges (Gold Certified / Platinum Elite) on vendor cards.
+   - Show average rating, recent review, and performance summary in the vendor tile.
+   - Trigger badge unlock celebration animation when vendors level up.
+
+🔁 Integration:
+- Fully integrate this tier system with:
+  - Supervisor view (to suggest high-tier vendors)
+  - Client dashboard (to highlight premium vendor options)
+  - Admin dashboard analytics
+
+🧪 Testing:
+- Test with vendors of varying quality to ensure categories are correctly assigned.
+- Confirm real-time update propagation across all dashboards.
+- Simulate vendor rating, document upload, and booking completion to validate score updates.
+
+🎯 Goal:
+Deliver a smart, scalable, and interactive vendor trust system that builds confidence for customers while rewarding high-performing vendors.

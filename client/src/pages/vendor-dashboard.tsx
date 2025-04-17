@@ -116,7 +116,8 @@ const VendorDashboard: React.FC = () => {
     description: '',
     location: '',
     priceRange: '',
-    vendorType: ''
+    vendorType: '',
+    category: 'Standard'
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -138,7 +139,8 @@ const VendorDashboard: React.FC = () => {
           description: data.description || '',
           location: data.location || '',
           priceRange: data.priceRange || '',
-          vendorType: data.vendorType || ''
+          vendorType: data.vendorType || '',
+          category: data.category || 'Standard'
         });
       }
     }
@@ -424,6 +426,22 @@ const VendorDashboard: React.FC = () => {
                           placeholder="e.g. ₹25,000 - ₹50,000"
                         />
                       </div>
+                      
+                      <div className="grid gap-2">
+                        <label htmlFor="category" className="text-sm font-medium">Vendor Category <span className="text-xs text-gray-500">(determined by admin based on quality and experience)</span></label>
+                        <div className="bg-gray-50 p-3 rounded-md">
+                          <div className="flex items-center">
+                            <Badge variant="outline" className={profileForm.category === 'Gold' ? 'bg-yellow-100 border-yellow-300 text-yellow-800' : ''}>
+                              Gold Vendor
+                            </Badge>
+                            <p className="text-xs ml-2 text-gray-500">Premium positioning, higher visibility to clients</p>
+                          </div>
+                          <div className="mt-2 text-xs text-gray-500">
+                            • Admin will promote your profile to Gold or Premium based on performance and quality
+                            • Standard category is the default for new vendors
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <DialogFooter>
@@ -474,6 +492,15 @@ const VendorDashboard: React.FC = () => {
                   <div className="flex items-center">
                     <span className="font-semibold mr-2">Price Range:</span>
                     <span>{(vendorProfile as any)?.priceRange || "Not specified"}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="font-semibold mr-2">Category:</span>
+                    <Badge variant={
+                      (vendorProfile as any)?.category === 'Gold' ? 'secondary' :
+                      (vendorProfile as any)?.category === 'Premium' ? 'destructive' : 'outline'
+                    }>
+                      {(vendorProfile as any)?.category || "Standard"}
+                    </Badge>
                   </div>
                 </div>
               </div>

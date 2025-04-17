@@ -58,6 +58,16 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Vendor categories
+export const VendorCategory = {
+  STANDARD: "Standard",
+  SILVER: "Silver",
+  GOLD: "Gold",
+  PLATINUM: "Platinum"
+} as const;
+
+export type VendorCategoryType = (typeof VendorCategory)[keyof typeof VendorCategory];
+
 // Vendor profiles table
 export const vendorProfiles = pgTable("vendor_profiles", {
   id: serial("id").primaryKey(),
@@ -89,6 +99,15 @@ export const vendorProfiles = pgTable("vendor_profiles", {
   verificationStatus: text("verification_status").default("pending"), // pending, verified, rejected
   rating: integer("rating"),
   reviewCount: integer("review_count").default(0),
+  // SQS fields
+  sqsScore: real("sqs_score").default(0), // Overall Vendor Quality Score (0-100)
+  category: text("category").default("Standard"), // Standard, Silver, Gold, Platinum based on SQS score
+  yearsExperience: integer("years_experience").default(0), // Years of professional experience
+  bookingCompletionRate: real("booking_completion_rate").default(0), // % of accepted bookings successfully completed
+  responseTimeMinutes: integer("response_time_minutes").default(0), // Average time to respond to inquiries in minutes
+  regionFlexibility: text("region_flexibility").default("local"), // local, regional, national, international
+  portfolioQuality: real("portfolio_quality").default(0), // Rating of portfolio quality (0-10)
+  verifiedDocuments: boolean("verified_documents").default(false), // Whether business documents are verified
   createdAt: timestamp("created_at").defaultNow(),
 });
 

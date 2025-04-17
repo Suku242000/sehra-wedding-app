@@ -7,7 +7,7 @@ import { fadeIn, staggerContainer } from '@/lib/motion';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { VendorBooking, VendorProfile, User, UserRole } from '@shared/schema';
+import { VendorBooking, VendorProfile, User, UserRole, VendorAnalytics } from '@shared/schema';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { LogoutButton } from '@/components/LogoutButton';
@@ -19,7 +19,10 @@ import {
   ImageIcon, PlusIcon, StarIcon, TrashIcon, 
   ThumbsUpIcon, UploadIcon, XIcon, MoreHorizontalIcon,
   MapPinIcon, DollarSignIcon, BriefcaseIcon, MessageSquareIcon,
-  ShieldIcon, UserCheckIcon, AlertTriangleIcon, BellIcon
+  ShieldIcon, UserCheckIcon, AlertTriangleIcon, BellIcon,
+  TrendingUpIcon, BarChart2Icon, PieChartIcon, 
+  EyeIcon, UserPlusIcon, ActivityIcon, RefreshCwIcon,
+  CheckSquareIcon, PercentIcon, ClockIcon as ClockIconFilled
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,7 +38,22 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { format, differenceInDays, isPast as isDatePast, isFuture } from 'date-fns';
+import { format, differenceInDays, isPast as isDatePast, isFuture, parseISO, subDays } from 'date-fns';
+import {
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip as RechartsTooltip, 
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Legend,
+  PieChart,
+  Pie,
+  Cell
+} from 'recharts';
 
 // Portfolio Item Component
 interface PortfolioItemProps {
@@ -135,6 +153,25 @@ const VendorDashboard: React.FC = () => {
       }
     }
   } as any);
+
+  // Fetch vendor analytics data
+  const { data: analyticsData, isLoading: isAnalyticsLoading } = useQuery<VendorAnalytics>({
+    queryKey: ['/api/vendors/analytics'],
+    enabled: !!user && !!vendorProfile,
+    refetchOnWindowFocus: false
+  });
+
+  // Calculate analytics refresh
+  const refreshAnalyticsMutation = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/vendors/analytics/calculate'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/vendors/analytics'] });
+      toast({
+        title: 'Analytics updated',
+        description: 'Your vendor analytics data has been recalculated',
+      });
+    }
+  });
 
   // Fetch vendor bookings with client info
   const { data: bookings = [] } = useQuery<VendorBooking[]>({
@@ -493,6 +530,7 @@ const VendorDashboard: React.FC = () => {
             <TabsTrigger value="bookings">All Bookings</TabsTrigger>
             <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
             <TabsTrigger value="reviews">Reviews</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
           
           <TabsContent value="portfolio">
@@ -1018,6 +1056,220 @@ const VendorDashboard: React.FC = () => {
                     <li>Deliver final products on time or earlier if possible</li>
                   </ul>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="analytics">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle>Vendor Analytics</CardTitle>
+                  <CardDescription>
+                    Track your performance metrics and business growth
+                  </CardDescription>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => refreshAnalyticsMutation.mutate()}
+                  disabled={refreshAnalyticsMutation.isPending}
+                >
+                  <RefreshCwIcon className="h-4 w-4 mr-2" />
+                  {refreshAnalyticsMutation.isPending ? 'Updating...' : 'Refresh Data'}
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {isAnalyticsLoading ? (
+                  <div className="w-full py-12 flex items-center justify-center">
+                    <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+                  </div>
+                ) : !analyticsData ? (
+                  <div className="text-center py-12 space-y-4">
+                    <div className="flex justify-center">
+                      <div className="bg-gray-100 rounded-full p-6">
+                        <BarChart2Icon className="h-12 w-12 text-gray-400" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-600">No analytics data available</h3>
+                    <p className="text-gray-500 max-w-md mx-auto">
+                      We're collecting data on your vendor performance. Check back soon for insights.
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => refreshAnalyticsMutation.mutate()}
+                      className="mt-4"
+                      disabled={refreshAnalyticsMutation.isPending}
+                    >
+                      <RefreshCwIcon className="mr-2 h-4 w-4" />
+                      Recalculate Analytics
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {/* Key Metrics */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-gray-50 p-4 rounded-lg text-center">
+                        <EyeIcon className="mx-auto h-5 w-5 text-[#800000] mb-1" />
+                        <div className="text-2xl font-bold">
+                          {analyticsData.profileViews || 0}
+                        </div>
+                        <div className="text-xs text-gray-500">Profile Views</div>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-lg text-center">
+                        <MessageSquareIcon className="mx-auto h-5 w-5 text-[#800000] mb-1" />
+                        <div className="text-2xl font-bold">
+                          {analyticsData.inquiryCount || 0}
+                        </div>
+                        <div className="text-xs text-gray-500">Inquiries</div>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-lg text-center">
+                        <CheckSquareIcon className="mx-auto h-5 w-5 text-[#800000] mb-1" />
+                        <div className="text-2xl font-bold">
+                          {analyticsData.bookingCount || 0}
+                        </div>
+                        <div className="text-xs text-gray-500">Bookings</div>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-lg text-center">
+                        <PercentIcon className="mx-auto h-5 w-5 text-[#800000] mb-1" />
+                        <div className="text-2xl font-bold">
+                          {analyticsData.conversionRate ? `${analyticsData.conversionRate.toFixed(1)}%` : '0%'}
+                        </div>
+                        <div className="text-xs text-gray-500">Conversion Rate</div>
+                      </div>
+                    </div>
+                    
+                    {/* Response Time */}
+                    <div className="bg-white p-4 rounded-lg border">
+                      <h3 className="font-medium mb-3 flex items-center">
+                        <ClockIconFilled className="h-4 w-4 mr-2 text-[#800000]" />
+                        Average Response Time
+                      </h3>
+                      <div className="flex items-center space-x-3">
+                        <div className="text-2xl font-bold text-[#800000]">
+                          {analyticsData.averageResponseTime ? `${analyticsData.averageResponseTime.toFixed(1)} hrs` : 'N/A'}
+                        </div>
+                        <Progress 
+                          value={analyticsData.averageResponseTime ? Math.min(100 - (analyticsData.averageResponseTime / 24 * 100), 100) : 0} 
+                          className="h-2 w-40"
+                        />
+                        <div className="text-xs text-gray-500">
+                          {analyticsData.averageResponseTime && analyticsData.averageResponseTime < 6 
+                            ? 'Excellent' 
+                            : analyticsData.averageResponseTime && analyticsData.averageResponseTime < 12
+                              ? 'Good'
+                              : analyticsData.averageResponseTime && analyticsData.averageResponseTime < 24
+                                ? 'Average'
+                                : 'Needs Improvement'}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Monthly Statistics Chart */}
+                    {analyticsData.monthlyStats && analyticsData.monthlyStats.length > 0 && (
+                      <div>
+                        <h3 className="font-medium mb-3">Monthly Performance</h3>
+                        <div className="h-[300px] w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart
+                              data={analyticsData.monthlyStats}
+                              margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="month" />
+                              <YAxis />
+                              <RechartsTooltip />
+                              <Legend />
+                              <Area 
+                                type="monotone" 
+                                dataKey="views" 
+                                stackId="1"
+                                stroke="#8884d8" 
+                                fill="#8884d8" 
+                                name="Profile Views"
+                              />
+                              <Area 
+                                type="monotone" 
+                                dataKey="inquiries" 
+                                stackId="2"
+                                stroke="#82ca9d" 
+                                fill="#82ca9d" 
+                                name="Inquiries"
+                              />
+                              <Area 
+                                type="monotone" 
+                                dataKey="bookings" 
+                                stackId="3"
+                                stroke="#ffc658" 
+                                fill="#ffc658" 
+                                name="Bookings"
+                              />
+                              <Area 
+                                type="monotone" 
+                                dataKey="revenue" 
+                                stackId="4"
+                                stroke="#ff8042" 
+                                fill="#ff8042" 
+                                name="Revenue (₹K)"
+                              />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Daily Statistics if available */}
+                    {analyticsData.dailyStats && analyticsData.dailyStats.length > 0 && (
+                      <div>
+                        <h3 className="font-medium mb-3">Daily Activity (Last 7 Days)</h3>
+                        <div className="h-[250px] w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={analyticsData.dailyStats}
+                              margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="date" />
+                              <YAxis />
+                              <RechartsTooltip />
+                              <Legend />
+                              <Bar 
+                                dataKey="views" 
+                                fill="#8884d8" 
+                                name="Profile Views" 
+                              />
+                              <Bar 
+                                dataKey="inquiries" 
+                                fill="#82ca9d" 
+                                name="Inquiries" 
+                              />
+                              <Bar 
+                                dataKey="bookings" 
+                                fill="#ffc658" 
+                                name="Bookings" 
+                              />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Analytics Tips */}
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h3 className="font-medium mb-2 flex items-center">
+                        <TrendingUpIcon className="h-5 w-5 text-[#800000] mr-2" />
+                        Tips to Improve Your Performance
+                      </h3>
+                      <ul className="space-y-1 text-sm text-gray-500 list-disc pl-5">
+                        <li>Respond to inquiries within 6 hours to improve conversion rates</li>
+                        <li>Add high-quality photos to your portfolio to increase profile views</li>
+                        <li>Keep your calendar up-to-date with your availability</li>
+                        <li>Request reviews from satisfied clients to build credibility</li>
+                        <li>Optimize your pricing based on seasonal demand trends</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

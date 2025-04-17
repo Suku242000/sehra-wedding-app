@@ -158,7 +158,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLocation('/vendor-dashboard');
       } else if (lowerCaseRole === 'supervisor') {
         setLocation('/supervisor-dashboard');
-      } else if (user.package || ['admin', 'vendor', 'supervisor'].includes(lowerCaseRole)) {
+      } else if (user.package) {
         setLocation('/dashboard');
       } else {
         setLocation('/select-package');
@@ -226,7 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLocation('/vendor-dashboard');
       } else if (lowerCaseRole === 'supervisor') {
         setLocation('/supervisor-dashboard');
-      } else if (['admin', 'vendor', 'supervisor'].includes(lowerCaseRole)) {
+      } else if (user.package) {
         setLocation('/dashboard');
       } else {
         setLocation('/select-package');

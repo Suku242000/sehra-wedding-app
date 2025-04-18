@@ -57,6 +57,7 @@ function App() {
             
             {/* New role-based routes */}
             <Route path="/internal/login" component={InternalLogin} />
+            <Route path="/internal-login" component={InternalLogin} />
             <Route path="/internal/admin/dashboard" component={AdminDashboardPage} />
             <Route path="/vendor/dashboard" component={VendorDashboardPage} />
             <Route path="/supervisor/dashboard" component={SupervisorDashboardPage} />

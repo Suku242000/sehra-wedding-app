@@ -29,8 +29,7 @@ const registerSchema = z.object({
   role: z.enum([
     UserRole.BRIDE, 
     UserRole.GROOM, 
-    UserRole.FAMILY, 
-    UserRole.VENDOR
+    UserRole.FAMILY
   ]),
 });
 
@@ -257,7 +256,6 @@ const AuthForm: React.FC = () => {
                               <SelectItem value={UserRole.BRIDE}>Bride</SelectItem>
                               <SelectItem value={UserRole.GROOM}>Groom</SelectItem>
                               <SelectItem value={UserRole.FAMILY}>Family Member</SelectItem>
-                              <SelectItem value={UserRole.VENDOR}>Vendor</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -307,15 +305,16 @@ const AuthForm: React.FC = () => {
             </div>
             
             <div className="border-t border-gray-200 pt-4">
-              <p className="text-xs text-gray-500 mb-2">For Sehra Staff Only</p>
+              <p className="text-xs text-gray-500 mb-2">For Vendors, Supervisors & Admin Staff</p>
               <Button 
                 variant="outline" 
                 size="sm" 
                 className="text-xs border-[#800000] text-[#800000] hover:bg-[#800000]/10"
                 onClick={() => window.location.href = '/internal-login'}
               >
-                Internal Staff Portal
+                Sehra Business Portal
               </Button>
+              <p className="text-xs text-gray-500 mt-2">Vendor registration available in the business portal</p>
             </div>
           </div>
         </motion.div>

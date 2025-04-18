@@ -125,8 +125,14 @@ const Layout = ({ children }) => {
                   <p className="text-xs font-medium text-gray-500 capitalize">{user?.role}</p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
-                <LogOut className="h-5 w-5 text-gray-400" />
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleLogout} 
+                className="flex items-center text-gray-600 hover:text-maroon-700"
+              >
+                <LogOut className="h-4 w-4 mr-1" />
+                <span>Logout</span>
               </Button>
             </div>
           </div>
@@ -154,7 +160,16 @@ const Layout = ({ children }) => {
               <span className="text-lg font-light ml-1">Admin</span>
             </div>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center space-x-3">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleLogout} 
+              className="flex items-center text-gray-600 hover:text-maroon-700"
+            >
+              <LogOut className="h-4 w-4 mr-1" />
+              <span>Logout</span>
+            </Button>
             <div className="h-8 w-8 rounded-full bg-maroon-100 flex items-center justify-center text-maroon-700 font-semibold text-sm">
               {user?.name?.slice(0, 1)?.toUpperCase() || 'U'}
             </div>

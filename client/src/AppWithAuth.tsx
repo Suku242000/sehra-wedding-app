@@ -93,7 +93,7 @@ const AppWithAuth: React.FC = () => {
         </Route>
         
         {/* Internal App Routes */}
-        <Route path="/internal/login">
+        <Route path="/internal-login">
           <PublicRoute>
             <InternalLogin />
           </PublicRoute>

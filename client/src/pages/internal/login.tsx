@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -30,8 +30,23 @@ const InternalLogin: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<InternalRole>('vendor');
   const [isLoading, setIsLoading] = useState(false);
   const [, navigate] = useLocation();
-  const { login } = useAuth();
+  const { login, user, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  
+  // Redirect if already logged in
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      // Redirect based on role
+      const userRole = user.role.toLowerCase();
+      if (userRole === 'admin') {
+        navigate('/internal/admin/dashboard');
+      } else if (userRole === 'vendor') {
+        navigate('/internal/vendor/dashboard');
+      } else if (userRole === 'supervisor') {
+        navigate('/internal/supervisor/dashboard');
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
 
   // Initialize react-hook-form
   const form = useForm<LoginFormValues>({
@@ -46,17 +61,17 @@ const InternalLogin: React.FC = () => {
   const onSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
     try {
-      // Redirect to the internal app
-      window.location.href = '/internal/login';
+      // Use the login method from AuthContext
+      await login(values.email, values.password);
       
-      toast({
-        title: "Redirecting",
-        description: "Taking you to the internal portal...",
-      });
+      // The redirection will happen automatically in the useEffect hook
+      // That checks for authenticated user, so we don't need to handle it here
+      
     } catch (error) {
+      console.error("Login error:", error);
       toast({
-        title: "Redirect Failed",
-        description: "Unable to access the internal portal. Please try again.",
+        title: "Login Failed",
+        description: error instanceof Error ? error.message : "Invalid email or password",
         variant: "destructive",
       });
     } finally {

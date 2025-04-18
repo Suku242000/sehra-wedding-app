@@ -734,6 +734,8 @@ const UserManagement = () => {
                                       ? 'bg-blue-100 text-blue-700 border-blue-200'
                                       : log.action === 'DELETE_USER'
                                       ? 'bg-red-100 text-red-700 border-red-200'
+                                      : log.action === 'ASSIGN_SUPERVISOR'
+                                      ? 'bg-purple-100 text-purple-700 border-purple-200'
                                       : 'bg-amber-100 text-amber-700 border-amber-200'
                                   }
                                 >

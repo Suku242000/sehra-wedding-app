@@ -1165,6 +1165,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.id);
       
+      // Get existing user first to log changes
+      const existingUser = await storage.getUser(userId);
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
       // Don't allow updating password through this endpoint
       const { password, ...updateData } = req.body;
       
@@ -1175,7 +1181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // If supervisor was assigned, send notification emails
-      if (updateData.supervisorId && updateData.supervisorId !== updatedUser.supervisorId) {
+      if (updateData.supervisorId && updateData.supervisorId !== existingUser.supervisorId) {
         const supervisor = await storage.getUser(updateData.supervisorId);
         
         if (supervisor) {
@@ -1199,8 +1205,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
             updatedUser.weddingDate || "Not set yet",
             updatedUser.package || "Not selected"
           );
+          
+          // Record supervisor assignment in admin action logs
+          await storage.createAdminActionLog({
+            adminId: req.user!.id,
+            action: "ASSIGN_SUPERVISOR",
+            userId: userId,
+            details: { 
+              userId: userId, 
+              email: updatedUser.email, 
+              supervisorId: updateData.supervisorId,
+              supervisorName: supervisor.name,
+              supervisorEmail: supervisor.email
+            },
+            timestamp: new Date()
+          });
         }
-      }
+      } 
+      
+      // Record admin action for user update
+      await storage.createAdminActionLog({
+        adminId: req.user!.id,
+        action: "UPDATE_USER",
+        userId: userId,
+        details: { 
+          userId: userId, 
+          email: updatedUser.email,
+          role: updatedUser.role,
+          changes: updateData
+        },
+        timestamp: new Date()
+      });
       
       // Return updated user data (excluding password)
       const { password: _, ...userData } = updatedUser;

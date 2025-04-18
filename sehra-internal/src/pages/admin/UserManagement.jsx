@@ -739,7 +739,7 @@ const UserManagement = () => {
                                       : 'bg-amber-100 text-amber-700 border-amber-200'
                                   }
                                 >
-                                  {log.action.replace('_', ' ')}
+                                  {log.action.replace(/_/g, ' ')}
                                 </Badge>
                               </TableCell>
                               <TableCell>
@@ -749,6 +749,17 @@ const UserManagement = () => {
                                       {log.details.email && <div>Email: {log.details.email}</div>}
                                       {log.details.role && <div>Role: {log.details.role}</div>}
                                       {log.details.userId && <div>User ID: {log.details.userId}</div>}
+                                      
+                                      {/* Show supervisor assignment details */}
+                                      {log.action === 'ASSIGN_SUPERVISOR' && log.details.supervisorName && (
+                                        <div className="mt-1 p-2 bg-purple-50 rounded border border-purple-200">
+                                          <div className="font-medium text-purple-700">Supervisor Assignment:</div>
+                                          <div>Supervisor: {log.details.supervisorName}</div>
+                                          <div>Email: {log.details.supervisorEmail}</div>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Show general changes */}
                                       {log.details.changes && (
                                         <div className="mt-1">
                                           Changes: {JSON.stringify(log.details.changes)}

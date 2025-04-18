@@ -18,8 +18,9 @@ import { useAuth } from "@/context/AuthContext";
 // Import the Internal App
 import InternalLogin from "@/pages/internal/login";
 
-// Create placeholders for internal dashboard pages
-// We'll use our actual dashboard components instead of placeholders
+// Import Admin feature pages
+import AdminAnalytics from "@/pages/admin/analytics";
+import AdminSettings from "@/pages/admin/settings";
 
 const AppWithAuth: React.FC = () => {
   // Make sure auth is being initialized
@@ -64,11 +65,7 @@ const AppWithAuth: React.FC = () => {
         
         <Route path="/admin-dashboard">
           <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-            {() => {
-              // Properly redirect to the internal app
-              window.location.href = '/internal/admin/dashboard';
-              return null;
-            }}
+            <AdminDashboard />
           </ProtectedRoute>
         </Route>
         
@@ -96,6 +93,41 @@ const AppWithAuth: React.FC = () => {
           </ProtectedRoute>
         </Route>
         
+        {/* Admin Feature Routes */}
+        <Route path="/admin/analytics">
+          <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
+            <AdminAnalytics />
+          </ProtectedRoute>
+        </Route>
+        
+        <Route path="/admin/settings">
+          <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
+            <AdminSettings />
+          </ProtectedRoute>
+        </Route>
+        
+        <Route path="/admin/users">
+          <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
+            {() => {
+              // Redirect to the right user management path
+              window.location.href = '/internal/admin/users';
+              return null;
+            }}
+          </ProtectedRoute>
+        </Route>
+        
+        <Route path="/admin/vendors">
+          <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
+            <NotFound />
+          </ProtectedRoute>
+        </Route>
+        
+        <Route path="/admin/bookings">
+          <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
+            <NotFound />
+          </ProtectedRoute>
+        </Route>
+        
         {/* Internal App Routes */}
         <Route path="/internal-login">
           <PublicRoute>
@@ -112,6 +144,16 @@ const AppWithAuth: React.FC = () => {
         <Route path="/internal/admin/dashboard">
           <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
             <AdminDashboard />
+          </ProtectedRoute>
+        </Route>
+        
+        <Route path="/internal/admin/users">
+          <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
+            {() => {
+              // Can be replaced with actual UserManagement component
+              window.location.href = '/internal/admin/dashboard';
+              return null;
+            }}
           </ProtectedRoute>
         </Route>
         

@@ -1211,16 +1211,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create a new user (especially for Supervisor/Admin roles)
+  app.post("/api/admin/users/create", authenticateToken, authorizeRoles([UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const { name, email, role, password, location } = req.body;
+      
+      // Validate required fields
+      if (!name || !email || !role) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      
+      // Generate password if not provided
+      const finalPassword = password || Math.random().toString(36).slice(-8);
+      
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User with this email already exists" });
+      }
+      
+      // Hash password before storing
+      const hashedPassword = await bcrypt.hash(finalPassword, 10);
+      
+      // Generate unique ID for supervisors (format: S#0001)
+      let uniqueId = null;
+      if (role === UserRole.SUPERVISOR) {
+        // Get current count of supervisors to determine next ID
+        const supervisors = await storage.getUsersByRole(UserRole.SUPERVISOR);
+        const count = supervisors.length + 1;
+        uniqueId = `S#${count.toString().padStart(4, '0')}`;
+        
+        // Simulate sending welcome email with credentials
+        console.log(`[EMAIL SIMULATION] New supervisor account created: 
+          To: ${email}
+          Subject: Your Sehra Supervisor Account
+          Body: Welcome to Sehra, ${name}! Your account has been created with ID: ${uniqueId}. 
+          Your temporary password is: ${finalPassword}. Please change it after first login.`);
+      }
+      
+      // Create new user
+      const newUser = await storage.createUser({
+        name,
+        email,
+        password: hashedPassword,
+        role,
+        location,
+        uniqueId,
+        lastActive: new Date(),
+        active: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      
+      // Record admin action
+      await storage.createAdminActionLog({
+        adminId: req.user!.id,
+        action: "CREATE_USER",
+        details: { userId: newUser.id, role, email },
+        timestamp: new Date()
+      });
+      
+      // Remove password from response
+      const { password: _, ...userResponse } = newUser;
+      
+      res.status(201).json({ ...userResponse, generatedPassword: role === UserRole.SUPERVISOR ? finalPassword : undefined });
+    } catch (error) {
+      console.error("Create user error:", error);
+      res.status(500).json({ message: "Failed to create user", error: error.message });
+    }
+  });
+  
+  // Update a user (edit name, email, role, status, location)
+  app.patch("/api/admin/users/:id/password", authenticateToken, authorizeRoles([UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { password, sendResetEmail } = req.body;
+      
+      // Get existing user
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // If sending reset email is requested
+      if (sendResetEmail) {
+        // Generate random password
+        const tempPassword = Math.random().toString(36).slice(-8);
+        
+        // Hash password
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+        
+        // Update user with new password
+        await storage.updateUser(userId, {
+          password: hashedPassword,
+          updatedAt: new Date()
+        });
+        
+        // Record admin action
+        await storage.createAdminActionLog({
+          adminId: req.user!.id,
+          action: "RESET_PASSWORD",
+          details: { userId, email: user.email },
+          timestamp: new Date()
+        });
+        
+        // Simulate sending email
+        console.log(`[EMAIL SIMULATION] Password reset: 
+          To: ${user.email}
+          Subject: Your Sehra Password Has Been Reset
+          Body: Hello ${user.name}, your password has been reset. Your new temporary password is: ${tempPassword}. 
+          Please change it after logging in.`);
+        
+        res.json({ message: "Password reset email sent", newPassword: tempPassword });
+        return;
+      }
+      
+      // Otherwise update with provided password
+      if (!password) {
+        return res.status(400).json({ message: "Password is required" });
+      }
+      
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      await storage.updateUser(userId, {
+        password: hashedPassword,
+        updatedAt: new Date()
+      });
+      
+      // Record admin action
+      await storage.createAdminActionLog({
+        adminId: req.user!.id,
+        action: "CHANGE_PASSWORD",
+        details: { userId, email: user.email },
+        timestamp: new Date()
+      });
+      
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Update password error:", error);
+      res.status(500).json({ message: "Failed to update password", error: error.message });
+    }
+  });
+  
+  // Delete a user
   app.delete("/api/admin/users/:id", authenticateToken, authorizeRoles([UserRole.ADMIN]), async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.id);
       
-      // This is a mock implementation since we don't have a delete user method
-      // In a real implementation, we would soft delete the user or handle cascading deletes
+      // Get existing user
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Don't allow deleting themselves
+      if (req.user?.id === userId) {
+        return res.status(400).json({ message: "You cannot delete your own account" });
+      }
+      
+      // If user is a supervisor, handle their client reassignments
+      if (user.role === UserRole.SUPERVISOR) {
+        // Get all clients assigned to this supervisor
+        const clients = await storage.getClientsBySupervisorId(userId);
+        
+        // Unassign all clients (set supervisorId to null)
+        for (const client of clients) {
+          await storage.updateUser(client.id, { supervisorId: null });
+        }
+      }
+      
+      // Soft delete or delete the user
+      await storage.deleteUser(userId);
+      
+      // Record admin action
+      await storage.createAdminActionLog({
+        adminId: req.user!.id,
+        action: "DELETE_USER",
+        details: { userId, email: user.email, role: user.role },
+        timestamp: new Date()
+      });
+      
       res.json({ message: "User deleted successfully" });
     } catch (error) {
       console.error("Delete user error:", error);
-      res.status(500).json({ message: "Failed to delete user" });
+      res.status(500).json({ message: "Failed to delete user", error: error.message });
     }
   });
   
@@ -2790,12 +2964,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Export contact form submissions to Excel
   app.get("/api/admin/contact-submissions/export/excel", authenticateToken, authorizeRoles([UserRole.ADMIN, UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
     try {
-      const Excel = require('exceljs');
+      console.log("Starting Excel export process");
+      
       const submissions = await storage.getAllContactFormSubmissions();
+      console.log(`Retrieved ${submissions.length} submissions for export`);
+      
+      // Process submissions first to enhance with assignee names
+      const enhancedSubmissions = await Promise.all(submissions.map(async (submission) => {
+        let assignedToName = 'Unassigned';
+        if (submission.assignedTo) {
+          const assignee = await storage.getUser(submission.assignedTo);
+          if (assignee) {
+            assignedToName = assignee.name;
+          }
+        }
+        return { ...submission, assignedToName };
+      }));
+      
+      console.log(`Enhanced ${enhancedSubmissions.length} submissions with assignee names`);
       
       // Create a new Excel workbook and worksheet
-      const workbook = new Excel.Workbook();
+      const ExcelJS = await import('exceljs');
+      const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Contact Submissions');
+      
+      console.log("Created workbook and worksheet");
       
       // Define columns
       worksheet.columns = [
@@ -2810,53 +3003,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { header: 'Updated At', key: 'updatedAt', width: 20 }
       ];
       
-      // Add assignee names
-      const enhancedSubmissions = await Promise.all(submissions.map(async (submission) => {
-        let assignedToName = 'Unassigned';
-        if (submission.assignedTo) {
-          const assignee = await storage.getUser(submission.assignedTo);
-          if (assignee) {
-            assignedToName = assignee.name;
-          }
-        }
-        return { ...submission, assignedToName };
-      }));
+      console.log("Defined columns");
       
       // Add rows
       worksheet.addRows(enhancedSubmissions);
+      
+      console.log("Added rows to worksheet");
       
       // Format date columns
       worksheet.getColumn('createdAt').numFmt = 'yyyy-mm-dd hh:mm:ss';
       worksheet.getColumn('updatedAt').numFmt = 'yyyy-mm-dd hh:mm:ss';
       
+      console.log("Formatted date columns");
+      
       // Set response headers
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename=contact-submissions.xlsx');
       
+      console.log("Set response headers");
+      
       // Write to response
+      console.log("Writing Excel data to response...");
       await workbook.xlsx.write(res);
+      console.log("Excel data written successfully");
+      
       res.end();
+      console.log("Response ended");
     } catch (error) {
       console.error("Export contact submissions to Excel error:", error);
-      res.status(500).json({ message: "Failed to export contact submissions to Excel" });
+      if (error instanceof Error) {
+        console.error("Error details:", error.message, error.stack);
+      }
+      res.status(500).json({ message: "Failed to export contact submissions to Excel", error: error.message });
     }
   });
 
   // Export contact form submissions to PDF
   app.get("/api/admin/contact-submissions/export/pdf", authenticateToken, authorizeRoles([UserRole.ADMIN, UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
     try {
-      const PDFDocument = require('pdfkit');
+      console.log("Starting PDF export process");
+      
       const submissions = await storage.getAllContactFormSubmissions();
+      console.log(`Retrieved ${submissions.length} submissions for PDF export`);
       
       // Create a new PDF document
-      const doc = new PDFDocument({ margin: 50 });
+      const pdfkit = await import('pdfkit');
+      const doc = new pdfkit.default({ margin: 50 });
+      
+      console.log("Created PDF document");
       
       // Set response headers
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', 'attachment; filename=contact-submissions.pdf');
       
+      console.log("Set PDF response headers");
+      
       // Pipe the PDF to the response
       doc.pipe(res);
+      
+      console.log("Piped PDF to response");
       
       // Add title
       doc.fontSize(20).text('Contact Form Submissions', { align: 'center' });
@@ -2866,8 +3071,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       doc.fontSize(12).text(`Generated on: ${new Date().toLocaleString()}`, { align: 'center' });
       doc.moveDown(2);
       
+      console.log("Added PDF header and date");
+      
       // Add submissions
-      submissions.forEach((submission, index) => {
+      for (let i = 0; i < submissions.length; i++) {
+        const submission = submissions[i];
         doc.fontSize(14).text(`Submission #${submission.id}`, { underline: true });
         doc.fontSize(12).text(`Name: ${submission.name}`);
         doc.fontSize(12).text(`Email: ${submission.email}`);
@@ -2882,18 +3090,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Add a separator unless it's the last item
-        if (index < submissions.length - 1) {
+        if (i < submissions.length - 1) {
           doc.moveDown();
           doc.strokeColor('#aaaaaa').lineWidth(1).moveTo(50, doc.y).lineTo(550, doc.y).stroke();
           doc.moveDown();
         }
-      });
+      }
+      
+      console.log(`Added ${submissions.length} submissions to PDF`);
       
       // Finalize the PDF
+      console.log("Finalizing PDF...");
       doc.end();
+      console.log("PDF finalized");
     } catch (error) {
       console.error("Export contact submissions to PDF error:", error);
-      res.status(500).json({ message: "Failed to export contact submissions to PDF" });
+      if (error instanceof Error) {
+        console.error("Error details:", error.message, error.stack);
+      }
+      res.status(500).json({ message: "Failed to export contact submissions to PDF", error: error.message });
     }
   });
 

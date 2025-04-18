@@ -1,0 +1,54 @@
+Create a fully functional **Admin User Management Panel** for the Sehra wedding platform using React, Tailwind CSS, and Axios for API integration.
+
+Admin Dashboard > User Management Module Requirements:
+
+1. Overview Panel:
+   - Table listing all users (Supervisors and other admin users)
+   - Columns: ID, Name, Email, Role, Status, Assigned Clients, Created Date, Actions
+
+2. Create New User (especially Supervisor):
+   - Form with fields: Full Name, Email, Role (dropdown: Supervisor/Admin), Password (auto-generate or manual)
+   - Once a Supervisor is created, assign a **unique ID** (format: `S#0001`, incrementing per user)
+   - New account credentials should be auto-sent to the supervisor (simulate SendGrid for now)
+   - Add Location-based assignment (dropdown: Mumbai, Delhi, etc.)
+
+3. Edit User:
+   - Update name, email, location, role (except ID)
+   - Toggle Active/Inactive status
+
+4. Delete User:
+   - Confirm modal before deletion
+   - Remove association with assigned clients/vendors if Supervisor is deleted
+
+5. Change Password:
+   - Secure password reset form
+   - Optional toggle: “Send password reset link” or manual override
+
+6. Filters and Search:
+   - Filter users by role (Supervisor/Admin), location, or status
+   - Search by name or email
+
+7. Admin-only Action Logs (optional):
+   - View all changes made by any admin (audit trail)
+   - Timestamped logs of user creations/edits/deletes
+
+8. API Endpoints:
+   - GET /admin/users
+   - POST /admin/users/create
+   - PUT /admin/users/:id/edit
+   - DELETE /admin/users/:id/delete
+   - PATCH /admin/users/:id/password
+
+9. UI/UX Enhancements:
+   - Smooth animations for modals/forms (Framer Motion)
+   - Toasts for success/error messages
+   - Responsive design for mobile/tablet use
+   - Use Sehra brand palette: Royal Maroon, Classic Gold, etc.
+
+10. File path:
+   - Create under: `/sehra-internal/src/pages/admin/UserManagement.jsx`
+
+Note:
+- All operations must be protected by Admin role auth middleware.
+- Supervisor accounts should not be manually editable by anyone else.
+

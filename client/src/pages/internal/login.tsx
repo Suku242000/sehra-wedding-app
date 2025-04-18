@@ -47,7 +47,7 @@ const InternalLogin: React.FC = () => {
     setIsLoading(true);
     try {
       // Redirect to the internal app
-      window.location.href = '/sehra-internal/login';
+      window.location.href = '/internal/login';
       
       toast({
         title: "Redirecting",

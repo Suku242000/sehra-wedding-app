@@ -312,7 +312,7 @@ const AuthForm: React.FC = () => {
                 variant="outline" 
                 size="sm" 
                 className="text-xs border-[#800000] text-[#800000] hover:bg-[#800000]/10"
-                onClick={() => window.location.href = '/internal/login'}
+                onClick={() => window.location.href = '/internal-login'}
               >
                 Internal Staff Portal
               </Button>

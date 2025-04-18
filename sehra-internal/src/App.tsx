@@ -26,9 +26,9 @@ const RootRedirect = () => {
       if (user.role === 'admin') {
         navigate('/internal/admin/dashboard');
       } else if (user.role === 'vendor') {
-        navigate('/vendor/dashboard');
+        navigate('/internal/vendor/dashboard');
       } else if (user.role === 'supervisor') {
-        navigate('/supervisor/dashboard');
+        navigate('/internal/supervisor/dashboard');
       } else {
         // Default redirect to login if role is not recognized
         navigate('/internal/login');
@@ -59,10 +59,9 @@ function App() {
             <Route path="/internal/login" component={InternalLogin} />
             <Route path="/internal-login" component={InternalLogin} />
             <Route path="/internal/admin/dashboard" component={AdminDashboardPage} />
-            <Route path="/vendor/dashboard" component={VendorDashboardPage} />
-            <Route path="/supervisor/dashboard" component={SupervisorDashboardPage} />
-            <Route path="/admin/dashboard" component={AdminDashboardPage} />
-            <Route path="/admin/users" component={UserManagement} />
+            <Route path="/internal/vendor/dashboard" component={VendorDashboardPage} />
+            <Route path="/internal/supervisor/dashboard" component={SupervisorDashboardPage} />
+            <Route path="/internal/admin/users" component={UserManagement} />
             
             <Route path="/" component={RootRedirect} />
             <Route component={NotFoundPage} />

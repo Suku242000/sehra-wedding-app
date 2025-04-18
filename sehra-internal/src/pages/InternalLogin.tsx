@@ -47,10 +47,10 @@ const InternalLogin: React.FC = () => {
   useEffect(() => {
     if (user) {
       const roleRoute = user.role === 'admin' 
-        ? '/admin/dashboard' 
+        ? '/internal/admin/dashboard' 
         : user.role === 'supervisor' 
-          ? '/supervisor/dashboard' 
-          : '/vendor/dashboard';
+          ? '/internal/supervisor/dashboard' 
+          : '/internal/vendor/dashboard';
       
       navigate(roleRoute);
     }

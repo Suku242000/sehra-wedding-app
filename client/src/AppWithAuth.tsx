@@ -64,7 +64,10 @@ const AppWithAuth: React.FC = () => {
         
         <Route path="/admin-dashboard">
           <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-            <AdminDashboard />
+            {() => {
+              window.location.href = '/admin/dashboard';
+              return null;
+            }}
           </ProtectedRoute>
         </Route>
         
@@ -113,7 +116,10 @@ const AppWithAuth: React.FC = () => {
         
         <Route path="/admin/dashboard">
           <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-            <AdminDashboard />
+            {() => {
+              window.location.href = '/admin/dashboard';
+              return null;
+            }}
           </ProtectedRoute>
         </Route>
         

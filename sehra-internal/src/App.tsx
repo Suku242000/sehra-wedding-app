@@ -8,12 +8,13 @@ import { Toaster } from '@shared/components/ui/toaster';
 // Pages
 import AuthPage from './pages/auth-page';
 import InternalLogin from './pages/InternalLogin';
-import DashboardPlaceholder from './pages/dashboard-placeholder';
+import AdminDashboard from './pages/admin/Dashboard';
 import UserManagement from './pages/admin/UserManagement';
+import DashboardPlaceholder from './pages/dashboard-placeholder';
 
 const VendorDashboardPage = () => <DashboardPlaceholder role="vendor" />;
 const SupervisorDashboardPage = () => <DashboardPlaceholder role="supervisor" />;
-const AdminDashboardPage = () => <DashboardPlaceholder role="admin" />;
+const AdminDashboardPage = () => <AdminDashboard />;
 const NotFoundPage = () => <div className="p-8 text-center">Page not found</div>;
 const RootRedirect = () => {
   // This would typically use useEffect and navigate based on role

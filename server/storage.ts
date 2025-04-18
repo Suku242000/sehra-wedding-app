@@ -1167,6 +1167,69 @@ export class MemStorage implements IStorage {
       return await this.createVendorAnalytics(analyticsData as InsertVendorAnalytics);
     }
   }
+
+  // Contact Form Submission methods
+  async getContactFormSubmission(id: number): Promise<ContactFormSubmission | undefined> {
+    return this.contactFormSubmissions.get(id);
+  }
+
+  async getAllContactFormSubmissions(): Promise<ContactFormSubmission[]> {
+    return Array.from(this.contactFormSubmissions.values())
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async getContactFormSubmissionsByStatus(status: string): Promise<ContactFormSubmission[]> {
+    return Array.from(this.contactFormSubmissions.values())
+      .filter(submission => submission.status === status)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async getContactFormSubmissionsByAssignee(assignedTo: number): Promise<ContactFormSubmission[]> {
+    return Array.from(this.contactFormSubmissions.values())
+      .filter(submission => submission.assignedTo === assignedTo)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async createContactFormSubmission(submission: InsertContactFormSubmission): Promise<ContactFormSubmission> {
+    const id = this.contactFormSubmissionId++;
+    const now = new Date().toISOString();
+    const newSubmission: ContactFormSubmission = {
+      ...submission,
+      id,
+      createdAt: now,
+      updatedAt: now,
+      status: submission.status || "new",
+      notes: submission.notes || "",
+      assignedTo: submission.assignedTo || null
+    };
+    this.contactFormSubmissions.set(id, newSubmission);
+    return newSubmission;
+  }
+
+  async updateContactFormSubmission(id: number, submissionData: Partial<ContactFormSubmission>): Promise<ContactFormSubmission | undefined> {
+    const submission = await this.getContactFormSubmission(id);
+    if (!submission) return undefined;
+    
+    const now = new Date().toISOString();
+    const updatedSubmission = { 
+      ...submission, 
+      ...submissionData,
+      updatedAt: now
+    };
+    this.contactFormSubmissions.set(id, updatedSubmission);
+    return updatedSubmission;
+  }
+
+  async assignContactFormSubmission(id: number, assignedTo: number): Promise<ContactFormSubmission | undefined> {
+    return this.updateContactFormSubmission(id, { 
+      assignedTo, 
+      status: "assigned" 
+    });
+  }
+
+  async deleteContactFormSubmission(id: number): Promise<boolean> {
+    return this.contactFormSubmissions.delete(id);
+  }
 }
 
 // Import the DatabaseStorage class

@@ -278,6 +278,21 @@ const AuthForm: React.FC = () => {
               </motion.div>
             </TabsContent>
           </Tabs>
+          
+          {/* Internal Staff Login Link */}
+          <div className="text-center mt-8">
+            <div className="border-t border-gray-200 pt-4">
+              <p className="text-xs text-gray-500 mb-2">For Sehra Staff Only</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="text-xs border-[#800000] text-[#800000] hover:bg-[#800000]/10"
+                onClick={() => window.location.href = '/internal/login'}
+              >
+                Internal Staff Portal
+              </Button>
+            </div>
+          </div>
         </motion.div>
       </div>
     </div>

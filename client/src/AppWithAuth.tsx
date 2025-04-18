@@ -64,7 +64,11 @@ const AppWithAuth: React.FC = () => {
         
         <Route path="/admin-dashboard">
           <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-            <AdminDashboard />
+            {() => {
+              // Properly redirect to the internal app
+              window.location.href = 'http://localhost:3001/internal/admin/dashboard';
+              return null;
+            }}
           </ProtectedRoute>
         </Route>
         
@@ -113,7 +117,11 @@ const AppWithAuth: React.FC = () => {
         
         <Route path="/admin/dashboard">
           <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-            <AdminDashboard />
+            {() => {
+              // Properly redirect to the internal app
+              window.location.href = 'http://localhost:3001/internal/admin/dashboard';
+              return null;
+            }}
           </ProtectedRoute>
         </Route>
         

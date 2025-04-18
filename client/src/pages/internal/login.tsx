@@ -46,25 +46,17 @@ const InternalLogin: React.FC = () => {
   const onSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
     try {
-      await login(values.email, values.password);
-      
-      // Redirect based on role
-      if (selectedRole === 'admin') {
-        navigate('/admin/dashboard');
-      } else if (selectedRole === 'supervisor') {
-        navigate('/supervisor/dashboard');
-      } else {
-        navigate('/vendor/dashboard');
-      }
+      // Redirect to the internal app (running on port 3001)
+      window.location.href = 'http://localhost:3001/internal/login';
       
       toast({
-        title: "Login Successful",
-        description: `Welcome to Sehra ${selectedRole} dashboard.`,
+        title: "Redirecting",
+        description: "Taking you to the internal portal...",
       });
     } catch (error) {
       toast({
-        title: "Login Failed",
-        description: "Please check your credentials and try again.",
+        title: "Redirect Failed",
+        description: "Unable to access the internal portal. Please try again.",
         variant: "destructive",
       });
     } finally {

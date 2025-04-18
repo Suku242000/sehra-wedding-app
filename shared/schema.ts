@@ -612,3 +612,24 @@ export type VendorReview = typeof vendorReviews.$inferSelect;
 export type VendorCalendar = typeof vendorCalendar.$inferSelect;
 export type VendorAnalytics = typeof vendorAnalytics.$inferSelect;
 export type SupervisorClient = typeof supervisorClients.$inferSelect;
+
+// ContactFormSubmission schema
+export const contactFormSubmissions = pgTable("contact_form_submissions", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  message: text("message").notNull(),
+  status: text("status").default("new").notNull(), // new, assigned, contacted, resolved, etc.
+  assignedTo: integer("assigned_to").references(() => users.id), // staff member assigned to handle this contact
+  notes: text("notes"), // internal notes about the contact
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Create insert schema for contact form submissions
+export const insertContactFormSubmissionSchema = createInsertSchema(contactFormSubmissions)
+  .omit({ id: true, createdAt: true, updatedAt: true });
+
+// Define types
+export type InsertContactFormSubmission = z.infer<typeof insertContactFormSubmissionSchema>;
+export type ContactFormSubmission = typeof contactFormSubmissions.$inferSelect;

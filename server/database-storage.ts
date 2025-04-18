@@ -28,6 +28,8 @@ import {
   InsertVendorReview,
   VendorCalendar,
   InsertVendorCalendar,
+  ContactFormSubmission,
+  InsertContactFormSubmission,
   VendorAnalytics,
   InsertVendorAnalytics,
   users,
@@ -45,7 +47,8 @@ import {
   notifications,
   vendorReviews,
   vendorCalendar,
-  vendorAnalytics
+  vendorAnalytics,
+  contactFormSubmissions
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, count } from "drizzle-orm";

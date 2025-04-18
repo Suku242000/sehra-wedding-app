@@ -43,6 +43,9 @@ import {
 // Initialize email transport
 initializeEmailTransport();
 
+// Import admin dashboard routes
+import adminDashboardRoutes from './routes/admin-dashboard';
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP and Socket.IO servers
   const httpServer = createServer(app);
@@ -3287,6 +3290,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to create admin action log" });
     }
   });
+
+  // Register admin dashboard routes
+  app.use('/api/admin', adminDashboardRoutes);
 
   return httpServer;
 }

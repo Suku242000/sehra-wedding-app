@@ -11,9 +11,12 @@ import UserList from '@/components/admin/UserList';
 import SupervisorAssignment from '@/components/admin/SupervisorAssignment';
 import StatsCards from '@/components/admin/StatsCards';
 import AdvancedAnalytics from '@/components/admin/AdvancedAnalytics';
+import { Button } from '@/components/ui/button';
+import { LogOut, Menu } from 'lucide-react';
+import { useState } from 'react';
 
 const AdminDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   // Fetch all users
   const { data: users = [] } = useQuery<User[]>({
@@ -23,6 +26,24 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <Layout>
+      <div className="bg-[#800000] text-white p-4 sticky top-0 z-10">
+        <div className="container mx-auto flex justify-between items-center">
+          <h1 className="text-xl font-bold">Sehra Admin Portal</h1>
+          <div className="flex items-center gap-4">
+            <span className="text-sm opacity-80">Welcome, {user?.name}</span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={logout}
+              className="text-white border-white hover:bg-white/20"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+        </div>
+      </div>
+      
       <motion.div
         variants={staggerContainer}
         initial="hidden"

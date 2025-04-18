@@ -46,8 +46,8 @@ const InternalLogin: React.FC = () => {
   const onSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
     try {
-      // Redirect to the internal app (running on port 3001)
-      window.location.href = 'http://localhost:3001/internal/login';
+      // Redirect to the internal app
+      window.location.href = '/sehra-internal/login';
       
       toast({
         title: "Redirecting",

@@ -66,7 +66,7 @@ const AppWithAuth: React.FC = () => {
           <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
             {() => {
               // Properly redirect to the internal app
-              window.location.href = 'http://localhost:3001/internal/admin/dashboard';
+              window.location.href = '/sehra-internal/admin/dashboard';
               return null;
             }}
           </ProtectedRoute>
@@ -119,7 +119,7 @@ const AppWithAuth: React.FC = () => {
           <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
             {() => {
               // Properly redirect to the internal app
-              window.location.href = 'http://localhost:3001/internal/admin/dashboard';
+              window.location.href = '/sehra-internal/admin/dashboard';
               return null;
             }}
           </ProtectedRoute>

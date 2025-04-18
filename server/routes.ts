@@ -20,6 +20,7 @@ import {
   insertMessageSchema,
   insertVendorCalendarSchema,
   insertContactStatusSchema,
+  insertContactFormSubmissionSchema,
   UserRole
 } from "@shared/schema";
 import { 

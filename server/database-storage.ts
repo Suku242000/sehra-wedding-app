@@ -1000,4 +1000,54 @@ export class DatabaseStorage implements IStorage {
     
     return updatedAnalytics;
   }
+  
+  // Contact Form Submissions methods
+  async getContactFormSubmission(id: number): Promise<ContactFormSubmission | undefined> {
+    const [submission] = await db.select().from(contactFormSubmissions).where(eq(contactFormSubmissions.id, id));
+    return submission;
+  }
+
+  async getAllContactFormSubmissions(): Promise<ContactFormSubmission[]> {
+    return await db.select().from(contactFormSubmissions).orderBy(contactFormSubmissions.createdAt, 'desc');
+  }
+
+  async getContactFormSubmissionsByStatus(status: string): Promise<ContactFormSubmission[]> {
+    return await db.select()
+      .from(contactFormSubmissions)
+      .where(eq(contactFormSubmissions.status, status))
+      .orderBy(contactFormSubmissions.createdAt, 'desc');
+  }
+
+  async getContactFormSubmissionsByAssignee(assignedTo: number): Promise<ContactFormSubmission[]> {
+    return await db.select()
+      .from(contactFormSubmissions)
+      .where(eq(contactFormSubmissions.assignedTo, assignedTo))
+      .orderBy(contactFormSubmissions.createdAt, 'desc');
+  }
+
+  async createContactFormSubmission(submission: InsertContactFormSubmission): Promise<ContactFormSubmission> {
+    const [newSubmission] = await db.insert(contactFormSubmissions).values(submission).returning();
+    return newSubmission;
+  }
+
+  async updateContactFormSubmission(id: number, submissionData: Partial<ContactFormSubmission>): Promise<ContactFormSubmission | undefined> {
+    const [updatedSubmission] = await db
+      .update(contactFormSubmissions)
+      .set(submissionData)
+      .where(eq(contactFormSubmissions.id, id))
+      .returning();
+    return updatedSubmission;
+  }
+
+  async assignContactFormSubmission(id: number, assignedTo: number): Promise<ContactFormSubmission | undefined> {
+    return this.updateContactFormSubmission(id, { 
+      assignedTo, 
+      status: "assigned" 
+    });
+  }
+
+  async deleteContactFormSubmission(id: number): Promise<boolean> {
+    const result = await db.delete(contactFormSubmissions).where(eq(contactFormSubmissions.id, id));
+    return !!result;
+  }
 }

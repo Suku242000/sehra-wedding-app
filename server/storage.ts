@@ -28,6 +28,8 @@ import {
   InsertVendorReview,
   VendorCalendar,
   InsertVendorCalendar,
+  ContactFormSubmission,
+  InsertContactFormSubmission,
   VendorAnalytics,
   InsertVendorAnalytics,
   users,
@@ -171,6 +173,16 @@ export interface IStorage {
   createVendorAnalytics(analytics: InsertVendorAnalytics): Promise<VendorAnalytics>;
   updateVendorAnalytics(id: number, analytics: Partial<VendorAnalytics>): Promise<VendorAnalytics | undefined>;
   calculateVendorAnalytics(vendorId: number): Promise<VendorAnalytics>;
+  
+  // Contact Form Submissions methods
+  getContactFormSubmission(id: number): Promise<ContactFormSubmission | undefined>;
+  getAllContactFormSubmissions(): Promise<ContactFormSubmission[]>;
+  getContactFormSubmissionsByStatus(status: string): Promise<ContactFormSubmission[]>;
+  getContactFormSubmissionsByAssignee(assignedTo: number): Promise<ContactFormSubmission[]>;
+  createContactFormSubmission(submission: InsertContactFormSubmission): Promise<ContactFormSubmission>;
+  updateContactFormSubmission(id: number, submission: Partial<ContactFormSubmission>): Promise<ContactFormSubmission | undefined>;
+  assignContactFormSubmission(id: number, assignedTo: number): Promise<ContactFormSubmission | undefined>;
+  deleteContactFormSubmission(id: number): Promise<boolean>;
 }
 
 // In-memory storage implementation

@@ -117,8 +117,8 @@ const AppWithAuth: React.FC = () => {
         <Route path="/admin/dashboard">
           <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
             {() => {
-              // Don't use the same URL to avoid infinite loops
-              window.location.href = '/internal/admin/dashboard';
+              // Use the fully qualified URL of the internal app
+              window.location.href = 'http://localhost:3001/admin/dashboard';
               return null;
             }}
           </ProtectedRoute>

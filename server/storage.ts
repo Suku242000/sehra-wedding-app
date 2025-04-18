@@ -32,6 +32,8 @@ import {
   InsertContactFormSubmission,
   VendorAnalytics,
   InsertVendorAnalytics,
+  AdminActionLog,
+  InsertAdminActionLog,
   users,
   vendorProfiles,
   tasks,
@@ -47,7 +49,8 @@ import {
   notifications,
   vendorReviews,
   vendorCalendar,
-  vendorAnalytics
+  vendorAnalytics,
+  adminActionLogs
 } from "@shared/schema";
 
 // Interface for storage methods
@@ -183,6 +186,13 @@ export interface IStorage {
   updateContactFormSubmission(id: number, submission: Partial<ContactFormSubmission>): Promise<ContactFormSubmission | undefined>;
   assignContactFormSubmission(id: number, assignedTo: number): Promise<ContactFormSubmission | undefined>;
   deleteContactFormSubmission(id: number): Promise<boolean>;
+  
+  // Admin Action Logs methods
+  getAdminActionLogs(): Promise<AdminActionLog[]>;
+  getAdminActionLogsByAdmin(adminId: number): Promise<AdminActionLog[]>;
+  getAdminActionLogsByUser(userId: number): Promise<AdminActionLog[]>;
+  getAdminActionLogsByAction(action: string): Promise<AdminActionLog[]>;
+  createAdminActionLog(logData: InsertAdminActionLog): Promise<AdminActionLog>;
 }
 
 // In-memory storage implementation
@@ -204,6 +214,7 @@ export class MemStorage implements IStorage {
   private vendorCalendars: Map<number, VendorCalendar>;
   private vendorAnalytics: Map<number, VendorAnalytics>;
   private contactFormSubmissions: Map<number, ContactFormSubmission>;
+  private adminActionLogs: Map<number, AdminActionLog>;
   
   private userId: number;
   private vendorProfileId: number;
@@ -221,6 +232,7 @@ export class MemStorage implements IStorage {
   private vendorCalendarId: number;
   private vendorAnalyticsId: number;
   private contactFormSubmissionId: number;
+  private adminActionLogId: number;
 
   constructor() {
     this.users = new Map();
@@ -240,6 +252,7 @@ export class MemStorage implements IStorage {
     this.vendorCalendars = new Map();
     this.vendorAnalytics = new Map();
     this.contactFormSubmissions = new Map();
+    this.adminActionLogs = new Map();
     
     this.userId = 1;
     this.vendorProfileId = 1;
@@ -257,6 +270,7 @@ export class MemStorage implements IStorage {
     this.vendorCalendarId = 1;
     this.vendorAnalyticsId = 1;
     this.contactFormSubmissionId = 1;
+    this.adminActionLogId = 1;
     
     // Initialize with admin user
     this.createUser({
@@ -1229,6 +1243,41 @@ export class MemStorage implements IStorage {
 
   async deleteContactFormSubmission(id: number): Promise<boolean> {
     return this.contactFormSubmissions.delete(id);
+  }
+  
+  // Admin Action Logs methods
+  async getAdminActionLogs(): Promise<AdminActionLog[]> {
+    return Array.from(this.adminActionLogs.values());
+  }
+  
+  async getAdminActionLogsByAdmin(adminId: number): Promise<AdminActionLog[]> {
+    return Array.from(this.adminActionLogs.values()).filter(
+      (log) => log.adminId === adminId
+    );
+  }
+  
+  async getAdminActionLogsByUser(userId: number): Promise<AdminActionLog[]> {
+    return Array.from(this.adminActionLogs.values()).filter(
+      (log) => log.userId === userId
+    );
+  }
+  
+  async getAdminActionLogsByAction(action: string): Promise<AdminActionLog[]> {
+    return Array.from(this.adminActionLogs.values()).filter(
+      (log) => log.action === action
+    );
+  }
+  
+  async createAdminActionLog(logData: InsertAdminActionLog): Promise<AdminActionLog> {
+    const id = this.adminActionLogId++;
+    const timestamp = new Date().toISOString();
+    const newLog: AdminActionLog = { 
+      ...logData, 
+      id, 
+      timestamp
+    };
+    this.adminActionLogs.set(id, newLog);
+    return newLog;
   }
 }
 

@@ -4,17 +4,15 @@ import { Variants } from 'framer-motion';
 export const staggerContainer = (
   staggerChildren: number = 0.05, 
   delayChildren: number = 0
-): Variants => {
-  return {
-    hidden: {},
-    show: {
-      transition: {
-        staggerChildren,
-        delayChildren,
-      },
+): Variants => ({
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren,
+      delayChildren,
     },
-  };
-};
+  },
+});
 
 // Fade-in animation variants with direction support
 export const fadeIn = (

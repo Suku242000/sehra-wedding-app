@@ -118,7 +118,7 @@ const AuthForm: React.FC = () => {
         {/* Right side (auth forms) */}
         <motion.div 
           className="w-full md:w-1/2 bg-white p-8 transition-all duration-500"
-          variants={staggerContainer}
+          variants={staggerContainer()}
           initial="hidden"
           animate="show"
         >
@@ -279,8 +279,33 @@ const AuthForm: React.FC = () => {
             </TabsContent>
           </Tabs>
           
-          {/* Internal Staff Login Link */}
+          {/* Back to Home and Internal Staff Login Links */}
           <div className="text-center mt-8">
+            <div className="mb-4">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-sm text-[#800000] hover:bg-[#800000]/10 flex items-center gap-1"
+                onClick={() => window.location.href = '/'}
+              >
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  width="16" 
+                  height="16" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                  className="mr-1"
+                >
+                  <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back to Home Page
+              </Button>
+            </div>
+            
             <div className="border-t border-gray-200 pt-4">
               <p className="text-xs text-gray-500 mb-2">For Sehra Staff Only</p>
               <Button 

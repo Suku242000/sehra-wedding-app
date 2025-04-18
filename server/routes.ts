@@ -56,6 +56,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add staff login route for internal application
+  app.post("/api/staff/login", async (req: Request, res: Response) => {
+    try {
+      const validatedData = loginSchema.parse(req.body);
+      
+      // Check if user exists
+      const user = await storage.getUserByEmail(validatedData.email);
+      
+      if (!user) {
+        return res.status(400).json({ message: "Invalid email or password" });
+      }
+      
+      // Check if user is staff (admin, vendor, or supervisor)
+      if (!['admin', 'vendor', 'supervisor'].includes(user.role)) {
+        return res.status(403).json({ message: "Access denied. Staff only." });
+      }
+      
+      // Verify password
+      const isPasswordValid = await verifyPassword(
+        validatedData.password,
+        user.password
+      );
+      
+      if (!isPasswordValid) {
+        return res.status(400).json({ message: "Invalid email or password" });
+      }
+      
+      // Generate token
+      const token = generateToken(user);
+      
+      // Return user data (excluding password) and token
+      const { password, ...userData } = user;
+      res.json({ user: userData, token });
+    } catch (error) {
+      console.error("Staff login error:", error);
+      res.status(500).json({ message: "An error occurred during login" });
+    }
+  });
+  
+  // Get staff user profile
+  app.get("/api/staff/user", authenticateToken, async (req: Request, res: Response) => {
+    try {
+      // User is already attached to request by authenticateToken middleware
+      if (!req.user) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      // Only staff roles can access this endpoint
+      if (!['admin', 'vendor', 'supervisor'].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied. Staff only." });
+      }
+      
+      // Return user data from the database to ensure we have the latest data
+      const user = await storage.getUser(req.user.id);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Return user data excluding password
+      const { password, ...userData } = user;
+      res.json(userData);
+    } catch (error) {
+      console.error("Get staff user error:", error);
+      res.status(500).json({ message: "An error occurred while fetching user data" });
+    }
+  });
+  
   // Auth routes
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {

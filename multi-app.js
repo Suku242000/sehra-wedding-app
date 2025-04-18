@@ -24,12 +24,14 @@ const apps = [
 ];
 
 // Run all applications concurrently
-concurrently(apps, {
+const { result } = concurrently(apps, {
   prefix: 'name',
   killOthers: ['failure', 'success'],
   restartTries: 3,
   restartDelay: 1000,
-}).then(
-  () => console.log('All processes exited with code 0'),
-  (err) => console.error('Error occurred:', err)
-);
+});
+
+// Handle process completion
+result.catch((err) => {
+  console.error('Error occurred:', err);
+});

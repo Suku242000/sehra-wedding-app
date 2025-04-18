@@ -5,7 +5,7 @@ import React, { useEffect } from 'react';
 
 // ProtectedRoute component props
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children: React.ReactNode | (() => React.ReactNode);
   requiredRoles?: UserRoleType[];
   requirePackage?: boolean;
 }
@@ -64,13 +64,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return null;
   }
   
-  return <>{children}</>;
+  // Check if children is a function and call it if it is
+  return <>{typeof children === 'function' ? children() : children}</>;
 };
 
 /**
  * Higher-order component for public routes (redirect if already authenticated)
  */
-export const PublicRoute: React.FC<{ children: React.ReactNode, noRedirect?: boolean }> = ({ children, noRedirect = false }) => {
+export const PublicRoute: React.FC<{ children: React.ReactNode | (() => React.ReactNode), noRedirect?: boolean }> = ({ children, noRedirect = false }) => {
   const { isAuthenticated, user, loading } = useAuth();
   const [location, setLocation] = useLocation();
   
@@ -100,12 +101,12 @@ export const PublicRoute: React.FC<{ children: React.ReactNode, noRedirect?: boo
     // Special case: if we're on select-package and user is a supervisor, vendor, or admin, allow rendering
     if (location === "/select-package" && user && 
         ['supervisor', 'vendor', 'admin'].includes(user.role.toLowerCase())) {
-      return <>{children}</>;
+      return <>{typeof children === 'function' ? children() : children}</>;
     }
     return null;
   }
   
-  return <>{children}</>;
+  return <>{typeof children === 'function' ? children() : children}</>;
 };
 
 /**

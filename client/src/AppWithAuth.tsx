@@ -103,6 +103,30 @@ const AppWithAuth: React.FC = () => {
           </PublicRoute>
         </Route>
         
+        <Route path="/internal/login">
+          <PublicRoute>
+            <InternalLogin />
+          </PublicRoute>
+        </Route>
+        
+        <Route path="/internal/admin/dashboard">
+          <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        </Route>
+        
+        <Route path="/internal/vendor/dashboard">
+          <ProtectedRoute requiredRoles={[UserRole.VENDOR]}>
+            <VendorDashboard />
+          </ProtectedRoute>
+        </Route>
+        
+        <Route path="/internal/supervisor/dashboard">
+          <ProtectedRoute requiredRoles={[UserRole.SUPERVISOR]}>
+            <SupervisorDashboard />
+          </ProtectedRoute>
+        </Route>
+        
         <Route path="/vendor/dashboard">
           <ProtectedRoute requiredRoles={[UserRole.VENDOR]}>
             <VendorDashboard />

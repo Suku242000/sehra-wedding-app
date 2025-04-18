@@ -32,6 +32,8 @@ import {
   InsertContactFormSubmission,
   VendorAnalytics,
   InsertVendorAnalytics,
+  AdminActionLog,
+  InsertAdminActionLog,
   users,
   vendorProfiles,
   tasks,
@@ -48,7 +50,8 @@ import {
   vendorReviews,
   vendorCalendar,
   vendorAnalytics,
-  contactFormSubmissions
+  contactFormSubmissions,
+  adminActionLogs
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, count } from "drizzle-orm";
@@ -1049,5 +1052,36 @@ export class DatabaseStorage implements IStorage {
   async deleteContactFormSubmission(id: number): Promise<boolean> {
     const result = await db.delete(contactFormSubmissions).where(eq(contactFormSubmissions.id, id));
     return !!result;
+  }
+  
+  // Admin Action Logs methods
+  async getAdminActionLogs(): Promise<AdminActionLog[]> {
+    return await db.select().from(adminActionLogs).orderBy(adminActionLogs.timestamp, 'desc');
+  }
+
+  async getAdminActionLogsByAdmin(adminId: number): Promise<AdminActionLog[]> {
+    return await db.select()
+      .from(adminActionLogs)
+      .where(eq(adminActionLogs.adminId, adminId))
+      .orderBy(adminActionLogs.timestamp, 'desc');
+  }
+
+  async getAdminActionLogsByUser(userId: number): Promise<AdminActionLog[]> {
+    return await db.select()
+      .from(adminActionLogs)
+      .where(eq(adminActionLogs.userId, userId))
+      .orderBy(adminActionLogs.timestamp, 'desc');
+  }
+
+  async getAdminActionLogsByAction(action: string): Promise<AdminActionLog[]> {
+    return await db.select()
+      .from(adminActionLogs)
+      .where(eq(adminActionLogs.action, action))
+      .orderBy(adminActionLogs.timestamp, 'desc');
+  }
+
+  async createAdminActionLog(logData: InsertAdminActionLog): Promise<AdminActionLog> {
+    const [newLog] = await db.insert(adminActionLogs).values(logData).returning();
+    return newLog;
   }
 }

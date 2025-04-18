@@ -644,3 +644,34 @@ export const insertContactFormSubmissionSchema = createInsertSchema(contactFormS
 // Define types
 export type InsertContactFormSubmission = z.infer<typeof insertContactFormSubmissionSchema>;
 export type ContactFormSubmission = typeof contactFormSubmissions.$inferSelect;
+
+// Admin action logs table
+export const adminActionLogs = pgTable("admin_action_logs", {
+  id: serial("id").primaryKey(),
+  adminId: integer("admin_id").notNull().references(() => users.id),
+  action: text("action").notNull(),
+  details: jsonb("details"),
+  timestamp: timestamp("timestamp").defaultNow(),
+  userId: integer("user_id").references(() => users.id), // User affected by the action
+});
+
+// Admin action logs relations
+export const adminActionLogsRelations = relations(adminActionLogs, ({ one }) => ({
+  admin: one(users, { 
+    fields: [adminActionLogs.adminId], 
+    references: [users.id],
+    relationName: "admin_performed_actions" 
+  }),
+  targetUser: one(users, { 
+    fields: [adminActionLogs.userId], 
+    references: [users.id],
+    relationName: "user_received_actions" 
+  }),
+}));
+
+// Create insert schema for admin action logs
+export const insertAdminActionLogSchema = createInsertSchema(adminActionLogs).omit({ id: true, timestamp: true });
+
+// Define admin action log types
+export type InsertAdminActionLog = z.infer<typeof insertAdminActionLogSchema>;
+export type AdminActionLog = typeof adminActionLogs.$inferSelect;

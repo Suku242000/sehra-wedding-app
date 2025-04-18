@@ -7,6 +7,7 @@ import shadcnThemeJson from '@replit/vite-plugin-shadcn-theme-json';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: '/internal/',
   plugins: [
     react(),
     cartographer(),

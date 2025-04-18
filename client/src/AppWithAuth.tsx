@@ -64,10 +64,7 @@ const AppWithAuth: React.FC = () => {
         
         <Route path="/admin-dashboard">
           <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-            {() => {
-              window.location.href = '/internal/admin/dashboard';
-              return null;
-            }}
+            <AdminDashboard />
           </ProtectedRoute>
         </Route>
         
@@ -116,11 +113,7 @@ const AppWithAuth: React.FC = () => {
         
         <Route path="/admin/dashboard">
           <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-            {() => {
-              // Use the fully qualified URL of the internal app
-              window.location.href = 'http://localhost:3001/admin/dashboard';
-              return null;
-            }}
+            <AdminDashboard />
           </ProtectedRoute>
         </Route>
         

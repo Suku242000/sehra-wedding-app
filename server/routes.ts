@@ -47,11 +47,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP and Socket.IO servers
   const httpServer = createServer(app);
   
-  // Set up internal app routing 
-  app.get('/internal*', (req, res) => {
-    // Do not redirect to root, let the internal app handle its own routing
-    return res.status(200).send("Internal app is running");
-  });
+  // Remove the internal app routing interception
+  // We should let the Vite dev server handle internal app requests naturally
   
   // Initialize Socket.IO with CORS settings
   const io = new SocketIOServer(httpServer, {

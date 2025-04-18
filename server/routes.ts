@@ -47,6 +47,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP and Socket.IO servers
   const httpServer = createServer(app);
   
+  // Redirect internal app routes
+  app.get('/internal*', (req, res) => {
+    return res.redirect('/');
+  });
+  
   // Initialize Socket.IO with CORS settings
   const io = new SocketIOServer(httpServer, {
     path: '/ws',

@@ -3112,5 +3112,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin Action Logs routes
+  // Get all admin action logs (admin only)
+  app.get("/api/admin/action-logs", authenticateToken, authorizeRoles([UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const logs = await storage.getAdminActionLogs();
+      res.json(logs);
+    } catch (error) {
+      console.error("Get admin action logs error:", error);
+      res.status(500).json({ message: "Failed to retrieve admin action logs" });
+    }
+  });
+
+  // Get admin action logs by admin
+  app.get("/api/admin/action-logs/admin/:adminId", authenticateToken, authorizeRoles([UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const adminId = parseInt(req.params.adminId);
+      const logs = await storage.getAdminActionLogsByAdmin(adminId);
+      res.json(logs);
+    } catch (error) {
+      console.error("Get admin action logs by admin error:", error);
+      res.status(500).json({ message: "Failed to retrieve admin action logs" });
+    }
+  });
+
+  // Get admin action logs by user
+  app.get("/api/admin/action-logs/user/:userId", authenticateToken, authorizeRoles([UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const logs = await storage.getAdminActionLogsByUser(userId);
+      res.json(logs);
+    } catch (error) {
+      console.error("Get admin action logs by user error:", error);
+      res.status(500).json({ message: "Failed to retrieve admin action logs" });
+    }
+  });
+
+  // Get admin action logs by action type
+  app.get("/api/admin/action-logs/action/:action", authenticateToken, authorizeRoles([UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const action = req.params.action;
+      const logs = await storage.getAdminActionLogsByAction(action);
+      res.json(logs);
+    } catch (error) {
+      console.error("Get admin action logs by action error:", error);
+      res.status(500).json({ message: "Failed to retrieve admin action logs" });
+    }
+  });
+
+  // Create admin action log (used internally when admin performs actions)
+  app.post("/api/admin/action-logs", authenticateToken, authorizeRoles([UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const logData: InsertAdminActionLog = {
+        adminId: req.user.id,
+        userId: req.body.userId,
+        action: req.body.action,
+        details: req.body.details || null
+      };
+      
+      const log = await storage.createAdminActionLog(logData);
+      res.status(201).json(log);
+    } catch (error) {
+      console.error("Create admin action log error:", error);
+      res.status(500).json({ message: "Failed to create admin action log" });
+    }
+  });
+
   return httpServer;
 }

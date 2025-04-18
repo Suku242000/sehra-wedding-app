@@ -1,8 +1,8 @@
 import React from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Route, Switch } from 'wouter';
+import { Route, Switch, useLocation } from 'wouter';
 import { queryClient } from '@shared/lib/queryClient';
-import { InternalAuthProvider } from './lib/auth';
+import { InternalAuthProvider, useInternalAuth } from './lib/auth';
 import { Toaster } from '@shared/components/ui/toaster';
 
 // Pages
@@ -17,8 +17,29 @@ const SupervisorDashboardPage = () => <DashboardPlaceholder role="supervisor" />
 const AdminDashboardPage = () => <AdminDashboard />;
 const NotFoundPage = () => <div className="p-8 text-center">Page not found</div>;
 const RootRedirect = () => {
-  // This would typically use useEffect and navigate based on role
-  return <div className="p-8">Redirecting...</div>;
+  const { user } = useInternalAuth();
+  const [, navigate] = useLocation();
+  
+  React.useEffect(() => {
+    if (user) {
+      // Redirect based on user role
+      if (user.role === 'admin') {
+        navigate('/internal/admin/dashboard');
+      } else if (user.role === 'vendor') {
+        navigate('/vendor/dashboard');
+      } else if (user.role === 'supervisor') {
+        navigate('/supervisor/dashboard');
+      } else {
+        // Default redirect to login if role is not recognized
+        navigate('/internal/login');
+      }
+    } else {
+      // If not authenticated, redirect to login
+      navigate('/internal/login');
+    }
+  }, [user, navigate]);
+  
+  return <div className="p-8 text-center">Redirecting...</div>;
 };
 
 function App() {
@@ -36,6 +57,7 @@ function App() {
             
             {/* New role-based routes */}
             <Route path="/internal/login" component={InternalLogin} />
+            <Route path="/internal/admin/dashboard" component={AdminDashboardPage} />
             <Route path="/vendor/dashboard" component={VendorDashboardPage} />
             <Route path="/supervisor/dashboard" component={SupervisorDashboardPage} />
             <Route path="/admin/dashboard" component={AdminDashboardPage} />

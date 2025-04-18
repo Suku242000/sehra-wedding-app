@@ -65,7 +65,7 @@ const AppWithAuth: React.FC = () => {
         <Route path="/admin-dashboard">
           <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
             {() => {
-              window.location.href = '/admin/dashboard';
+              window.location.href = '/internal/admin/dashboard';
               return null;
             }}
           </ProtectedRoute>
@@ -117,7 +117,8 @@ const AppWithAuth: React.FC = () => {
         <Route path="/admin/dashboard">
           <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
             {() => {
-              window.location.href = '/admin/dashboard';
+              // Don't use the same URL to avoid infinite loops
+              window.location.href = '/internal/admin/dashboard';
               return null;
             }}
           </ProtectedRoute>

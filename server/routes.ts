@@ -1231,7 +1231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Hash password before storing
-      const hashedPassword = await bcrypt.hash(finalPassword, 10);
+      const hashedPassword = await hashPassword(finalPassword);
       
       // Generate unique ID for supervisors (format: S#0001)
       let uniqueId = null;
@@ -1299,7 +1299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const tempPassword = Math.random().toString(36).slice(-8);
         
         // Hash password
-        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+        const hashedPassword = await hashPassword(tempPassword);
         
         // Update user with new password
         await storage.updateUser(userId, {
@@ -1331,7 +1331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Password is required" });
       }
       
-      const hashedPassword = await bcrypt.hash(password, 10);
+      const hashedPassword = await hashPassword(password);
       
       await storage.updateUser(userId, {
         password: hashedPassword,

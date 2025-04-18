@@ -9,6 +9,7 @@ import { Toaster } from '@shared/components/ui/toaster';
 import AuthPage from './pages/auth-page';
 import InternalLogin from './pages/InternalLogin';
 import DashboardPlaceholder from './pages/dashboard-placeholder';
+import UserManagement from './pages/admin/UserManagement';
 
 const VendorDashboardPage = () => <DashboardPlaceholder role="vendor" />;
 const SupervisorDashboardPage = () => <DashboardPlaceholder role="supervisor" />;
@@ -37,6 +38,7 @@ function App() {
             <Route path="/vendor/dashboard" component={VendorDashboardPage} />
             <Route path="/supervisor/dashboard" component={SupervisorDashboardPage} />
             <Route path="/admin/dashboard" component={AdminDashboardPage} />
+            <Route path="/admin/users" component={UserManagement} />
             
             <Route path="/" component={RootRedirect} />
             <Route component={NotFoundPage} />

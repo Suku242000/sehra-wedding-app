@@ -52,6 +52,17 @@ export enum VendorType {
   LIGHTING = "lighting"
 }
 
+// Define admin action types
+export enum AdminActionType {
+  CREATE_USER = "CREATE_USER",
+  UPDATE_USER = "UPDATE_USER",
+  DELETE_USER = "DELETE_USER",
+  RESET_PASSWORD = "RESET_PASSWORD",
+  CHANGE_PASSWORD = "CHANGE_PASSWORD",
+  ASSIGN_SUPERVISOR = "ASSIGN_SUPERVISOR",
+  ASSIGN_VENDOR = "ASSIGN_VENDOR"
+}
+
 // Export the union type of vendor values
 export type VendorTypeValue = `${VendorType}`;
 

@@ -203,6 +203,7 @@ export class MemStorage implements IStorage {
   private vendorReviews: Map<number, VendorReview>;
   private vendorCalendars: Map<number, VendorCalendar>;
   private vendorAnalytics: Map<number, VendorAnalytics>;
+  private contactFormSubmissions: Map<number, ContactFormSubmission>;
   
   private userId: number;
   private vendorProfileId: number;
@@ -219,6 +220,7 @@ export class MemStorage implements IStorage {
   private vendorReviewId: number;
   private vendorCalendarId: number;
   private vendorAnalyticsId: number;
+  private contactFormSubmissionId: number;
 
   constructor() {
     this.users = new Map();
@@ -237,6 +239,7 @@ export class MemStorage implements IStorage {
     this.vendorReviews = new Map();
     this.vendorCalendars = new Map();
     this.vendorAnalytics = new Map();
+    this.contactFormSubmissions = new Map();
     
     this.userId = 1;
     this.vendorProfileId = 1;
@@ -253,6 +256,7 @@ export class MemStorage implements IStorage {
     this.vendorReviewId = 1;
     this.vendorCalendarId = 1;
     this.vendorAnalyticsId = 1;
+    this.contactFormSubmissionId = 1;
     
     // Initialize with admin user
     this.createUser({

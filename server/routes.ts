@@ -2636,5 +2636,266 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Contact Form Submissions routes
+  // Submit contact form (public route)
+  app.post("/api/contact", async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertContactFormSubmissionSchema.parse({
+        ...req.body,
+        status: "new",
+      });
+      
+      const submission = await storage.createContactFormSubmission(validatedData);
+      
+      // Send email notification to admin
+      try {
+        const adminUsers = await storage.getUsersByRole(UserRole.ADMIN);
+        if (adminUsers.length > 0) {
+          await Promise.all(adminUsers.map(admin => {
+            return sendWelcomeEmail(
+              admin.name, 
+              admin.email, 
+              admin.role, 
+              "New Contact Form Submission", 
+              `A new contact form has been submitted by ${submission.name} (${submission.email}).\n\nMessage: ${submission.message}`
+            );
+          }));
+        }
+      } catch (emailError) {
+        console.error("Failed to send email notification:", emailError);
+      }
+      
+      res.status(201).json({ 
+        success: true, 
+        message: "Thank you for contacting us. We will get back to you shortly." 
+      });
+    } catch (error) {
+      console.error("Contact form submission error:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: error.errors });
+      }
+      res.status(500).json({ message: "Failed to submit contact form" });
+    }
+  });
+
+  // Get all contact form submissions (admin only)
+  app.get("/api/admin/contact-submissions", authenticateToken, authorizeRoles([UserRole.ADMIN, UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
+    try {
+      const submissions = await storage.getAllContactFormSubmissions();
+      res.json(submissions);
+    } catch (error) {
+      console.error("Get contact submissions error:", error);
+      res.status(500).json({ message: "Failed to retrieve contact submissions" });
+    }
+  });
+
+  // Get contact form submissions by status
+  app.get("/api/admin/contact-submissions/status/:status", authenticateToken, authorizeRoles([UserRole.ADMIN, UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
+    try {
+      const status = req.params.status;
+      const submissions = await storage.getContactFormSubmissionsByStatus(status);
+      res.json(submissions);
+    } catch (error) {
+      console.error("Get contact submissions by status error:", error);
+      res.status(500).json({ message: "Failed to retrieve contact submissions" });
+    }
+  });
+
+  // Get contact form submissions by assignee
+  app.get("/api/admin/contact-submissions/assignee/:assigneeId", authenticateToken, authorizeRoles([UserRole.ADMIN, UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
+    try {
+      const assigneeId = parseInt(req.params.assigneeId);
+      const submissions = await storage.getContactFormSubmissionsByAssignee(assigneeId);
+      res.json(submissions);
+    } catch (error) {
+      console.error("Get contact submissions by assignee error:", error);
+      res.status(500).json({ message: "Failed to retrieve contact submissions" });
+    }
+  });
+
+  // Assign contact form submission to staff
+  app.patch("/api/admin/contact-submissions/:id/assign", authenticateToken, authorizeRoles([UserRole.ADMIN]), async (req: Request, res: Response) => {
+    try {
+      const submissionId = parseInt(req.params.id);
+      const { assignedTo } = req.body;
+      
+      if (!assignedTo) {
+        return res.status(400).json({ message: "assignedTo is required" });
+      }
+      
+      const assigneeId = parseInt(assignedTo);
+      
+      // Verify the assignee exists and is a staff member
+      const assignee = await storage.getUser(assigneeId);
+      if (!assignee || (assignee.role !== UserRole.SUPERVISOR && assignee.role !== UserRole.ADMIN)) {
+        return res.status(400).json({ message: "Invalid assignee" });
+      }
+      
+      const submission = await storage.assignContactFormSubmission(submissionId, assigneeId);
+      if (!submission) {
+        return res.status(404).json({ message: "Submission not found" });
+      }
+      
+      res.json(submission);
+    } catch (error) {
+      console.error("Assign contact submission error:", error);
+      res.status(500).json({ message: "Failed to assign contact submission" });
+    }
+  });
+
+  // Update contact form submission status
+  app.patch("/api/admin/contact-submissions/:id/status", authenticateToken, authorizeRoles([UserRole.ADMIN, UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
+    try {
+      const submissionId = parseInt(req.params.id);
+      const { status } = req.body;
+      
+      if (!status) {
+        return res.status(400).json({ message: "status is required" });
+      }
+      
+      const submission = await storage.updateContactFormSubmission(submissionId, { status });
+      if (!submission) {
+        return res.status(404).json({ message: "Submission not found" });
+      }
+      
+      res.json(submission);
+    } catch (error) {
+      console.error("Update contact submission status error:", error);
+      res.status(500).json({ message: "Failed to update contact submission status" });
+    }
+  });
+
+  // Add notes to contact form submission
+  app.patch("/api/admin/contact-submissions/:id/notes", authenticateToken, authorizeRoles([UserRole.ADMIN, UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
+    try {
+      const submissionId = parseInt(req.params.id);
+      const { notes } = req.body;
+      
+      if (notes === undefined) {
+        return res.status(400).json({ message: "notes are required" });
+      }
+      
+      const submission = await storage.updateContactFormSubmission(submissionId, { notes });
+      if (!submission) {
+        return res.status(404).json({ message: "Submission not found" });
+      }
+      
+      res.json(submission);
+    } catch (error) {
+      console.error("Update contact submission notes error:", error);
+      res.status(500).json({ message: "Failed to update contact submission notes" });
+    }
+  });
+
+  // Export contact form submissions to Excel
+  app.get("/api/admin/contact-submissions/export/excel", authenticateToken, authorizeRoles([UserRole.ADMIN, UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
+    try {
+      const Excel = require('exceljs');
+      const submissions = await storage.getAllContactFormSubmissions();
+      
+      // Create a new Excel workbook and worksheet
+      const workbook = new Excel.Workbook();
+      const worksheet = workbook.addWorksheet('Contact Submissions');
+      
+      // Define columns
+      worksheet.columns = [
+        { header: 'ID', key: 'id', width: 10 },
+        { header: 'Name', key: 'name', width: 30 },
+        { header: 'Email', key: 'email', width: 30 },
+        { header: 'Message', key: 'message', width: 50 },
+        { header: 'Status', key: 'status', width: 15 },
+        { header: 'Notes', key: 'notes', width: 40 },
+        { header: 'Assigned To', key: 'assignedToName', width: 20 },
+        { header: 'Created At', key: 'createdAt', width: 20 },
+        { header: 'Updated At', key: 'updatedAt', width: 20 }
+      ];
+      
+      // Add assignee names
+      const enhancedSubmissions = await Promise.all(submissions.map(async (submission) => {
+        let assignedToName = 'Unassigned';
+        if (submission.assignedTo) {
+          const assignee = await storage.getUser(submission.assignedTo);
+          if (assignee) {
+            assignedToName = assignee.name;
+          }
+        }
+        return { ...submission, assignedToName };
+      }));
+      
+      // Add rows
+      worksheet.addRows(enhancedSubmissions);
+      
+      // Format date columns
+      worksheet.getColumn('createdAt').numFmt = 'yyyy-mm-dd hh:mm:ss';
+      worksheet.getColumn('updatedAt').numFmt = 'yyyy-mm-dd hh:mm:ss';
+      
+      // Set response headers
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename=contact-submissions.xlsx');
+      
+      // Write to response
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (error) {
+      console.error("Export contact submissions to Excel error:", error);
+      res.status(500).json({ message: "Failed to export contact submissions to Excel" });
+    }
+  });
+
+  // Export contact form submissions to PDF
+  app.get("/api/admin/contact-submissions/export/pdf", authenticateToken, authorizeRoles([UserRole.ADMIN, UserRole.SUPERVISOR]), async (req: Request, res: Response) => {
+    try {
+      const PDFDocument = require('pdfkit');
+      const submissions = await storage.getAllContactFormSubmissions();
+      
+      // Create a new PDF document
+      const doc = new PDFDocument({ margin: 50 });
+      
+      // Set response headers
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename=contact-submissions.pdf');
+      
+      // Pipe the PDF to the response
+      doc.pipe(res);
+      
+      // Add title
+      doc.fontSize(20).text('Contact Form Submissions', { align: 'center' });
+      doc.moveDown();
+      
+      // Add date
+      doc.fontSize(12).text(`Generated on: ${new Date().toLocaleString()}`, { align: 'center' });
+      doc.moveDown(2);
+      
+      // Add submissions
+      submissions.forEach((submission, index) => {
+        doc.fontSize(14).text(`Submission #${submission.id}`, { underline: true });
+        doc.fontSize(12).text(`Name: ${submission.name}`);
+        doc.fontSize(12).text(`Email: ${submission.email}`);
+        doc.fontSize(12).text(`Status: ${submission.status}`);
+        doc.fontSize(12).text(`Created: ${new Date(submission.createdAt).toLocaleString()}`);
+        doc.fontSize(12).text(`Message:`, { underline: true });
+        doc.fontSize(10).text(submission.message);
+        
+        if (submission.notes) {
+          doc.fontSize(12).text(`Notes:`, { underline: true });
+          doc.fontSize(10).text(submission.notes);
+        }
+        
+        // Add a separator unless it's the last item
+        if (index < submissions.length - 1) {
+          doc.moveDown();
+          doc.strokeColor('#aaaaaa').lineWidth(1).moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+          doc.moveDown();
+        }
+      });
+      
+      // Finalize the PDF
+      doc.end();
+    } catch (error) {
+      console.error("Export contact submissions to PDF error:", error);
+      res.status(500).json({ message: "Failed to export contact submissions to PDF" });
+    }
+  });
+
   return httpServer;
 }

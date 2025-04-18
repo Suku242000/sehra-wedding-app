@@ -252,6 +252,32 @@ const InternalLogin: React.FC = () => {
         </div>
       </main>
       
+      {/* Back to Main Login Button */}
+      <div className="flex justify-center mt-8 mb-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-rose-700 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-900/20 flex items-center gap-2"
+          onClick={() => window.location.href = '/auth'}
+        >
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            width="16" 
+            height="16" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+            className="mr-1"
+          >
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          Back to Main Login
+        </Button>
+      </div>
+      
       {/* Footer */}
       <footer className="py-4 text-center text-xs text-gray-500 dark:text-gray-400">
         © {new Date().getFullYear()} Sehra Wedding Management. All rights reserved.
